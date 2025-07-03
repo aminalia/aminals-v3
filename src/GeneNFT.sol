@@ -25,7 +25,9 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     mapping(uint256 => string) public tokenTraitValue;
 
     /// @dev Event emitted when a GeneNFT is created
-    event GeneNFTCreated(uint256 indexed tokenId, address indexed owner, string traitType, string traitValue, string tokenURI);
+    event GeneNFTCreated(
+        uint256 indexed tokenId, address indexed owner, string traitType, string traitValue, string tokenURI
+    );
 
     /// @dev Event emitted when base URI is updated
     event BaseURIUpdated(string newBaseURI);
@@ -40,12 +42,10 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
      * @param symbol The symbol for this GeneNFT collection
      * @param baseURI The base URI for token metadata
      */
-    constructor(
-        address owner,
-        string memory name,
-        string memory symbol,
-        string memory baseURI
-    ) ERC721(name, symbol) Ownable(owner) {
+    constructor(address owner, string memory name, string memory symbol, string memory baseURI)
+        ERC721(name, symbol)
+        Ownable(owner)
+    {
         if (owner == address(0)) revert InvalidParameters();
         baseTokenURI = baseURI;
     }
@@ -58,27 +58,26 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
      * @param uri The URI for the token's metadata
      * @return tokenId The ID of the newly minted token
      */
-    function mint(
-        address to,
-        string memory traitType,
-        string memory traitValue,
-        string memory uri
-    ) external onlyOwner returns (uint256) {
+    function mint(address to, string memory traitType, string memory traitValue, string memory uri)
+        external
+        onlyOwner
+        returns (uint256)
+    {
         if (to == address(0)) revert InvalidParameters();
         if (bytes(traitType).length == 0) revert InvalidParameters();
         if (bytes(traitValue).length == 0) revert InvalidParameters();
-        
+
         currentTokenId++;
         uint256 tokenId = currentTokenId;
-        
+
         tokenTraitType[tokenId] = traitType;
         tokenTraitValue[tokenId] = traitValue;
-        
+
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
-        
+
         emit GeneNFTCreated(tokenId, to, traitType, traitValue, uri);
-        
+
         return tokenId;
     }
 
@@ -96,10 +95,10 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         string[] memory traitValues,
         string[] memory uris
     ) external onlyOwner returns (uint256[] memory) {
-        if (recipients.length != traitTypes.length || 
-            recipients.length != traitValues.length ||
-            recipients.length != uris.length || 
-            recipients.length == 0) {
+        if (
+            recipients.length != traitTypes.length || recipients.length != traitValues.length
+                || recipients.length != uris.length || recipients.length == 0
+        ) {
             revert InvalidParameters();
         }
 
@@ -109,16 +108,16 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
             if (recipients[i] == address(0)) revert InvalidParameters();
             if (bytes(traitTypes[i]).length == 0) revert InvalidParameters();
             if (bytes(traitValues[i]).length == 0) revert InvalidParameters();
-            
+
             currentTokenId++;
             uint256 tokenId = currentTokenId;
-            
+
             tokenTraitType[tokenId] = traitTypes[i];
             tokenTraitValue[tokenId] = traitValues[i];
-            
+
             _safeMint(recipients[i], tokenId);
             _setTokenURI(tokenId, uris[i]);
-            
+
             tokenIds[i] = tokenId;
             emit GeneNFTCreated(tokenId, recipients[i], traitTypes[i], traitValues[i], uris[i]);
         }
@@ -141,7 +140,11 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
      * @return traitType The trait type
      * @return traitValue The trait value
      */
-    function getTokenTraits(uint256 tokenId) external view returns (string memory traitType, string memory traitValue) {
+    function getTokenTraits(uint256 tokenId)
+        external
+        view
+        returns (string memory traitType, string memory traitValue)
+    {
         if (!_exists(tokenId)) revert InvalidParameters();
         return (tokenTraitType[tokenId], tokenTraitValue[tokenId]);
     }
@@ -154,20 +157,21 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     function getTokensByTraitType(string memory traitType) external view returns (uint256[] memory) {
         uint256[] memory matchingTokens = new uint256[](totalSupply());
         uint256 matchCount = 0;
-        
+
         for (uint256 i = 1; i <= currentTokenId; i++) {
-            if (_exists(i) && keccak256(abi.encodePacked(tokenTraitType[i])) == keccak256(abi.encodePacked(traitType))) {
+            if (_exists(i) && keccak256(abi.encodePacked(tokenTraitType[i])) == keccak256(abi.encodePacked(traitType)))
+            {
                 matchingTokens[matchCount] = i;
                 matchCount++;
             }
         }
-        
+
         // Create properly sized return array
         uint256[] memory result = new uint256[](matchCount);
         for (uint256 i = 0; i < matchCount; i++) {
             result[i] = matchingTokens[i];
         }
-        
+
         return result;
     }
 
@@ -179,20 +183,22 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     function getTokensByTraitValue(string memory traitValue) external view returns (uint256[] memory) {
         uint256[] memory matchingTokens = new uint256[](totalSupply());
         uint256 matchCount = 0;
-        
+
         for (uint256 i = 1; i <= currentTokenId; i++) {
-            if (_exists(i) && keccak256(abi.encodePacked(tokenTraitValue[i])) == keccak256(abi.encodePacked(traitValue))) {
+            if (
+                _exists(i) && keccak256(abi.encodePacked(tokenTraitValue[i])) == keccak256(abi.encodePacked(traitValue))
+            ) {
                 matchingTokens[matchCount] = i;
                 matchCount++;
             }
         }
-        
+
         // Create properly sized return array
         uint256[] memory result = new uint256[](matchCount);
         for (uint256 i = 0; i < matchCount; i++) {
             result[i] = matchingTokens[i];
         }
-        
+
         return result;
     }
 
@@ -229,7 +235,11 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
      * @param auth The authorized address
      * @return The previous owner
      */
-    function _update(address to, uint256 tokenId, address auth) internal override(ERC721, ERC721Enumerable) returns (address) {
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721Enumerable)
+        returns (address)
+    {
         return super._update(to, tokenId, auth);
     }
 
@@ -247,7 +257,12 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
      * @param interfaceId The interface ID to check
      * @return True if the interface is supported
      */
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage, ERC721Enumerable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, ERC721URIStorage, ERC721Enumerable)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 }

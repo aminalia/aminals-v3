@@ -9,18 +9,18 @@ import {Aminal} from "./Aminal.sol";
  * @title AminalFactory
  * @author Aminals Protocol
  * @notice Factory contract for creating unique, self-sovereign Aminal NFTs
- * 
+ *
  * @dev ARCHITECTURE OVERVIEW:
  * This factory deploys each Aminal as a separate, independent smart contract rather than
  * managing multiple tokens within a single contract. This unique architecture provides:
- * 
+ *
  * 1. TRUE UNIQUENESS: Each Aminal is a 1-of-1 NFT with its own contract instance
  * 2. SELF-SOVEREIGNTY: Each Aminal has its own blockchain address and can interact
  *    independently with other protocols and contracts
  * 3. INDIVIDUAL IDENTITY: Each contract can have unique behaviors, metadata, and state
  * 4. DECENTRALIZED OWNERSHIP: No single contract controls all Aminals
  * 5. COMPOSABILITY: Each Aminal can be extended with custom functionality
- * 
+ *
  * @dev TECHNICAL DETAILS:
  * - Each Aminal contract contains exactly one NFT with token ID 1
  * - Each Aminal can only mint once (enforced by the Aminal contract)
@@ -29,7 +29,6 @@ import {Aminal} from "./Aminal.sol";
  * - This approach enables true digital uniqueness and self-sovereign NFT identities
  */
 contract AminalFactory is Ownable, ReentrancyGuard {
-
     /// @dev Total number of Aminals created (starts at 0, increments to 1, 2, 3...)
     /// @notice This represents the total count of unique Aminal contracts deployed
     uint256 public totalAminals;
@@ -102,18 +101,18 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @dev This function deploys a completely separate Aminal contract instance,
      *      not just a new token ID within this contract. Each Aminal becomes
      *      a self-sovereign entity with its own contract address.
-     * 
+     *
      * @dev DEPLOYMENT PROCESS:
      * 1. Validates input parameters and checks for duplicates
      * 2. Deploys a new Aminal contract with unique name/symbol
      * 3. The new contract mints exactly one NFT (token ID 1) to the recipient
      * 4. The new contract can never mint again (one-time mint enforcement)
      * 5. Returns the address of the new contract (the Aminal's "identity")
-     * 
+     *
      * @dev UNIQUENESS GUARANTEE:
      * Each Aminal is guaranteed to be unique based on the combination of
      * name, symbol, description, and tokenURI. Duplicate combinations are rejected.
-     * 
+     *
      * @param to The address that will receive the NFT (becomes the owner)
      * @param name The name of the Aminal (used for contract name)
      * @param symbol The symbol for the Aminal (used for contract symbol)
@@ -135,7 +134,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
     /**
      * @dev Internal function that handles the core Aminal contract deployment logic
-     * 
+     *
      * @dev CONTRACT DEPLOYMENT FLOW:
      * 1. Input validation ensures all required parameters are provided
      * 2. Creates a unique identifier hash from the Aminal's characteristics
@@ -144,14 +143,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * 5. Calls the mint function on the new contract (mints token ID 1)
      * 6. Updates tracking mappings and arrays
      * 7. Emits creation event with all relevant details
-     * 
+     *
      * @dev ARCHITECTURAL BENEFITS:
      * - Each Aminal gets its own contract address (true digital identity)
      * - No single point of failure or control over all Aminals
      * - Each Aminal can evolve independently with custom functionality
      * - Gas costs are distributed across deployments rather than centralized
      * - Enables true composability with other protocols
-     * 
+     *
      * @param to The address that will receive the NFT
      * @param name The name of the Aminal
      * @param symbol The symbol for the Aminal
@@ -175,7 +174,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         // Create unique identifier for this Aminal based on its characteristics
         // This ensures no two Aminals can have identical properties
         bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
-        
+
         if (aminalExists[identifier]) {
             revert AminalAlreadyExists(identifier);
         }
@@ -186,7 +185,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
         Aminal newAminal = new Aminal(address(this), name, symbol, baseTokenURI, traits);
-        
+
         // Mint the single NFT (token ID 1) to the recipient
         // Each Aminal contract can only mint once, ensuring 1-of-1 uniqueness
         newAminal.mint(to, tokenURI);
@@ -205,13 +204,13 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @notice Batch creates multiple unique Aminals as separate contract instances
      * @dev This function deploys multiple independent Aminal contracts in a single transaction,
      *      with each Aminal getting its own contract address and minting exactly one NFT.
-     * 
+     *
      * @dev BATCH DEPLOYMENT BENEFITS:
      * - More gas efficient than individual deployments
      * - Atomic operation - all succeed or all fail
      * - Maintains uniqueness guarantees across the batch
      * - Each Aminal still gets its own contract instance and address
-     * 
+     *
      * @param recipients Array of addresses that will receive the NFTs
      * @param names Array of names for the Aminals
      * @param symbols Array of symbols for the Aminals
@@ -228,19 +227,19 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string[] memory tokenURIs,
         Aminal.Traits[] memory traitsArray
     ) external onlyOwner whenNotPaused nonReentrant returns (address[] memory) {
-        if (recipients.length != names.length || 
-            recipients.length != symbols.length ||
-            recipients.length != descriptions.length || 
-            recipients.length != tokenURIs.length ||
-            recipients.length != traitsArray.length ||
-            recipients.length == 0) {
+        if (
+            recipients.length != names.length || recipients.length != symbols.length
+                || recipients.length != descriptions.length || recipients.length != tokenURIs.length
+                || recipients.length != traitsArray.length || recipients.length == 0
+        ) {
             revert InvalidParameters();
         }
 
         address[] memory aminalContracts = new address[](recipients.length);
 
         for (uint256 i = 0; i < recipients.length; i++) {
-            aminalContracts[i] = _createAminal(recipients[i], names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
+            aminalContracts[i] =
+                _createAminal(recipients[i], names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
         }
 
         return aminalContracts;
@@ -263,17 +262,16 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         baseTokenURI = newBaseURI;
     }
 
-
     /**
      * @notice Get a range of Aminal contracts by their IDs
      * @dev More gas efficient than returning all Aminals at once.
      *      Each returned address represents a unique, self-sovereign Aminal instance.
-     * 
+     *
      * @dev USAGE:
      * Each returned address can be used to interact directly with the Aminal
      * contract, query its metadata, check ownership, or call any custom functions.
      * Use this for pagination instead of loading all Aminals at once.
-     * 
+     *
      * @param startId The starting Aminal ID (1-based, inclusive)
      * @param endId The ending Aminal ID (1-based, inclusive)
      * @return aminals Array of Aminal contract addresses in the specified range
@@ -282,14 +280,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         if (startId == 0 || startId > totalAminals || endId < startId || endId > totalAminals) {
             revert InvalidParameters();
         }
-        
+
         uint256 length = endId - startId + 1;
         address[] memory aminals = new address[](length);
-        
+
         for (uint256 i = 0; i < length; i++) {
             aminals[i] = aminalById[startId + i];
         }
-        
+
         return aminals;
     }
 
@@ -306,11 +304,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @notice Check if an Aminal with the given characteristics already exists
      * @dev Uses the same hashing mechanism as creation to check for duplicates.
      *      This prevents creating identical Aminals and ensures true uniqueness.
-     * 
+     *
      * @dev UNIQUENESS CHECK:
      * Combines all identifying characteristics (name, symbol, description, tokenURI)
      * into a single hash to determine if an identical Aminal has been created.
-     * 
+     *
      * @param name The name of the Aminal
      * @param symbol The symbol for the Aminal
      * @param description The description of the Aminal
@@ -326,5 +324,4 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
         return aminalExists[identifier];
     }
-
 }

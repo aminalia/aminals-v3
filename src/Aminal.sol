@@ -70,16 +70,13 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @param baseURI The base URI for token metadata
      * @param _traits The immutable traits for this Aminal
      */
-    constructor(
-        address owner,
-        string memory name,
-        string memory symbol,
-        string memory baseURI,
-        Traits memory _traits
-    ) ERC721(name, symbol) Ownable(owner) {
+    constructor(address owner, string memory name, string memory symbol, string memory baseURI, Traits memory _traits)
+        ERC721(name, symbol)
+        Ownable(owner)
+    {
         if (owner == address(0)) revert InvalidParameters();
         baseTokenURI = baseURI;
-        
+
         // Set individual immutable traits from the struct
         BACK = _traits.back;
         ARM = _traits.arm;
@@ -97,19 +94,16 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @param uri The URI for the token's metadata
      * @return tokenId The ID of the newly minted token (always 1)
      */
-    function mint(
-        address to,
-        string memory uri
-    ) external onlyOwner returns (uint256) {
+    function mint(address to, string memory uri) external onlyOwner returns (uint256) {
         if (to == address(0)) revert InvalidParameters();
         if (minted) revert AlreadyMinted();
-        
+
         minted = true;
         _safeMint(to, TOKEN_ID);
         _setTokenURI(TOKEN_ID, uri);
-        
+
         emit AminalCreated(TOKEN_ID, to, uri);
-        
+
         return TOKEN_ID;
     }
 
@@ -152,16 +146,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @return The complete traits struct for this Aminal
      */
     function getTraits() external view returns (Traits memory) {
-        return Traits({
-            back: BACK,
-            arm: ARM,
-            tail: TAIL,
-            ears: EARS,
-            body: BODY,
-            face: FACE,
-            mouth: MOUTH,
-            misc: MISC
-        });
+        return Traits({back: BACK, arm: ARM, tail: TAIL, ears: EARS, body: BODY, face: FACE, mouth: MOUTH, misc: MISC});
     }
 
     /**
