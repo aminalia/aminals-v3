@@ -7,6 +7,8 @@ import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721
 import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {AminalVRGDA} from "src/AminalVRGDA.sol";
+import {toWadUnsafe} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMath.sol";
 
 /**
  * @title Aminal
@@ -65,6 +67,12 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /// @notice Energy increases when fed (receiving ETH) and decreases when squeaking
     uint256 public energy;
 
+    /// @dev VRGDA contract for calculating feeding costs
+    AminalVRGDA public immutable vrgda;
+
+    /// @dev Timestamp when the Aminal first received energy (started feeding)
+    uint256 public feedingStartTime;
+
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
 
@@ -116,6 +124,18 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
         
         // Set the traits struct
         traits = _traits;
+        
+        // Initialize VRGDA with parameters:
+        // - Target price: 0.0001 ETH (0.1 finney) per energy unit at start (in WAD format)
+        // - Price decay: 10% per day when behind schedule  
+        // - Target rate: 1000 energy units per day (in WAD format)
+        // This means: early feeders get 10,000 energy per 1 ETH
+        // As energy accumulates, this rate decreases
+        vrgda = new AminalVRGDA(
+            int256(0.0001 ether), // 0.0001 ETH per energy unit at start
+            0.1e18,               // 10% decay per day
+            1000e18               // 1000 energy units per day target
+        );
     }
 
     /**
@@ -202,18 +222,38 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     }
 
     /**
-     * @notice Receive function to accept ETH, track love, and increase energy
-     * @dev When ETH is sent to this contract, it's recorded as "love" and "energy" from the sender
-     *      Energy increases by the amount of ETH sent (feeding the Aminal)
+     * @notice Receive function to accept ETH, track love, and increase energy using VRGDA pricing
+     * @dev When ETH is sent to this contract, it's recorded as "love" and converted to "energy" using VRGDA
+     *      The amount of energy gained depends on the VRGDA price curve
      */
     receive() external payable {
         if (msg.value > 0) {
+            // Track love
             totalLove += msg.value;
             loveFromUser[msg.sender] += msg.value;
-            energy += msg.value;
+            
+            // Set feeding start time on first feeding
+            if (feedingStartTime == 0) {
+                feedingStartTime = block.timestamp;
+            }
+            
+            // Calculate time since feeding started (in days, scaled by 1e18)
+            // Convert seconds to days in WAD format
+            int256 timeSinceStart = toWadUnsafe(block.timestamp - feedingStartTime) / int256(1 days);
+            
+            // Calculate energy gained using VRGDA
+            // As the Aminal has more energy, it gains less energy per ETH
+            uint256 energyGained = vrgda.getEnergyForETH(
+                timeSinceStart,
+                energy,  // Use current energy level
+                msg.value
+            );
+            
+            // Update energy level
+            energy += energyGained;
             
             emit LoveReceived(msg.sender, msg.value, totalLove);
-            emit EnergyGained(msg.sender, msg.value, energy);
+            emit EnergyGained(msg.sender, energyGained, energy);
         }
     }
 
@@ -252,6 +292,36 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
      */
     function getEnergy() external view returns (uint256) {
         return energy;
+    }
+
+    /**
+     * @notice Get the current ETH amount needed for 1 unit of energy based on VRGDA
+     * @dev As energy increases, more ETH is needed per energy unit (diminishing returns)
+     * @return The ETH amount in wei needed for 1 energy unit
+     */
+    function getCurrentEnergyConversionRate() external view returns (uint256) {
+        if (feedingStartTime == 0) {
+            // If never fed before, return the target price
+            return uint256(vrgda.targetPrice());
+        }
+        
+        int256 timeSinceStart = toWadUnsafe(block.timestamp - feedingStartTime) / int256(1 days);
+        return vrgda.getVRGDAPrice(timeSinceStart, energy);
+    }
+
+    /**
+     * @notice Calculate how much energy would be gained for a given ETH amount
+     * @param ethAmount The amount of ETH to calculate energy for
+     * @return The amount of energy that would be gained
+     */
+    function calculateEnergyForETH(uint256 ethAmount) external view returns (uint256) {
+        if (feedingStartTime == 0) {
+            // First feeding - use current time as start
+            return vrgda.getEnergyForETH(0, 0, ethAmount);
+        }
+        
+        int256 timeSinceStart = toWadUnsafe(block.timestamp - feedingStartTime) / int256(1 days);
+        return vrgda.getEnergyForETH(timeSinceStart, energy, ethAmount);
     }
 
     /**
