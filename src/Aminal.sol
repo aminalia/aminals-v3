@@ -3,16 +3,17 @@ pragma solidity ^0.8.20;
 
 import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 
 /**
  * @title Aminal
- * @dev ERC721 contract for unique 1-of-1 NFTs representing Aminals
- * @dev Each Aminal contract represents exactly one NFT with token ID 1
+ * @dev Self-sovereign ERC721 contract for unique 1-of-1 NFTs representing Aminals
+ * @dev Each Aminal contract represents exactly one NFT with token ID 1, owned by itself
+ * @dev This design ensures true self-sovereignty - each Aminal owns itself and cannot be controlled by external parties
  */
-contract Aminal is ERC721, ERC721URIStorage, Ownable {
+contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     using Strings for uint256;
 
     /// @dev The fixed token ID for this Aminal (always 1)
@@ -23,6 +24,9 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
 
     /// @dev Flag to track if the Aminal has been minted
     bool public minted;
+
+    /// @dev Flag to track if the Aminal has been initialized (prevents re-initialization)
+    bool public initialized;
 
 
     /// @dev The traits for this specific Aminal
@@ -65,22 +69,26 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     /// @dev Error thrown when trying to squeak with insufficient energy
     error InsufficientEnergy();
 
+    /// @dev Error thrown when trying to initialize an already initialized contract
+    error AlreadyInitialized();
+
+    /// @dev Error thrown when trying to call restricted functions from unauthorized addresses
+    error NotAuthorized();
+
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
-     * @param owner The address that will own the contract
+     * @dev This contract is self-sovereign - it owns itself and cannot be controlled by external parties
      * @param name The name of this specific Aminal
      * @param symbol The symbol for this specific Aminal
      * @param baseURI The base URI for token metadata
      * @param _traits The immutable traits for this Aminal
      */
     constructor(
-        address owner,
         string memory name,
         string memory symbol,
         string memory baseURI,
         ITraits.Traits memory _traits
-    ) ERC721(name, symbol) Ownable(owner) {
-        if (owner == address(0)) revert InvalidParameters();
+    ) ERC721(name, symbol) {
         baseTokenURI = baseURI;
         
         // Set the traits struct
@@ -88,32 +96,34 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     }
 
     /**
-     * @dev Mint the single Aminal NFT to the specified address
-     * @param to The address that will receive the NFT
+     * @dev Initialize the contract by minting the single Aminal NFT to itself
+     * @dev This function can only be called once and makes the Aminal self-sovereign
      * @param uri The URI for the token's metadata
      * @return tokenId The ID of the newly minted token (always 1)
      */
-    function mint(
-        address to,
-        string memory uri
-    ) external onlyOwner returns (uint256) {
-        if (to == address(0)) revert InvalidParameters();
+    function initialize(string memory uri) external returns (uint256) {
         if (minted) revert AlreadyMinted();
+        if (initialized) revert AlreadyInitialized();
         
+        initialized = true;
         minted = true;
-        _safeMint(to, TOKEN_ID);
+        
+        // Mint to self - the Aminal owns itself!
+        _safeMint(address(this), TOKEN_ID);
         _setTokenURI(TOKEN_ID, uri);
         
-        emit AminalCreated(TOKEN_ID, to, uri);
+        emit AminalCreated(TOKEN_ID, address(this), uri);
         
         return TOKEN_ID;
     }
 
     /**
      * @dev Set the base URI for token metadata
+     * @dev Only the contract itself can call this function, maintaining self-sovereignty
      * @param newBaseURI The new base URI
      */
-    function setBaseURI(string memory newBaseURI) external onlyOwner {
+    function setBaseURI(string memory newBaseURI) external {
+        if (msg.sender != address(this)) revert NotAuthorized();
         baseTokenURI = newBaseURI;
         emit BaseURIUpdated(newBaseURI);
     }
@@ -222,11 +232,25 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     }
 
     /**
-     * @dev Override supportsInterface to support both ERC721 and ERC721URIStorage
+     * @dev Implementation of ERC721Receiver to accept NFT transfers
+     * @dev This allows the Aminal to receive its own NFT and any other NFTs
+     * @return selector The function selector to confirm receipt
+     */
+    function onERC721Received(
+        address /* operator */,
+        address /* from */,
+        uint256 /* tokenId */,
+        bytes calldata /* data */
+    ) external pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /**
+     * @dev Override supportsInterface to support ERC721, ERC721URIStorage, and ERC721Receiver
      * @param interfaceId The interface ID to check
      * @return True if the interface is supported
      */
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
 }

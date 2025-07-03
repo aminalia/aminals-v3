@@ -76,12 +76,13 @@ contract AminalFactoryTest is Test {
         assertEq(createdContracts.length, 1);
         assertEq(createdContracts[0], aminalContract);
         
-        // Verify the Aminal contract was properly minted
+        // Verify the Aminal contract was properly initialized (self-owned)
         Aminal aminal = Aminal(payable(aminalContract));
         assertEq(aminal.name(), name);
         assertEq(aminal.symbol(), symbol);
-        assertEq(aminal.ownerOf(1), user1);
+        assertEq(aminal.ownerOf(1), aminalContract); // Aminal owns itself!
         assertTrue(aminal.isMinted());
+        assertTrue(aminal.initialized());
         assertEq(aminal.totalSupply(), 1);
     }
 
@@ -169,10 +170,11 @@ contract AminalFactoryTest is Test {
         
         for (uint256 i = 0; i < aminalContracts.length; i++) {
             Aminal aminal = Aminal(payable(aminalContracts[i]));
-            assertEq(aminal.ownerOf(1), recipients[i]);
+            assertEq(aminal.ownerOf(1), aminalContracts[i]); // Each Aminal owns itself!
             assertEq(aminal.name(), names[i]);
             assertEq(aminal.symbol(), symbols[i]);
             assertTrue(aminal.isMinted());
+            assertTrue(aminal.initialized());
             assertTrue(factory.checkAminalExists(names[i], symbols[i], descriptions[i], tokenURIs[i]));
         }
         
@@ -407,7 +409,7 @@ contract AminalFactoryTest is Test {
         address aminalContract = factory.createAminal(to, name, symbol, description, tokenURI, createSampleTraits("Fuzz"));
         
         Aminal aminal = Aminal(payable(aminalContract));
-        assertEq(aminal.ownerOf(1), to);
+        assertEq(aminal.ownerOf(1), aminalContract); // Self-owned
         assertTrue(factory.checkAminalExists(name, symbol, description, tokenURI));
         assertEq(factory.totalAminals(), 1);
     }

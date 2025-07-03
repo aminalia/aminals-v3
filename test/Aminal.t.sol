@@ -7,7 +7,6 @@ import {ITraits} from "src/interfaces/ITraits.sol";
 
 contract AminalTest is Test {
     Aminal public aminal;
-    address public owner;
     address public user1;
     address public user2;
     string public constant BASE_URI = "https://api.aminals.com/metadata/";
@@ -21,7 +20,6 @@ contract AminalTest is Test {
     event EnergyLost(address indexed squeaker, uint256 amount, uint256 newEnergy);
 
     function setUp() external {
-        owner = makeAddr("owner");
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
         
@@ -37,20 +35,20 @@ contract AminalTest is Test {
             misc: "Golden Scales"
         });
         
-        vm.prank(owner);
-        aminal = new Aminal(owner, NAME, SYMBOL, BASE_URI, traits);
+        // Deploy self-sovereign Aminal
+        aminal = new Aminal(NAME, SYMBOL, BASE_URI, traits);
     }
 
     function test_Constructor() external {
         assertEq(aminal.name(), NAME);
         assertEq(aminal.symbol(), SYMBOL);
-        assertEq(aminal.owner(), owner);
         assertEq(aminal.totalSupply(), 0);
         assertEq(aminal.TOKEN_ID(), 1);
         assertFalse(aminal.minted());
+        assertFalse(aminal.initialized());
     }
 
-    function test_RevertWhen_ConstructorWithZeroAddress() external {
+    function test_ConstructorSelfSovereign() external {
         ITraits.Traits memory traits = ITraits.Traits({
             back: "Dragon Wings",
             arm: "Scaled Arms",
@@ -62,74 +60,102 @@ contract AminalTest is Test {
             misc: "Golden Scales"
         });
         
-        vm.expectRevert();
-        new Aminal(address(0), NAME, SYMBOL, BASE_URI, traits);
+        // Self-sovereign Aminal should deploy successfully
+        Aminal selfSovereignAminal = new Aminal(NAME, SYMBOL, BASE_URI, traits);
+        
+        assertEq(selfSovereignAminal.name(), NAME);
+        assertEq(selfSovereignAminal.symbol(), SYMBOL);
+        assertFalse(selfSovereignAminal.initialized());
     }
 
-    function test_Mint() external {
+    function test_Initialize() external {
         string memory tokenURI = "firedragon.json";
         
-        vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit AminalCreated(1, user1, tokenURI);
+        emit AminalCreated(1, address(aminal), tokenURI);
         
-        uint256 tokenId = aminal.mint(user1, tokenURI);
+        uint256 tokenId = aminal.initialize(tokenURI);
         
         assertEq(tokenId, 1);
-        assertEq(aminal.ownerOf(tokenId), user1);
+        assertEq(aminal.ownerOf(tokenId), address(aminal)); // Aminal owns itself!
         assertEq(aminal.tokenURI(tokenId), string(abi.encodePacked(BASE_URI, tokenURI)));
         assertEq(aminal.totalSupply(), 1);
         assertTrue(aminal.exists(tokenId));
         assertTrue(aminal.minted());
+        assertTrue(aminal.initialized());
     }
 
-    function test_RevertWhen_MintToZeroAddress() external {
-        vm.prank(owner);
-        vm.expectRevert(Aminal.InvalidParameters.selector);
-        aminal.mint(address(0), "firedragon.json");
-    }
-
-    function test_RevertWhen_MintCalledByNonOwner() external {
-        vm.prank(user1);
-        vm.expectRevert();
-        aminal.mint(user2, "firedragon.json");
-    }
-
-    function test_RevertWhen_MintTwice() external {
-        vm.startPrank(owner);
-        aminal.mint(user1, "firedragon.json");
+    function test_RevertWhen_InitializeTwice() external {
+        string memory tokenURI = "firedragon.json";
         
+        // First initialization should succeed
+        aminal.initialize(tokenURI);
+        
+        // Second initialization should fail due to already minted
         vm.expectRevert(Aminal.AlreadyMinted.selector);
-        aminal.mint(user2, "firedragon2.json");
-        vm.stopPrank();
+        aminal.initialize("firedragon2.json");
+    }
+
+    function test_InitializeByAnyoneSucceeds() external {
+        string memory tokenURI = "firedragon.json";
+        
+        // Anyone can initialize the Aminal
+        vm.prank(user1);
+        uint256 tokenId = aminal.initialize(tokenURI);
+        
+        assertEq(tokenId, 1);
+        assertEq(aminal.ownerOf(tokenId), address(aminal));
+        assertTrue(aminal.initialized());
+    }
+
+    function test_RevertWhen_InitializeAfterMinted() external {
+        string memory tokenURI = "firedragon.json";
+        
+        // Initialize (mints token)
+        aminal.initialize(tokenURI);
+        
+        // Cannot initialize again due to minted flag
+        vm.expectRevert(Aminal.AlreadyMinted.selector);
+        aminal.initialize("firedragon2.json");
     }
 
     function test_SetBaseURI() external {
         string memory newBaseURI = "https://newapi.aminals.com/metadata/";
         
-        vm.prank(owner);
+        // Only the contract itself can set base URI
+        vm.prank(address(aminal));
         vm.expectEmit(false, false, false, true);
         emit BaseURIUpdated(newBaseURI);
         
         aminal.setBaseURI(newBaseURI);
         
-        // Mint a token to test the new base URI
-        vm.prank(owner);
-        uint256 tokenId = aminal.mint(user1, "firedragon.json");
+        // Initialize with new base URI
+        uint256 tokenId = aminal.initialize("firedragon.json");
         
         assertEq(aminal.tokenURI(tokenId), string(abi.encodePacked(newBaseURI, "firedragon.json")));
     }
 
-    function test_RevertWhen_SetBaseURICalledByNonOwner() external {
+    function test_RevertWhen_SetBaseURICalledByNonSelf() external {
         vm.prank(user1);
-        vm.expectRevert();
+        vm.expectRevert(Aminal.NotAuthorized.selector);
         aminal.setBaseURI("https://newapi.aminals.com/metadata/");
     }
 
     function test_TokenTransfer() external {
-        vm.prank(owner);
-        uint256 tokenId = aminal.mint(user1, "firedragon.json");
+        uint256 tokenId = aminal.initialize("firedragon.json");
         
+        // Aminal owns itself initially
+        assertEq(aminal.ownerOf(tokenId), address(aminal));
+        
+        // Transfer from the Aminal to user1
+        vm.prank(address(aminal));
+        aminal.transferFrom(address(aminal), user1, tokenId);
+        
+        assertEq(aminal.ownerOf(tokenId), user1);
+        assertEq(aminal.balanceOf(address(aminal)), 0);
+        assertEq(aminal.balanceOf(user1), 1);
+        
+        // Transfer from user1 to user2
         vm.prank(user1);
         aminal.transferFrom(user1, user2, tokenId);
         
@@ -142,8 +168,7 @@ contract AminalTest is Test {
         assertFalse(aminal.exists(1));
         assertFalse(aminal.exists(2));
         
-        vm.prank(owner);
-        uint256 tokenId = aminal.mint(user1, "firedragon.json");
+        uint256 tokenId = aminal.initialize("firedragon.json");
         
         assertTrue(aminal.exists(tokenId));
         assertFalse(aminal.exists(2));
@@ -152,8 +177,7 @@ contract AminalTest is Test {
     function test_IsMinted() external {
         assertFalse(aminal.minted());
         
-        vm.prank(owner);
-        aminal.mint(user1, "firedragon.json");
+        aminal.initialize("firedragon.json");
         
         assertTrue(aminal.minted());
     }
@@ -161,8 +185,7 @@ contract AminalTest is Test {
     function test_TotalSupply() external {
         assertEq(aminal.totalSupply(), 0);
         
-        vm.prank(owner);
-        aminal.mint(user1, "firedragon.json");
+        aminal.initialize("firedragon.json");
         
         assertEq(aminal.totalSupply(), 1);
     }
@@ -170,14 +193,15 @@ contract AminalTest is Test {
     function test_PublicVariableAccess() external {
         // Test direct access to public variables
         assertFalse(aminal.minted());
+        assertFalse(aminal.initialized());
         assertEq(aminal.baseTokenURI(), BASE_URI);
         assertEq(aminal.TOKEN_ID(), 1);
         
-        vm.prank(owner);
-        aminal.mint(user1, "firedragon.json");
+        aminal.initialize("firedragon.json");
         
         // Verify public variables updated
         assertTrue(aminal.minted());
+        assertTrue(aminal.initialized());
     }
 
     function test_Traits() external {
@@ -202,26 +226,24 @@ contract AminalTest is Test {
         assertTrue(aminal.supportsInterface(0x01ffc9a7));
     }
 
-    function testFuzz_Mint(address to, string memory tokenURI) external {
-        vm.assume(to != address(0));
+    function testFuzz_Initialize(string memory tokenURI) external {
         vm.assume(bytes(tokenURI).length > 0);
-        vm.assume(to.code.length == 0); // Only test with EOAs to avoid receiver issues
         
-        vm.prank(owner);
-        uint256 tokenId = aminal.mint(to, tokenURI);
+        uint256 tokenId = aminal.initialize(tokenURI);
         
         assertEq(tokenId, 1);
-        assertEq(aminal.ownerOf(tokenId), to);
+        assertEq(aminal.ownerOf(tokenId), address(aminal)); // Self-owned
         assertTrue(aminal.exists(tokenId));
         assertTrue(aminal.minted());
+        assertTrue(aminal.initialized());
     }
 
     function testFuzz_SetBaseURI(string memory newBaseURI) external {
-        vm.prank(owner);
+        // Only the contract itself can set base URI
+        vm.prank(address(aminal));
         aminal.setBaseURI(newBaseURI);
         
-        vm.prank(owner);
-        uint256 tokenId = aminal.mint(user1, "test.json");
+        uint256 tokenId = aminal.initialize("test.json");
         
         assertEq(aminal.tokenURI(tokenId), string(abi.encodePacked(newBaseURI, "test.json")));
     }

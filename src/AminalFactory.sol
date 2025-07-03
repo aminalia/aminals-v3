@@ -16,16 +16,17 @@ import {ITraits} from "./interfaces/ITraits.sol";
  * managing multiple tokens within a single contract. This unique architecture provides:
  * 
  * 1. TRUE UNIQUENESS: Each Aminal is a 1-of-1 NFT with its own contract instance
- * 2. SELF-SOVEREIGNTY: Each Aminal has its own blockchain address and can interact
- *    independently with other protocols and contracts
+ * 2. SELF-SOVEREIGNTY: Each Aminal owns itself completely - no external control possible
  * 3. INDIVIDUAL IDENTITY: Each contract can have unique behaviors, metadata, and state
- * 4. DECENTRALIZED OWNERSHIP: No single contract controls all Aminals
+ * 4. DECENTRALIZED OWNERSHIP: No single contract or entity controls all Aminals
  * 5. COMPOSABILITY: Each Aminal can be extended with custom functionality
+ * 6. AUTONOMOUS ENTITIES: Each Aminal operates independently as its own sovereign entity
  * 
  * @dev TECHNICAL DETAILS:
  * - Each Aminal contract contains exactly one NFT with token ID 1
- * - Each Aminal can only mint once (enforced by the Aminal contract)
+ * - Each Aminal can only initialize once (enforced by the Aminal contract)
  * - Every Aminal gets a unique contract address that serves as its identity
+ * - Each Aminal owns itself - the NFT is minted to address(this)
  * - The factory tracks all created Aminals but does not control them post-creation
  * - This approach enables true digital uniqueness and self-sovereign NFT identities
  */
@@ -107,15 +108,16 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @dev DEPLOYMENT PROCESS:
      * 1. Validates input parameters and checks for duplicates
      * 2. Deploys a new Aminal contract with unique name/symbol
-     * 3. The new contract mints exactly one NFT (token ID 1) to the recipient
-     * 4. The new contract can never mint again (one-time mint enforcement)
+     * 3. The new contract initializes itself, minting exactly one NFT (token ID 1) to itself
+     * 4. The new contract can never mint again (one-time initialization enforcement)
      * 5. Returns the address of the new contract (the Aminal's "identity")
+     * 6. The Aminal is now self-sovereign - it owns itself and cannot be controlled by external parties
      * 
      * @dev UNIQUENESS GUARANTEE:
      * Each Aminal is guaranteed to be unique based on the combination of
      * name, symbol, description, and tokenURI. Duplicate combinations are rejected.
      * 
-     * @param to The address that will receive the NFT (becomes the owner)
+     * @param to The address that will receive the NFT (note: Aminal will own itself) (note: the Aminal will own itself)
      * @param name The name of the Aminal (used for contract name)
      * @param symbol The symbol for the Aminal (used for contract symbol)
      * @param description A description of the Aminal (used for uniqueness)
@@ -142,18 +144,19 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * 2. Creates a unique identifier hash from the Aminal's characteristics
      * 3. Checks the identifier against existing Aminals to prevent duplicates
      * 4. Deploys a new Aminal contract instance using the `new` keyword
-     * 5. Calls the mint function on the new contract (mints token ID 1)
+     * 5. Calls the initialize function on the new contract (mints token ID 1 to itself)
      * 6. Updates tracking mappings and arrays
      * 7. Emits creation event with all relevant details
      * 
      * @dev ARCHITECTURAL BENEFITS:
      * - Each Aminal gets its own contract address (true digital identity)
      * - No single point of failure or control over all Aminals
+     * - Each Aminal is self-sovereign - it owns itself completely
      * - Each Aminal can evolve independently with custom functionality
      * - Gas costs are distributed across deployments rather than centralized
      * - Enables true composability with other protocols
      * 
-     * @param to The address that will receive the NFT
+     * @param to The address that will receive the NFT (note: Aminal will own itself)
      * @param name The name of the Aminal
      * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
@@ -186,18 +189,18 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
-        Aminal newAminal = new Aminal(address(this), name, symbol, baseTokenURI, traits);
+        Aminal newAminal = new Aminal(name, symbol, baseTokenURI, traits);
         
-        // Mint the single NFT (token ID 1) to the recipient
-        // Each Aminal contract can only mint once, ensuring 1-of-1 uniqueness
-        newAminal.mint(to, tokenURI);
+        // Initialize the Aminal to mint the NFT to itself (self-sovereign)
+        // Each Aminal contract can only initialize once, ensuring 1-of-1 uniqueness
+        newAminal.initialize(tokenURI);
 
         // Track creation with efficient mapping-based approach
         totalAminals++;
         aminalById[totalAminals] = address(newAminal);
         createdByAddress[msg.sender].push(address(newAminal));
 
-        emit AminalFactoryCreated(address(newAminal), msg.sender, to, totalAminals, name, symbol, description, tokenURI);
+        emit AminalFactoryCreated(address(newAminal), msg.sender, address(newAminal), totalAminals, name, symbol, description, tokenURI);
 
         return address(newAminal);
     }
