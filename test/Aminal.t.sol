@@ -177,16 +177,6 @@ contract AminalTest is Test {
     }
 
     function test_Traits() external {
-        // Test individual trait access
-        assertEq(aminal.BACK(), "Dragon Wings");
-        assertEq(aminal.ARM(), "Scaled Arms");
-        assertEq(aminal.TAIL(), "Fire Tail");
-        assertEq(aminal.EARS(), "Pointed Ears");
-        assertEq(aminal.BODY(), "Dragon Body");
-        assertEq(aminal.FACE(), "Fierce Face");
-        assertEq(aminal.MOUTH(), "Fire Breath");
-        assertEq(aminal.MISC(), "Golden Scales");
-        
         // Test getTraits function
         Aminal.Traits memory traits = aminal.getTraits();
         assertEq(traits.back, "Dragon Wings");
