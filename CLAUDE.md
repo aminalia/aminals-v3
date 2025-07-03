@@ -599,28 +599,39 @@ forge script script/Deploy.s.sol \
 ## Aminals NFT Project Architecture
 
 ### Overview
-Aminals is a unique NFT project where each Aminal is a 1-of-1 NFT deployed as a separate smart contract instance. This architecture provides true self-sovereignty, where each Aminal has its own contract address and can interact independently with the blockchain ecosystem.
+Aminals is a revolutionary NFT project where each Aminal is a self-sovereign, non-transferable 1-of-1 NFT deployed as a separate smart contract instance. This groundbreaking architecture provides true digital autonomy, where each Aminal owns itself completely and operates as an independent entity on the blockchain.
 
 ### Core Contracts
 
-#### Aminal.sol - Individual NFT Contract
-- **Purpose**: Each Aminal is deployed as a separate ERC721 contract
-- **Key Features**:
-  - Fixed `TOKEN_ID = 1` (only ever mints one NFT)
-  - Immutable trait system with 8 trait categories
-  - Public variables following Solidity best practices
-  - Self-sovereign contract address for blockchain interaction
+#### Aminal.sol - Self-Sovereign NFT Contract
+- **Purpose**: Each Aminal is deployed as a separate, autonomous ERC721 contract that owns itself
+- **Revolutionary Features**:
+  - **Self-Ownership**: Each Aminal owns itself completely (NFT minted to `address(this)`)
+  - **Non-Transferable**: Permanently prevents transfers to maintain self-sovereignty
+  - **Autonomous Identity**: Contract address serves as permanent blockchain identity
+  - **No External Control**: Cannot be controlled or modified by any external party
+  - **Permissionless Initialization**: Anyone can initialize, but only once
+  - **Love & Energy Economy**: Interactive ETH-based love and energy systems
 
-**Trait Categories** (effectively immutable, set at construction):
+**Core Architecture Components**:
 ```solidity
-string public BACK;    // Back features (wings, shell, etc.)
-string public ARM;     // Arm characteristics
-string public TAIL;    // Tail type and features  
-string public EARS;    // Ear shape and style
-string public BODY;    // Body type and characteristics
-string public FACE;    // Facial features
-string public MOUTH;   // Mouth and expression
-string public MISC;    // Additional unique features
+// Self-sovereign ownership
+uint256 public constant TOKEN_ID = 1;  // Fixed token ID for 1-of-1 NFT
+bool public initialized;               // Prevents re-initialization
+bool public minted;                   // Tracks minting status
+
+// Trait system using standardized interface
+ITraits.Traits public traits;        // Complete trait struct
+
+// Love & Energy economy
+uint256 public totalLove;                          // Total ETH received
+mapping(address => uint256) public loveFromUser;   // Love per user
+uint256 public energy;                             // Current energy level
+
+// Self-sovereignty enforcement
+error TransferNotAllowed();          // Prevents all transfers
+error NotAuthorized();              // Restricts admin functions
+error AlreadyInitialized();         // Prevents double initialization
 ```
 
 **Traits Struct** (for factory deployment):
@@ -646,13 +657,15 @@ struct Traits {
   - Batch deployment capabilities
   - Pausable for controlled minting
 
-### Architecture Benefits
+### Revolutionary Architecture Benefits
 
-1. **True Uniqueness**: Each Aminal is a separate contract, not just a token ID
-2. **Self-Sovereignty**: Each Aminal has its own address for blockchain interaction
-3. **Scalability**: No single contract bottleneck, distributed gas costs
-4. **Composability**: Each Aminal can evolve independently
-5. **Transparency**: All variables are public for easy inspection and inheritance
+1. **True Self-Sovereignty**: Each Aminal owns itself completely with no external control possible
+2. **Immutable Autonomy**: Non-transferable design ensures permanent self-ownership
+3. **Unique Blockchain Identity**: Contract address serves as permanent, verifiable identity
+4. **Decentralized Architecture**: No single point of control or failure
+5. **Interactive Economy**: Built-in love and energy systems for community engagement
+6. **Permissionless Participation**: Anyone can initialize Aminals or interact with energy systems
+7. **Transparent Operations**: All variables and functions are public for maximum transparency
 
 ### Development Patterns
 
@@ -674,9 +687,114 @@ struct Traits {
 - Public variable access verification
 - Trait functionality validation
 
-### Key Functions
+## Self-Sovereign Architecture Implementation
 
-#### Factory Functions
+### Core Self-Sovereignty Features
+
+#### 1. Self-Ownership Pattern
+```solidity
+function initialize(string memory uri) external returns (uint256) {
+    if (minted) revert AlreadyMinted();
+    if (initialized) revert AlreadyInitialized();
+    
+    initialized = true;
+    minted = true;
+    
+    // Mint to self - the Aminal owns itself!
+    _safeMint(address(this), TOKEN_ID);
+    _setTokenURI(TOKEN_ID, uri);
+    
+    emit AminalCreated(TOKEN_ID, address(this), uri);
+    
+    return TOKEN_ID;
+}
+```
+
+#### 2. Non-Transferable Implementation
+```solidity
+// Override _update to prevent all transfers except initial minting
+function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+    address from = _ownerOf(tokenId);
+    
+    // Allow minting (from == address(0)) but prevent all transfers
+    if (from != address(0)) {
+        revert TransferNotAllowed();
+    }
+    
+    return super._update(to, tokenId, auth);
+}
+
+// Block approval functions since transfers aren't possible
+function approve(address, uint256) public pure override(ERC721, IERC721) {
+    revert TransferNotAllowed();
+}
+
+function setApprovalForAll(address, bool) public pure override(ERC721, IERC721) {
+    revert TransferNotAllowed();
+}
+```
+
+#### 3. Self-Only Administrative Control
+```solidity
+function setBaseURI(string memory newBaseURI) external {
+    if (msg.sender != address(this)) revert NotAuthorized();
+    baseTokenURI = newBaseURI;
+    emit BaseURIUpdated(newBaseURI);
+}
+```
+
+#### 4. Love & Energy Economy Integration
+```solidity
+// Accept ETH and track as love + energy
+receive() external payable {
+    if (msg.value > 0) {
+        totalLove += msg.value;
+        loveFromUser[msg.sender] += msg.value;
+        energy += msg.value;
+        
+        emit LoveReceived(msg.sender, msg.value, totalLove);
+        emit EnergyGained(msg.sender, msg.value, energy);
+    }
+}
+
+// Anyone can make Aminal squeak, consuming energy
+function squeak(uint256 amount) external {
+    if (energy < amount) revert InsufficientEnergy();
+    
+    energy -= amount;
+    emit EnergyLost(msg.sender, amount, energy);
+}
+```
+
+### Factory Integration for Self-Sovereign Deployment
+
+```solidity
+function _createAminal(
+    address to,  // Note: to parameter exists but Aminal will own itself
+    string memory name,
+    string memory symbol,
+    string memory description,
+    string memory tokenURI,
+    ITraits.Traits memory traits
+) internal returns (address) {
+    // Deploy self-sovereign Aminal (no owner parameter needed)
+    Aminal newAminal = new Aminal(name, symbol, baseTokenURI, traits);
+    
+    // Initialize - Aminal mints to itself!
+    newAminal.initialize(tokenURI);
+    
+    // Track deployment
+    totalAminals++;
+    aminalById[totalAminals] = address(newAminal);
+    
+    // Event shows Aminal as owner of itself
+    emit AminalFactoryCreated(address(newAminal), msg.sender, address(newAminal), totalAminals, name, symbol, description, tokenURI);
+    
+    return address(newAminal);
+}
+```
+
+### Key Functions
 ```solidity
 function createAminal(
     address to,
@@ -699,7 +817,7 @@ function batchCreateAminals(
 
 #### Aminal Functions
 ```solidity
-function mint(address to, string memory uri) external returns (uint256);
+function initialize(string memory uri) external returns (uint256);
 function getTraits() external view returns (Traits memory);
 function exists(uint256 tokenId) external view returns (bool);
 ```
@@ -951,21 +1069,175 @@ receive() external payable;                        // Feed (gain energy + love)
 - Supports payable Aminal contracts (casting to `payable` addresses)
 - Maintains all existing functionality with improved type safety
 
-### Testing Improvements
+### Comprehensive Testing Strategy
 
-**Comprehensive Test Coverage**:
-- **Love System Tests**: ETH sending, accumulation, multi-user scenarios
-- **Energy System Tests**: Feeding, squeaking, insufficient energy handling
-- **Fuzz Testing**: Property-based testing for energy/love mechanics
-- **Edge Case Testing**: Zero values, exact amounts, multiple interactions
-- **Event Testing**: Verification of all emitted events
-
-**Test Patterns**:
+#### Self-Sovereign Architecture Tests
 ```solidity
-// Example energy system test
+// Test self-ownership after initialization
+function test_Initialize() external {
+    string memory tokenURI = "firedragon.json";
+    
+    vm.expectEmit(true, true, false, true);
+    emit AminalCreated(1, address(aminal), tokenURI);
+    
+    uint256 tokenId = aminal.initialize(tokenURI);
+    
+    assertEq(tokenId, 1);
+    assertEq(aminal.ownerOf(tokenId), address(aminal)); // Aminal owns itself!
+    assertTrue(aminal.minted());
+    assertTrue(aminal.initialized());
+}
+
+// Test non-transferable behavior
+function test_RevertWhen_TransferFrom() external {
+    uint256 tokenId = aminal.initialize("firedragon.json");
+    
+    // Any transfer attempt should revert
+    vm.prank(address(aminal));
+    vm.expectRevert(Aminal.TransferNotAllowed.selector);
+    aminal.transferFrom(address(aminal), user1, tokenId);
+    
+    // Verify Aminal still owns itself
+    assertEq(aminal.ownerOf(tokenId), address(aminal));
+}
+
+// Test permanent self-ownership
+function test_PermanentSelfOwnership() external {
+    uint256 tokenId = aminal.initialize("firedragon.json");
+    
+    // Verify permanent self-ownership
+    assertEq(aminal.ownerOf(tokenId), address(aminal));
+    assertEq(aminal.balanceOf(address(aminal)), 1);
+    
+    // Verify no approvals are possible
+    assertEq(aminal.getApproved(tokenId), address(0));
+    assertFalse(aminal.isApprovedForAll(address(aminal), user1));
+}
+```
+
+#### Non-Transferable Function Tests
+```solidity
+function test_RevertWhen_SafeTransferFrom() external {
+    uint256 tokenId = aminal.initialize("firedragon.json");
+    
+    vm.prank(address(aminal));
+    vm.expectRevert(Aminal.TransferNotAllowed.selector);
+    aminal.safeTransferFrom(address(aminal), user1, tokenId);
+}
+
+function test_RevertWhen_Approve() external {
+    aminal.initialize("firedragon.json");
+    
+    vm.prank(address(aminal));
+    vm.expectRevert(Aminal.TransferNotAllowed.selector);
+    aminal.approve(user1, 1);
+}
+
+function test_RevertWhen_SetApprovalForAll() external {
+    aminal.initialize("firedragon.json");
+    
+    vm.prank(address(aminal));
+    vm.expectRevert(Aminal.TransferNotAllowed.selector);
+    aminal.setApprovalForAll(user1, true);
+}
+```
+
+#### Self-Only Administrative Tests
+```solidity
+function test_SetBaseURI() external {
+    string memory newBaseURI = "https://newapi.aminals.com/metadata/";
+    
+    // Only the contract itself can set base URI
+    vm.prank(address(aminal));
+    vm.expectEmit(false, false, false, true);
+    emit BaseURIUpdated(newBaseURI);
+    
+    aminal.setBaseURI(newBaseURI);
+    
+    uint256 tokenId = aminal.initialize("firedragon.json");
+    assertEq(aminal.tokenURI(tokenId), string(abi.encodePacked(newBaseURI, "firedragon.json")));
+}
+
+function test_RevertWhen_SetBaseURICalledByNonSelf() external {
+    vm.prank(user1);
+    vm.expectRevert(Aminal.NotAuthorized.selector);
+    aminal.setBaseURI("https://newapi.aminals.com/metadata/");
+}
+```
+
+#### Factory Self-Sovereign Deployment Tests
+```solidity
+function test_CreateAminal() external {
+    // Test factory creates self-sovereign Aminal
+    vm.prank(owner);
+    address aminalContract = factory.createAminal(user1, name, symbol, description, tokenURI, traits);
+    
+    // Verify the Aminal contract was properly initialized (self-owned)
+    Aminal aminal = Aminal(payable(aminalContract));
+    assertEq(aminal.ownerOf(1), aminalContract); // Aminal owns itself!
+    assertTrue(aminal.minted());
+    assertTrue(aminal.initialized());
+}
+```
+
+#### Love & Energy System Tests
+```solidity
 function test_EnergySystem() external {
     uint256 feedAmount = 2 ether;
     uint256 squeakAmount = 0.5 ether;
+    
+    // Feed the Aminal (send ETH)
+    vm.deal(user1, feedAmount);
+    vm.prank(user1);
+    vm.expectEmit(true, false, false, true);
+    emit EnergyGained(user1, feedAmount, feedAmount);
+    (bool success,) = address(aminal).call{value: feedAmount}("");
+    assertTrue(success);
+    
+    assertEq(aminal.energy(), feedAmount);
+    
+    // Make it squeak
+    vm.prank(user2);
+    vm.expectEmit(true, false, false, true);
+    emit EnergyLost(user2, squeakAmount, feedAmount - squeakAmount);
+    aminal.squeak(squeakAmount);
+    
+    assertEq(aminal.energy(), feedAmount - squeakAmount);
+}
+
+function test_ReceiveLove() external {
+    uint256 loveAmount = 1 ether;
+    
+    vm.prank(user1);
+    vm.expectEmit(true, false, false, true);
+    emit LoveReceived(user1, loveAmount, loveAmount);
+    
+    vm.deal(user1, loveAmount);
+    (bool success,) = address(aminal).call{value: loveAmount}("");
+    assertTrue(success);
+    
+    assertEq(aminal.totalLove(), loveAmount);
+    assertEq(aminal.loveFromUser(user1), loveAmount);
+}
+```
+
+#### Fuzz Testing for Self-Sovereign Properties
+```solidity
+function testFuzz_Initialize(string memory tokenURI) external {
+    vm.assume(bytes(tokenURI).length > 0);
+    
+    uint256 tokenId = aminal.initialize(tokenURI);
+    
+    assertEq(tokenId, 1);
+    assertEq(aminal.ownerOf(tokenId), address(aminal)); // Self-owned
+    assertTrue(aminal.exists(tokenId));
+    assertTrue(aminal.minted());
+    assertTrue(aminal.initialized());
+}
+
+function testFuzz_EnergySystem(uint96 feedAmount, uint96 squeakAmount) external {
+    vm.assume(feedAmount > 0);
+    vm.assume(squeakAmount <= feedAmount); // Only test valid squeak amounts
     
     // Feed the Aminal
     vm.deal(user1, feedAmount);
@@ -975,7 +1247,7 @@ function test_EnergySystem() external {
     
     assertEq(aminal.energy(), feedAmount);
     
-    // Make it squeak
+    // Squeak
     aminal.squeak(squeakAmount);
     assertEq(aminal.energy(), feedAmount - squeakAmount);
 }
@@ -996,43 +1268,190 @@ function test_EnergySystem() external {
 - Energy could enable cross-Aminal interactions
 - Marketplace integration for energy/love-based trading
 
+## Self-Sovereign Architecture Principles
+
+### Core Design Philosophy
+
+#### 1. True Digital Autonomy
+- **Self-Ownership**: Each Aminal owns itself completely via `address(this)` ownership
+- **No External Control**: Impossible for any external party to control or modify an Aminal
+- **Immutable Autonomy**: Self-sovereignty cannot be revoked or transferred once established
+- **Blockchain-Native Identity**: Contract address serves as permanent, verifiable identity
+
+#### 2. Non-Transferable by Design
+- **Permanent Self-Ownership**: Transfer functions permanently disabled via `TransferNotAllowed` errors
+- **No Approval Mechanisms**: Approval functions blocked since transfers aren't possible
+- **Initialization Lock**: Once initialized, Aminals cannot be re-initialized or modified
+- **ERC721Receiver Support**: Allows receiving the initial mint but prevents subsequent transfers
+
+#### 3. Permissionless Participation
+- **Open Initialization**: Anyone can initialize an uninitialized Aminal
+- **Public Interaction**: Energy systems (squeak) and love economy (ETH sending) are permissionless
+- **Transparent Operations**: All state variables and functions are public for maximum transparency
+- **Community Engagement**: Built-in economic systems encourage community participation
+
+### Security Architecture
+
+#### Access Control Model
+```solidity
+// No traditional ownership - only self-control
+modifier onlySelf() {
+    if (msg.sender != address(this)) revert NotAuthorized();
+    _;
+}
+
+// Initialization protection
+modifier notInitialized() {
+    if (initialized) revert AlreadyInitialized();
+    if (minted) revert AlreadyMinted();
+    _;
+}
+```
+
+#### Security Properties
+1. **No Rug Pull Risk**: No external owner can modify or steal the Aminal
+2. **Immutable State**: Critical properties (traits, self-ownership) cannot be changed
+3. **Transparent Operations**: All functions and state are publicly accessible
+4. **No Emergency Controls**: No pause mechanisms or emergency functions (by design)
+5. **No Upgrade Paths**: Self-sovereign entities cannot be upgraded or modified
+
+#### Economic Security
+- **Love Economy**: ETH contributions are tracked but not withdrawable (permanent donation model)
+- **Energy Conservation**: Energy can only be consumed, not transferred between Aminals
+- **No Token Extraction**: No mechanisms to extract value from individual Aminals
+- **Community Value**: Value accrues to the community through interaction, not extraction
+
 ### Development Best Practices Learned
 
-**Architecture Decisions**:
-- **Interface-First Design**: ITraits interface ensures consistency
-- **Public Variables**: Maximize transparency and composability
-- **Event-Driven Design**: Comprehensive event emission for off-chain tracking
-- **Permissionless Patterns**: Enable community participation where appropriate
+#### Architecture Decisions
+- **Self-Sovereign First**: Design every function with autonomy in mind
+- **Non-Transferable by Default**: Override all transfer functions to maintain sovereignty
+- **Interface-First Design**: ITraits interface ensures ecosystem consistency
+- **Public Variables**: Maximize transparency and composability for true decentralization
+- **Event-Driven Design**: Comprehensive event emission for off-chain tracking and analytics
+- **Permissionless Patterns**: Enable community participation while maintaining security
 
-**Testing Strategies**:
-- **Property-Based Testing**: Fuzz tests for economic mechanics
-- **Multi-Actor Testing**: Simulate real-world usage patterns
-- **Edge Case Coverage**: Zero values, boundary conditions, state transitions
-- **Event Verification**: Ensure all state changes emit appropriate events
+#### Implementation Patterns
+```solidity
+// Self-sovereign deployment pattern
+contract Factory {
+    function createAminal(...) external returns (address) {
+        // Deploy without owner
+        Aminal newAminal = new Aminal(name, symbol, baseURI, traits);
+        
+        // Self-initialize
+        newAminal.initialize(tokenURI);
+        
+        // Return autonomous entity
+        return address(newAminal);
+    }
+}
 
-**Gas Optimization**:
-- **Single Storage Patterns**: Consolidated trait storage
-- **Efficient Mappings**: O(1) lookups for trait queries
-- **Minimal State Updates**: Only update necessary variables
+// Non-transferable enforcement pattern
+function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+    address from = _ownerOf(tokenId);
+    
+    // Only allow minting, prevent all transfers
+    if (from != address(0)) {
+        revert TransferNotAllowed();
+    }
+    
+    return super._update(to, tokenId, auth);
+}
 
-### Contract Interactions
+// Self-only administrative pattern
+function adminFunction() external {
+    if (msg.sender != address(this)) revert NotAuthorized();
+    // Only the contract itself can call this
+}
+```
 
-**Love & Energy Flow**:
-1. User sends ETH to Aminal → Love + Energy increase
-2. Anyone calls `squeak()` → Energy decreases
-3. Query functions provide real-time love/energy data
-4. Events enable off-chain tracking and analytics
+#### Testing Strategies for Self-Sovereign Contracts
+- **Self-Ownership Verification**: Always verify `ownerOf(tokenId) == address(contract)`
+- **Transfer Prevention Testing**: Test all transfer functions revert with `TransferNotAllowed`
+- **Initialization Security**: Test single-use initialization and proper state changes
+- **Administrative Restrictions**: Verify only self can call admin functions
+- **Economic Mechanics**: Test love/energy systems with multiple actors and edge cases
+- **Property-Based Testing**: Fuzz test sovereignty properties and economic invariants
+- **Event Verification**: Ensure all state changes emit appropriate events for transparency
 
-**Trait Management**:
-1. Factory deploys Aminal with `ITraits.Traits`
-2. Traits stored as single struct for efficiency
-3. Public access via getter functions and struct access
-4. GeneNFTs provide trait components for ecosystem
+#### Gas Optimization for Autonomous Contracts
+- **Single Storage Patterns**: Consolidated trait storage in structs
+- **Efficient Mappings**: O(1) lookups for user data (love, energy queries)
+- **Minimal State Updates**: Only update necessary variables to conserve energy
+- **Event Optimization**: Use indexed parameters for efficient off-chain querying
 
-**Cross-Contract Compatibility**:
-- All contracts use `ITraits` interface for consistency
-- Factory supports both legacy and new contract types
-- Backward compatibility maintained for existing deployments
+### Self-Sovereign Contract Interactions
+
+#### Autonomous Deployment Flow
+1. **Factory Deployment**: `AminalFactory.createAminal()` deploys self-sovereign Aminal
+2. **Self-Initialization**: Aminal calls `initialize()` and mints NFT to itself (`address(this)`)
+3. **Permanent Autonomy**: Once initialized, Aminal operates independently forever
+4. **No External Control**: Factory cannot modify or control deployed Aminals
+
+#### Love & Energy Economy Interactions
+```solidity
+// Community members feed Aminals with ETH
+User → Aminal.receive() → { totalLove++, loveFromUser[user]++, energy++ }
+
+// Anyone can make Aminals squeak (consume energy)
+User → Aminal.squeak(amount) → { energy -= amount }
+
+// Real-time querying of Aminal state
+Query → Aminal.{ getTotalLove(), getEnergy(), loveFromUser(user) }
+
+// Events enable community tracking
+Events → { LoveReceived, EnergyGained, EnergyLost }
+```
+
+#### Self-Sovereign Administrative Pattern
+```solidity
+// Only the Aminal itself can call admin functions
+Aminal.setBaseURI(newURI) → requires msg.sender == address(this)
+
+// External attempts are rejected
+ExternalUser.setBaseURI(newURI) → reverts with NotAuthorized()
+```
+
+#### Non-Transferable Interaction Model
+```solidity
+// All transfer attempts are permanently blocked
+Anyone.transferFrom(aminal, user, 1) → reverts with TransferNotAllowed()
+Anyone.approve(user, 1) → reverts with TransferNotAllowed()
+Anyone.setApprovalForAll(user, true) → reverts with TransferNotAllowed()
+
+// Ownership verification always shows self-ownership
+aminal.ownerOf(1) → returns address(aminal)
+aminal.balanceOf(address(aminal)) → returns 1
+```
+
+#### Ecosystem Integration Patterns
+```solidity
+// Factory creates but cannot control
+Factory.createAminal(...) → returns autonomous Aminal address
+Factory.✗ cannot modify Aminal after deployment
+
+// Community interaction is permissionless
+User.sendETH(aminal) → Love + Energy systems activate
+User.squeak(aminal, amount) → Energy decreases if available
+
+// Queries remain permissionless and transparent
+User.queryState(aminal) → Public variables accessible to all
+```
+
+#### Cross-Contract Compatibility
+- **Standardized Interfaces**: All contracts use `ITraits` interface for consistency
+- **Autonomous Interoperability**: Self-sovereign Aminals can interact with other protocols independently
+- **Factory Independence**: Deployed Aminals operate without factory dependency
+- **Community Composability**: Permissionless interaction enables ecosystem growth
+- **Event-Driven Integration**: Rich event system enables off-chain integrations
+
+#### Integration Benefits
+1. **True Decentralization**: No single point of control over individual Aminals
+2. **Community Ownership**: Collective value through love/energy interactions
+3. **Permissionless Innovation**: Anyone can build on top of self-sovereign Aminals
+4. **Transparent Operations**: All state and interactions are publicly verifiable
+5. **Economic Participation**: Built-in mechanisms for community value creation
 </aminals_project>
 
 <user_prompt>
