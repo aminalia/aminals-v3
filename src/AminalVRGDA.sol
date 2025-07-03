@@ -13,7 +13,7 @@ import {wadMul, wadDiv, toWadUnsafe, unsafeWadDiv, unsafeWadMul} from "lib/VRGDA
 contract AminalVRGDA is LinearVRGDA {
     /// @notice Constructor to set up the VRGDA parameters for Aminal feeding
     /// @dev We use VRGDA inversely - price represents ETH needed per energy unit
-    /// @param _targetPrice The target ETH amount needed for 1 energy unit when on schedule (scaled by 1e18)
+    /// @param _targetPrice The target ETH amount needed for 1 energy unit when on schedule (in wei)
     /// @param _priceDecayPercent How much the ETH requirement decays when behind schedule (scaled by 1e18)
     /// @param _perTimeUnit Target energy units to gain per time unit (scaled by 1e18)
     constructor(
@@ -28,7 +28,7 @@ contract AminalVRGDA is LinearVRGDA {
      * @param timeSinceStart Time since the Aminal started feeding (scaled by 1e18)
      * @param currentEnergy Current total energy the Aminal has
      * @param ethAmount Amount of ETH being sent (in wei)
-     * @return energyGained Amount of energy that will be gained (in wei, not scaled)
+     * @return energyGained Amount of energy that will be gained
      */
     function getEnergyForETH(
         int256 timeSinceStart,
@@ -38,13 +38,10 @@ contract AminalVRGDA is LinearVRGDA {
         if (ethAmount == 0) return 0;
         
         // Get the current price (ETH per energy unit) based on VRGDA
-        // This price is in WAD format (scaled by 1e18)
         uint256 currentPrice = getVRGDAPrice(timeSinceStart, currentEnergy);
         
         // Calculate energy gained: ETH amount / price per unit
-        // ethAmount is in wei, currentPrice is in WAD (1e18)
-        // Result: (ethAmount * 1e18) / currentPrice
-        energyGained = (ethAmount * 1e18) / currentPrice;
+        energyGained = ethAmount / currentPrice;
         
         // Ensure at least 1 energy is gained if any ETH is sent
         if (energyGained == 0 && ethAmount > 0) {
@@ -63,8 +60,6 @@ contract AminalVRGDA is LinearVRGDA {
         int256 timeSinceStart,
         uint256 currentEnergy
     ) public view returns (uint256) {
-        // VRGDA price is already in the format we want (ETH per unit in WAD)
-        // Just return it as-is since it represents the cost per energy unit
         return getVRGDAPrice(timeSinceStart, currentEnergy);
     }
 }
