@@ -31,7 +31,7 @@ contract AminalTest is Test {
         assertEq(aminal.owner(), owner);
         assertEq(aminal.totalSupply(), 0);
         assertEq(aminal.TOKEN_ID(), 1);
-        assertFalse(aminal.isMinted());
+        assertFalse(aminal.minted());
     }
 
     function test_RevertWhen_ConstructorWithZeroAddress() external {
@@ -53,7 +53,7 @@ contract AminalTest is Test {
         assertEq(aminal.tokenURI(tokenId), string(abi.encodePacked(BASE_URI, tokenURI)));
         assertEq(aminal.totalSupply(), 1);
         assertTrue(aminal.exists(tokenId));
-        assertTrue(aminal.isMinted());
+        assertTrue(aminal.minted());
     }
 
     function test_RevertWhen_MintToZeroAddress() external {
@@ -123,12 +123,12 @@ contract AminalTest is Test {
     }
 
     function test_IsMinted() external {
-        assertFalse(aminal.isMinted());
+        assertFalse(aminal.minted());
         
         vm.prank(owner);
         aminal.mint(user1, "firedragon.json");
         
-        assertTrue(aminal.isMinted());
+        assertTrue(aminal.minted());
     }
 
     function test_TotalSupply() external {
@@ -138,6 +138,19 @@ contract AminalTest is Test {
         aminal.mint(user1, "firedragon.json");
         
         assertEq(aminal.totalSupply(), 1);
+    }
+
+    function test_PublicVariableAccess() external {
+        // Test direct access to public variables
+        assertFalse(aminal.minted());
+        assertEq(aminal.baseTokenURI(), BASE_URI);
+        assertEq(aminal.TOKEN_ID(), 1);
+        
+        vm.prank(owner);
+        aminal.mint(user1, "firedragon.json");
+        
+        // Verify public variables updated
+        assertTrue(aminal.minted());
     }
 
     function test_SupportsInterface() external {
@@ -159,7 +172,7 @@ contract AminalTest is Test {
         assertEq(tokenId, 1);
         assertEq(aminal.ownerOf(tokenId), to);
         assertTrue(aminal.exists(tokenId));
-        assertTrue(aminal.isMinted());
+        assertTrue(aminal.minted());
     }
 
     function testFuzz_SetBaseURI(string memory newBaseURI) external {

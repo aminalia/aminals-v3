@@ -32,27 +32,27 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
     /// @dev Total number of Aminals created (starts at 0, increments to 1, 2, 3...)
     /// @notice This represents the total count of unique Aminal contracts deployed
-    uint256 private _totalAminals;
+    uint256 public totalAminals;
 
     /// @dev Base URI for all Aminal metadata - passed to each new Aminal contract
     /// @notice This URI is used by individual Aminal contracts for metadata resolution
-    string private _baseTokenURI;
+    string public baseTokenURI;
 
     /// @dev Mapping from Aminal ID to contract address (ID starts at 1)
     /// @notice Provides O(1) lookup of any Aminal contract by its sequential ID
     /// @dev More gas efficient than arrays for large numbers of Aminals
-    mapping(uint256 => address) private _aminalById;
+    mapping(uint256 => address) public aminalById;
 
     /// @dev Mapping to prevent duplicate Aminals based on content hash
     /// @notice Uses keccak256 hash of (name, symbol, description, tokenURI) as unique identifier
     /// @dev This ensures each Aminal concept is truly unique across all deployments
-    mapping(bytes32 => bool) private _aminalExists;
+    mapping(bytes32 => bool) public aminalExists;
 
     /// @dev Mapping to track which Aminal contracts were created by each address
     /// @notice Maps creator address to array of deployed Aminal contract addresses
     /// @dev Note: This array approach is acceptable for per-user tracking as individual
     ///      users are unlikely to create thousands of Aminals
-    mapping(address => address[]) private _createdByAddress;
+    mapping(address => address[]) public createdByAddress;
 
     /// @dev Event emitted when a new Aminal is created
     event AminalFactoryCreated(
@@ -70,7 +70,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     event FactoryPaused(bool paused);
 
     /// @dev Flag to pause/unpause the factory
-    bool private _paused;
+    bool public paused;
 
     /// @dev Error thrown when trying to create duplicate Aminal
     error AminalAlreadyExists(bytes32 identifier);
@@ -83,7 +83,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
     /// @dev Modifier to check if factory is not paused
     modifier whenNotPaused() {
-        if (_paused) revert FactoryIsPaused();
+        if (paused) revert FactoryIsPaused();
         _;
     }
 
@@ -94,7 +94,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      */
     constructor(address owner, string memory baseURI) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
-        _baseTokenURI = baseURI;
+        baseTokenURI = baseURI;
     }
 
     /**
@@ -172,27 +172,27 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         // This ensures no two Aminals can have identical properties
         bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
         
-        if (_aminalExists[identifier]) {
+        if (aminalExists[identifier]) {
             revert AminalAlreadyExists(identifier);
         }
 
         // Mark this Aminal as existing to prevent future duplicates
-        _aminalExists[identifier] = true;
+        aminalExists[identifier] = true;
 
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
-        Aminal newAminal = new Aminal(address(this), name, symbol, _baseTokenURI);
+        Aminal newAminal = new Aminal(address(this), name, symbol, baseTokenURI);
         
         // Mint the single NFT (token ID 1) to the recipient
         // Each Aminal contract can only mint once, ensuring 1-of-1 uniqueness
         newAminal.mint(to, tokenURI);
 
         // Track creation with efficient mapping-based approach
-        _totalAminals++;
-        _aminalById[_totalAminals] = address(newAminal);
-        _createdByAddress[msg.sender].push(address(newAminal));
+        totalAminals++;
+        aminalById[totalAminals] = address(newAminal);
+        createdByAddress[msg.sender].push(address(newAminal));
 
-        emit AminalFactoryCreated(address(newAminal), msg.sender, to, _totalAminals, name, symbol, description, tokenURI);
+        emit AminalFactoryCreated(address(newAminal), msg.sender, to, totalAminals, name, symbol, description, tokenURI);
 
         return address(newAminal);
     }
@@ -241,11 +241,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
     /**
      * @dev Pause or unpause the factory
-     * @param paused True to pause, false to unpause
+     * @param _paused True to pause, false to unpause
      */
-    function setPaused(bool paused) external onlyOwner {
-        _paused = paused;
-        emit FactoryPaused(paused);
+    function setPaused(bool _paused) external onlyOwner {
+        paused = _paused;
+        emit FactoryPaused(_paused);
     }
 
     /**
@@ -253,35 +253,9 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param newBaseURI The new base URI
      */
     function setBaseURI(string memory newBaseURI) external onlyOwner {
-        _baseTokenURI = newBaseURI;
+        baseTokenURI = newBaseURI;
     }
 
-    /**
-     * @dev Get the total number of Aminals created
-     * @return The total number of Aminals created by this factory
-     */
-    function totalAminals() external view returns (uint256) {
-        return _totalAminals;
-    }
-
-    /**
-     * @notice Get the contract address of an Aminal by its ID
-     * @dev Aminal IDs start at 1 and increment sequentially
-     * @param aminalId The ID of the Aminal (1-based indexing)
-     * @return The contract address of the Aminal, or address(0) if not found
-     */
-    function getAminalById(uint256 aminalId) external view returns (address) {
-        return _aminalById[aminalId];
-    }
-
-    /**
-     * @dev Get the Aminal contracts created by a specific address
-     * @param creator The address to query
-     * @return An array of Aminal contract addresses created by the address
-     */
-    function getCreatedByAddress(address creator) external view returns (address[] memory) {
-        return _createdByAddress[creator];
-    }
 
     /**
      * @notice Get a range of Aminal contracts by their IDs
@@ -298,7 +272,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminals Array of Aminal contract addresses in the specified range
      */
     function getAminalsByRange(uint256 startId, uint256 endId) external view returns (address[] memory) {
-        if (startId == 0 || startId > _totalAminals || endId < startId || endId > _totalAminals) {
+        if (startId == 0 || startId > totalAminals || endId < startId || endId > totalAminals) {
             revert InvalidParameters();
         }
         
@@ -306,10 +280,19 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         address[] memory aminals = new address[](length);
         
         for (uint256 i = 0; i < length; i++) {
-            aminals[i] = _aminalById[startId + i];
+            aminals[i] = aminalById[startId + i];
         }
         
         return aminals;
+    }
+
+    /**
+     * @dev Get the Aminal contracts created by a specific address
+     * @param creator The address to query
+     * @return An array of Aminal contract addresses created by the address
+     */
+    function getCreatedByAddress(address creator) external view returns (address[] memory) {
+        return createdByAddress[creator];
     }
 
     /**
@@ -327,29 +310,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param tokenURI The URI for the token's metadata
      * @return True if an Aminal with these exact characteristics exists, false otherwise
      */
-    function aminalExists(
+    function checkAminalExists(
         string memory name,
         string memory symbol,
         string memory description,
         string memory tokenURI
     ) external view returns (bool) {
         bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
-        return _aminalExists[identifier];
+        return aminalExists[identifier];
     }
 
-    /**
-     * @dev Check if the factory is paused
-     * @return True if paused, false otherwise
-     */
-    function isPaused() external view returns (bool) {
-        return _paused;
-    }
-
-    /**
-     * @dev Get the current base URI for metadata
-     * @return The current base URI
-     */
-    function getBaseURI() external view returns (string memory) {
-        return _baseTokenURI;
-    }
 }

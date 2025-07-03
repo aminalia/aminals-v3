@@ -35,8 +35,8 @@ contract AminalFactoryTest is Test {
     function test_Constructor() external {
         assertEq(factory.owner(), owner);
         assertEq(factory.totalAminals(), 0);
-        assertFalse(factory.isPaused());
-        assertEq(factory.getBaseURI(), BASE_URI);
+        assertFalse(factory.paused());
+        assertEq(factory.baseTokenURI(), BASE_URI);
     }
 
     function test_RevertWhen_ConstructorWithZeroAddress() external {
@@ -55,7 +55,7 @@ contract AminalFactoryTest is Test {
         
         assertTrue(aminalContract != address(0));
         assertEq(factory.totalAminals(), 1);
-        assertTrue(factory.aminalExists(name, symbol, description, tokenURI));
+        assertTrue(factory.checkAminalExists(name, symbol, description, tokenURI));
         
         address[] memory createdContracts = factory.getCreatedByAddress(owner);
         assertEq(createdContracts.length, 1);
@@ -153,7 +153,7 @@ contract AminalFactoryTest is Test {
             assertEq(aminal.name(), names[i]);
             assertEq(aminal.symbol(), symbols[i]);
             assertTrue(aminal.isMinted());
-            assertTrue(factory.aminalExists(names[i], symbols[i], descriptions[i], tokenURIs[i]));
+            assertTrue(factory.checkAminalExists(names[i], symbols[i], descriptions[i], tokenURIs[i]));
         }
         
         // Check getAminalsByRange
@@ -204,21 +204,21 @@ contract AminalFactoryTest is Test {
     }
 
     function test_SetPaused() external {
-        assertFalse(factory.isPaused());
+        assertFalse(factory.paused());
         
         vm.prank(owner);
         vm.expectEmit(false, false, false, true);
         emit FactoryPaused(true);
         factory.setPaused(true);
         
-        assertTrue(factory.isPaused());
+        assertTrue(factory.paused());
         
         vm.prank(owner);
         vm.expectEmit(false, false, false, true);
         emit FactoryPaused(false);
         factory.setPaused(false);
         
-        assertFalse(factory.isPaused());
+        assertFalse(factory.paused());
     }
 
     function test_RevertWhen_SetPausedCalledByNonOwner() external {
@@ -262,7 +262,7 @@ contract AminalFactoryTest is Test {
         vm.prank(owner);
         factory.setBaseURI(newBaseURI);
         
-        assertEq(factory.getBaseURI(), newBaseURI);
+        assertEq(factory.baseTokenURI(), newBaseURI);
         
         vm.prank(owner);
         address aminalContract = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json");
@@ -311,14 +311,37 @@ contract AminalFactoryTest is Test {
         assertEq(aminals[0], aminal1);
         assertEq(aminals[1], aminal2);
         
-        // Test getting individual Aminals
-        assertEq(factory.getAminalById(1), aminal1);
-        assertEq(factory.getAminalById(2), aminal2);
+        // Test getting individual Aminals via public mapping
+        assertEq(factory.aminalById(1), aminal1);
+        assertEq(factory.aminalById(2), aminal2);
         
         // Test single item range
         address[] memory singleAminal = factory.getAminalsByRange(1, 1);
         assertEq(singleAminal.length, 1);
         assertEq(singleAminal[0], aminal1);
+    }
+
+    function test_PublicVariableAccess() external {
+        // Test direct access to public variables
+        assertEq(factory.totalAminals(), 0);
+        assertFalse(factory.paused());
+        assertEq(factory.baseTokenURI(), BASE_URI);
+        
+        vm.startPrank(owner);
+        address aminal1 = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json");
+        vm.stopPrank();
+        
+        // Verify public variables updated
+        assertEq(factory.totalAminals(), 1);
+        assertEq(factory.aminalById(1), aminal1);
+        
+        // Test aminalExists mapping
+        bytes32 identifier = keccak256(abi.encodePacked("Dragon", "DRAGON", "A dragon", "dragon.json"));
+        assertTrue(factory.aminalExists(identifier));
+        
+        // Test createdByAddress mapping via array access
+        address[] memory ownerCreated = factory.getCreatedByAddress(owner);
+        assertEq(ownerCreated[0], aminal1);
     }
 
     function test_RevertWhen_GetAminalsByRangeInvalidParams() external {
@@ -356,7 +379,7 @@ contract AminalFactoryTest is Test {
         
         Aminal aminal = Aminal(aminalContract);
         assertEq(aminal.ownerOf(1), to);
-        assertTrue(factory.aminalExists(name, symbol, description, tokenURI));
+        assertTrue(factory.checkAminalExists(name, symbol, description, tokenURI));
         assertEq(factory.totalAminals(), 1);
     }
 

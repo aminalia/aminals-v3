@@ -18,10 +18,10 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     uint256 public constant TOKEN_ID = 1;
 
     /// @dev Base URI for token metadata
-    string private _baseTokenURI;
+    string public baseTokenURI;
 
     /// @dev Flag to track if the Aminal has been minted
-    bool private _minted;
+    bool public minted;
 
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
@@ -49,7 +49,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
         string memory baseURI
     ) ERC721(name, symbol) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
-        _baseTokenURI = baseURI;
+        baseTokenURI = baseURI;
     }
 
     /**
@@ -63,9 +63,9 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
         string memory uri
     ) external onlyOwner returns (uint256) {
         if (to == address(0)) revert InvalidParameters();
-        if (_minted) revert AlreadyMinted();
+        if (minted) revert AlreadyMinted();
         
-        _minted = true;
+        minted = true;
         _safeMint(to, TOKEN_ID);
         _setTokenURI(TOKEN_ID, uri);
         
@@ -79,7 +79,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @param newBaseURI The new base URI
      */
     function setBaseURI(string memory newBaseURI) external onlyOwner {
-        _baseTokenURI = newBaseURI;
+        baseTokenURI = newBaseURI;
         emit BaseURIUpdated(newBaseURI);
     }
 
@@ -88,7 +88,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @return The total supply of tokens
      */
     function totalSupply() external view returns (uint256) {
-        return _minted ? 1 : 0;
+        return minted ? 1 : 0;
     }
 
     /**
@@ -96,7 +96,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @return True if the Aminal has been minted, false otherwise
      */
     function isMinted() external view returns (bool) {
-        return _minted;
+        return minted;
     }
 
     /**
@@ -105,7 +105,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @return True if the token exists, false otherwise
      */
     function exists(uint256 tokenId) external view returns (bool) {
-        return tokenId == TOKEN_ID && _minted;
+        return tokenId == TOKEN_ID && minted;
     }
 
     /**
@@ -122,7 +122,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @return The base URI for tokens
      */
     function _baseURI() internal view override returns (string memory) {
-        return _baseTokenURI;
+        return baseTokenURI;
     }
 
     /**
