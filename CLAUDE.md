@@ -595,6 +595,128 @@ forge script script/Deploy.s.sol \
 ```
 </deployment_patterns>
  
+<aminals_project>
+## Aminals NFT Project Architecture
+
+### Overview
+Aminals is a unique NFT project where each Aminal is a 1-of-1 NFT deployed as a separate smart contract instance. This architecture provides true self-sovereignty, where each Aminal has its own contract address and can interact independently with the blockchain ecosystem.
+
+### Core Contracts
+
+#### Aminal.sol - Individual NFT Contract
+- **Purpose**: Each Aminal is deployed as a separate ERC721 contract
+- **Key Features**:
+  - Fixed `TOKEN_ID = 1` (only ever mints one NFT)
+  - Immutable trait system with 8 trait categories
+  - Public variables following Solidity best practices
+  - Self-sovereign contract address for blockchain interaction
+
+**Trait Categories** (effectively immutable, set at construction):
+```solidity
+string public BACK;    // Back features (wings, shell, etc.)
+string public ARM;     // Arm characteristics
+string public TAIL;    // Tail type and features  
+string public EARS;    // Ear shape and style
+string public BODY;    // Body type and characteristics
+string public FACE;    // Facial features
+string public MOUTH;   // Mouth and expression
+string public MISC;    // Additional unique features
+```
+
+**Traits Struct** (for factory deployment):
+```solidity
+struct Traits {
+    string back;
+    string arm; 
+    string tail;
+    string ears;
+    string body;
+    string face;
+    string mouth;
+    string misc;
+}
+```
+
+#### AminalFactory.sol - Deployment Factory
+- **Purpose**: Deploys separate Aminal contract instances
+- **Key Features**:
+  - Creates unique contract per Aminal
+  - Prevents duplicate Aminals via content hashing
+  - Efficient tracking with mapping-based approach
+  - Batch deployment capabilities
+  - Pausable for controlled minting
+
+### Architecture Benefits
+
+1. **True Uniqueness**: Each Aminal is a separate contract, not just a token ID
+2. **Self-Sovereignty**: Each Aminal has its own address for blockchain interaction
+3. **Scalability**: No single contract bottleneck, distributed gas costs
+4. **Composability**: Each Aminal can evolve independently
+5. **Transparency**: All variables are public for easy inspection and inheritance
+
+### Development Patterns
+
+#### Public Variables
+- All state variables are `public` to enable transparency and inheritance
+- Avoids the anti-pattern of unnecessary `private` variables in Solidity
+- Auto-generates getter functions, reducing code complexity
+
+#### Trait System
+- Traits are set once during construction and cannot be changed
+- Future versions will query traits from corresponding GeneNFT contracts
+- Each trait represents a specific characteristic category
+- Accessible both individually and as a complete struct
+
+#### Testing Strategy
+- Comprehensive unit tests for both contracts
+- Fuzz testing for edge cases and parameter validation
+- Integration tests verifying contract deployment and interaction
+- Public variable access verification
+- Trait functionality validation
+
+### Key Functions
+
+#### Factory Functions
+```solidity
+function createAminal(
+    address to,
+    string memory name,
+    string memory symbol, 
+    string memory description,
+    string memory tokenURI,
+    Aminal.Traits memory traits
+) external returns (address);
+
+function batchCreateAminals(
+    address[] memory recipients,
+    string[] memory names,
+    string[] memory symbols,
+    string[] memory descriptions, 
+    string[] memory tokenURIs,
+    Aminal.Traits[] memory traitsArray
+) external returns (address[] memory);
+```
+
+#### Aminal Functions
+```solidity
+function mint(address to, string memory uri) external returns (uint256);
+function getTraits() external view returns (Traits memory);
+function exists(uint256 tokenId) external view returns (bool);
+```
+
+### Future Evolution
+- Traits will eventually be queried from corresponding GeneNFT contracts
+- Each trait category will have its own NFT collection (ArmNFT, BackNFT, etc.)
+- This enables dynamic trait composition and rarity mechanics
+- Maintains backward compatibility with current hardcoded approach
+
+### Testing Notes
+- Use helper functions for creating sample traits in tests
+- Verify both individual trait access and struct-based access
+- Test uniqueness guarantees across batch operations
+- Validate public variable accessibility and contract interaction
+</aminals_project>
+
 <user_prompt>
 {user_prompt}
 </user_prompt>
