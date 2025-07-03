@@ -37,6 +37,10 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     /// @dev Mapping from user address to amount of love they've given (in wei)
     mapping(address => uint256) public loveFromUser;
 
+    /// @dev Current energy level of this Aminal
+    /// @notice Energy increases when fed (receiving ETH) and decreases when squeaking
+    uint256 public energy;
+
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
 
@@ -46,11 +50,20 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     /// @dev Event emitted when someone sends love (ETH) to the Aminal
     event LoveReceived(address indexed from, uint256 amount, uint256 totalLove);
 
+    /// @dev Event emitted when the Aminal is fed (receives ETH) and gains energy
+    event EnergyGained(address indexed from, uint256 amount, uint256 newEnergy);
+
+    /// @dev Event emitted when the Aminal squeaks and loses energy
+    event EnergyLost(address indexed squeaker, uint256 amount, uint256 newEnergy);
+
     /// @dev Error thrown when trying to mint more than one token
     error AlreadyMinted();
 
     /// @dev Error thrown when providing invalid parameters
     error InvalidParameters();
+
+    /// @dev Error thrown when trying to squeak with insufficient energy
+    error InsufficientEnergy();
 
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
@@ -156,14 +169,18 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     }
 
     /**
-     * @notice Receive function to accept ETH and track love
-     * @dev When ETH is sent to this contract, it's recorded as "love" from the sender
+     * @notice Receive function to accept ETH, track love, and increase energy
+     * @dev When ETH is sent to this contract, it's recorded as "love" and "energy" from the sender
+     *      Energy increases by the amount of ETH sent (feeding the Aminal)
      */
     receive() external payable {
         if (msg.value > 0) {
             totalLove += msg.value;
             loveFromUser[msg.sender] += msg.value;
+            energy += msg.value;
+            
             emit LoveReceived(msg.sender, msg.value, totalLove);
+            emit EnergyGained(msg.sender, msg.value, energy);
         }
     }
 
@@ -182,6 +199,26 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      */
     function getTotalLove() external view returns (uint256) {
         return totalLove;
+    }
+
+    /**
+     * @notice Make the Aminal squeak, consuming energy
+     * @dev Energy decreases by the specified amount. Reverts if insufficient energy.
+     * @param amount The amount of energy to consume for squeaking
+     */
+    function squeak(uint256 amount) external {
+        if (energy < amount) revert InsufficientEnergy();
+        
+        energy -= amount;
+        emit EnergyLost(msg.sender, amount, energy);
+    }
+
+    /**
+     * @dev Get the current energy level of this Aminal
+     * @return The current energy level
+     */
+    function getEnergy() external view returns (uint256) {
+        return energy;
     }
 
     /**

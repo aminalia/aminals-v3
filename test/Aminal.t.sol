@@ -17,6 +17,8 @@ contract AminalTest is Test {
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
     event BaseURIUpdated(string newBaseURI);
     event LoveReceived(address indexed from, uint256 amount, uint256 totalLove);
+    event EnergyGained(address indexed from, uint256 amount, uint256 newEnergy);
+    event EnergyLost(address indexed squeaker, uint256 amount, uint256 newEnergy);
 
     function setUp() external {
         owner = makeAddr("owner");
@@ -230,22 +232,27 @@ contract AminalTest is Test {
         // Check initial state
         assertEq(aminal.totalLove(), 0);
         assertEq(aminal.loveFromUser(user1), 0);
+        assertEq(aminal.energy(), 0);
         assertEq(address(aminal).balance, 0);
         
-        // Send love and expect event
+        // Send love and expect events
         vm.prank(user1);
         vm.expectEmit(true, false, false, true);
         emit LoveReceived(user1, loveAmount, loveAmount);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyGained(user1, loveAmount, loveAmount);
         
         vm.deal(user1, loveAmount);
         (bool success,) = address(aminal).call{value: loveAmount}("");
         assertTrue(success);
         
-        // Verify love tracking
+        // Verify love and energy tracking
         assertEq(aminal.totalLove(), loveAmount);
         assertEq(aminal.loveFromUser(user1), loveAmount);
+        assertEq(aminal.energy(), loveAmount);
         assertEq(aminal.getTotalLove(), loveAmount);
         assertEq(aminal.getLoveFromUser(user1), loveAmount);
+        assertEq(aminal.getEnergy(), loveAmount);
         assertEq(address(aminal).balance, loveAmount);
     }
 
@@ -331,5 +338,132 @@ contract AminalTest is Test {
         assertEq(aminal.totalLove(), loveAmount);
         assertEq(aminal.loveFromUser(user1), loveAmount);
         assertEq(aminal.loveFromUser(user2), 0);
+    }
+
+    function test_EnergySystem() external {
+        uint256 feedAmount = 2 ether;
+        uint256 squeakAmount = 0.5 ether;
+        
+        // Check initial energy
+        assertEq(aminal.energy(), 0);
+        assertEq(aminal.getEnergy(), 0);
+        
+        // Feed the Aminal (send ETH)
+        vm.deal(user1, feedAmount);
+        vm.prank(user1);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyGained(user1, feedAmount, feedAmount);
+        (bool success,) = address(aminal).call{value: feedAmount}("");
+        assertTrue(success);
+        
+        // Verify energy increased
+        assertEq(aminal.energy(), feedAmount);
+        assertEq(aminal.getEnergy(), feedAmount);
+        
+        // Make the Aminal squeak
+        vm.prank(user2);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyLost(user2, squeakAmount, feedAmount - squeakAmount);
+        aminal.squeak(squeakAmount);
+        
+        // Verify energy decreased
+        assertEq(aminal.energy(), feedAmount - squeakAmount);
+        assertEq(aminal.getEnergy(), feedAmount - squeakAmount);
+    }
+
+    function test_RevertWhen_InsufficientEnergy() external {
+        uint256 feedAmount = 1 ether;
+        uint256 squeakAmount = 2 ether; // More than available
+        
+        // Feed the Aminal
+        vm.deal(user1, feedAmount);
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: feedAmount}("");
+        assertTrue(success);
+        
+        // Try to squeak more than available energy
+        vm.prank(user2);
+        vm.expectRevert(Aminal.InsufficientEnergy.selector);
+        aminal.squeak(squeakAmount);
+        
+        // Energy should remain unchanged
+        assertEq(aminal.energy(), feedAmount);
+    }
+
+    function test_SqueakWithZeroEnergy() external {
+        // Try to squeak with no energy
+        vm.prank(user1);
+        vm.expectRevert(Aminal.InsufficientEnergy.selector);
+        aminal.squeak(1);
+        
+        assertEq(aminal.energy(), 0);
+    }
+
+    function test_SqueakExactEnergyAmount() external {
+        uint256 feedAmount = 1 ether;
+        
+        // Feed the Aminal
+        vm.deal(user1, feedAmount);
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: feedAmount}("");
+        assertTrue(success);
+        
+        // Squeak exact amount of energy available
+        vm.prank(user2);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyLost(user2, feedAmount, 0);
+        aminal.squeak(feedAmount);
+        
+        // Energy should be zero
+        assertEq(aminal.energy(), 0);
+    }
+
+    function test_MultipleFeedings() external {
+        uint256 firstFeed = 1 ether;
+        uint256 secondFeed = 0.5 ether;
+        uint256 totalEnergy = firstFeed + secondFeed;
+        
+        vm.deal(user1, firstFeed);
+        vm.deal(user2, secondFeed);
+        
+        // First feeding
+        vm.prank(user1);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyGained(user1, firstFeed, firstFeed);
+        (bool success,) = address(aminal).call{value: firstFeed}("");
+        assertTrue(success);
+        
+        // Second feeding
+        vm.prank(user2);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyGained(user2, secondFeed, totalEnergy);
+        (success,) = address(aminal).call{value: secondFeed}("");
+        assertTrue(success);
+        
+        // Verify total energy
+        assertEq(aminal.energy(), totalEnergy);
+    }
+
+    function testFuzz_EnergySystem(uint96 feedAmount, uint96 squeakAmount) external {
+        vm.assume(feedAmount > 0);
+        vm.assume(squeakAmount <= feedAmount); // Only test valid squeak amounts
+        
+        // Feed the Aminal
+        vm.deal(user1, feedAmount);
+        vm.prank(user1);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyGained(user1, feedAmount, feedAmount);
+        (bool success,) = address(aminal).call{value: feedAmount}("");
+        assertTrue(success);
+        
+        assertEq(aminal.energy(), feedAmount);
+        
+        // Squeak
+        vm.prank(user2);
+        vm.expectEmit(true, false, false, true);
+        emit EnergyLost(user2, squeakAmount, feedAmount - squeakAmount);
+        aminal.squeak(squeakAmount);
+        
+        assertEq(aminal.energy(), feedAmount - squeakAmount);
     }
 }
