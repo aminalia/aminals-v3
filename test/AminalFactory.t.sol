@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "lib/forge-std/src/Test.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {Aminal} from "src/Aminal.sol";
+import {ITraits} from "src/interfaces/ITraits.sol";
 
 contract AminalFactoryTest is Test {
     AminalFactory public factory;
@@ -32,8 +33,8 @@ contract AminalFactoryTest is Test {
         factory = new AminalFactory(owner, BASE_URI);
     }
 
-    function createSampleTraits(string memory variant) internal pure returns (Aminal.Traits memory) {
-        return Aminal.Traits({
+    function createSampleTraits(string memory variant) internal pure returns (ITraits.Traits memory) {
+        return ITraits.Traits({
             back: string(abi.encodePacked(variant, " Wings")),
             arm: string(abi.encodePacked(variant, " Arms")),
             tail: string(abi.encodePacked(variant, " Tail")),
@@ -62,7 +63,7 @@ contract AminalFactoryTest is Test {
         string memory symbol = "FDRAGON";
         string memory description = "A fierce dragon with fire breath";
         string memory tokenURI = "firedragon.json";
-        Aminal.Traits memory traits = createSampleTraits("Fire");
+        ITraits.Traits memory traits = createSampleTraits("Fire");
         
         vm.prank(owner);
         address aminalContract = factory.createAminal(user1, name, symbol, description, tokenURI, traits);
@@ -155,7 +156,7 @@ contract AminalFactoryTest is Test {
         tokenURIs[1] = "icephoenix.json";
         tokenURIs[2] = "earthgolem.json";
         
-        Aminal.Traits[] memory traitsArray = new Aminal.Traits[](3);
+        ITraits.Traits[] memory traitsArray = new ITraits.Traits[](3);
         traitsArray[0] = createSampleTraits("Fire");
         traitsArray[1] = createSampleTraits("Ice");
         traitsArray[2] = createSampleTraits("Earth");
@@ -205,7 +206,7 @@ contract AminalFactoryTest is Test {
         tokenURIs[0] = "dragon.json";
         tokenURIs[1] = "phoenix.json";
         
-        Aminal.Traits[] memory traitsArray = new Aminal.Traits[](2);
+        ITraits.Traits[] memory traitsArray = new ITraits.Traits[](2);
         traitsArray[0] = createSampleTraits("Dragon");
         traitsArray[1] = createSampleTraits("Phoenix");
         
@@ -221,7 +222,7 @@ contract AminalFactoryTest is Test {
         string[] memory descriptions = new string[](0);
         string[] memory tokenURIs = new string[](0);
         
-        Aminal.Traits[] memory traitsArray = new Aminal.Traits[](0);
+        ITraits.Traits[] memory traitsArray = new ITraits.Traits[](0);
         
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
@@ -276,7 +277,7 @@ contract AminalFactoryTest is Test {
         string[] memory tokenURIs = new string[](1);
         tokenURIs[0] = "dragon.json";
         
-        Aminal.Traits[] memory traitsArray = new Aminal.Traits[](1);
+        ITraits.Traits[] memory traitsArray = new ITraits.Traits[](1);
         traitsArray[0] = createSampleTraits("Dragon");
         
         vm.prank(owner);

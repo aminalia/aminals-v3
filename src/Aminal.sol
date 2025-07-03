@@ -5,6 +5,7 @@ import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.s
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {ITraits} from "src/interfaces/ITraits.sol";
 
 /**
  * @title Aminal
@@ -23,25 +24,12 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     /// @dev Flag to track if the Aminal has been minted
     bool public minted;
 
-    /// @dev Struct defining all traits for an Aminal
-    /// @notice These traits are immutable and define the Aminal's unique characteristics
-    /// @dev Future versions will query these from corresponding GeneNFT contracts
-    struct Traits {
-        string back;
-        string arm;
-        string tail;
-        string ears;
-        string body;
-        string face;
-        string mouth;
-        string misc;
-    }
 
     /// @dev The traits for this specific Aminal
     /// @notice These traits are set once during construction and cannot be changed
     /// @dev While not immutable due to Solidity limitations, they are effectively immutable
     ///      as the contract has no functions to modify them
-    Traits public traits;
+    ITraits.Traits public traits;
 
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
@@ -68,7 +56,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
         string memory name,
         string memory symbol,
         string memory baseURI,
-        Traits memory _traits
+        ITraits.Traits memory _traits
     ) ERC721(name, symbol) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
         baseTokenURI = baseURI;
@@ -137,7 +125,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @dev Get all traits for this Aminal
      * @return The complete traits struct for this Aminal
      */
-    function getTraits() external view returns (Traits memory) {
+    function getTraits() external view returns (ITraits.Traits memory) {
         return traits;
     }
 

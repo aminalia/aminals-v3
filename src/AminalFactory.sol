@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Aminal} from "./Aminal.sol";
+import {ITraits} from "./interfaces/ITraits.sol";
 
 /**
  * @title AminalFactory
@@ -128,7 +129,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory symbol,
         string memory description,
         string memory tokenURI,
-        Aminal.Traits memory traits
+        ITraits.Traits memory traits
     ) external onlyOwner whenNotPaused nonReentrant returns (address) {
         return _createAminal(to, name, symbol, description, tokenURI, traits);
     }
@@ -166,7 +167,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory symbol,
         string memory description,
         string memory tokenURI,
-        Aminal.Traits memory traits
+        ITraits.Traits memory traits
     ) internal returns (address) {
         if (to == address(0) || bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
             revert InvalidParameters();
@@ -226,7 +227,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string[] memory symbols,
         string[] memory descriptions,
         string[] memory tokenURIs,
-        Aminal.Traits[] memory traitsArray
+        ITraits.Traits[] memory traitsArray
     ) external onlyOwner whenNotPaused nonReentrant returns (address[] memory) {
         if (recipients.length != names.length || 
             recipients.length != symbols.length ||

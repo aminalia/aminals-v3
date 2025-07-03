@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "lib/forge-std/src/Test.sol";
 import {Aminal} from "src/Aminal.sol";
+import {ITraits} from "src/interfaces/ITraits.sol";
 
 contract AminalTest is Test {
     Aminal public aminal;
@@ -22,7 +23,7 @@ contract AminalTest is Test {
         user2 = makeAddr("user2");
         
         // Create sample traits
-        Aminal.Traits memory traits = Aminal.Traits({
+        ITraits.Traits memory traits = ITraits.Traits({
             back: "Dragon Wings",
             arm: "Scaled Arms",
             tail: "Fire Tail",
@@ -47,7 +48,7 @@ contract AminalTest is Test {
     }
 
     function test_RevertWhen_ConstructorWithZeroAddress() external {
-        Aminal.Traits memory traits = Aminal.Traits({
+        ITraits.Traits memory traits = ITraits.Traits({
             back: "Dragon Wings",
             arm: "Scaled Arms",
             tail: "Fire Tail",
@@ -178,7 +179,7 @@ contract AminalTest is Test {
 
     function test_Traits() external {
         // Test getTraits function
-        Aminal.Traits memory traits = aminal.getTraits();
+        ITraits.Traits memory traits = aminal.getTraits();
         assertEq(traits.back, "Dragon Wings");
         assertEq(traits.arm, "Scaled Arms");
         assertEq(traits.tail, "Fire Tail");

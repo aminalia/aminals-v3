@@ -5,6 +5,7 @@ import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.s
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ERC721Enumerable} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {ITraits} from "src/interfaces/ITraits.sol";
 
 /**
  * @title GeneNFT
@@ -241,6 +242,7 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     function _increaseBalance(address account, uint128 value) internal override(ERC721, ERC721Enumerable) {
         super._increaseBalance(account, value);
     }
+
 
     /**
      * @dev Override supportsInterface to support all implemented interfaces
