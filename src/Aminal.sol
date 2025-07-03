@@ -8,7 +8,6 @@ import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
-import {toWadUnsafe} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMath.sol";
 
 /**
  * @title Aminal
@@ -70,9 +69,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /// @dev VRGDA contract for calculating feeding costs
     AminalVRGDA public immutable vrgda;
 
-    /// @dev Timestamp when the Aminal first received energy (started feeding)
-    uint256 public feedingStartTime;
-
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
 
@@ -126,15 +122,14 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
         traits = _traits;
         
         // Initialize VRGDA with parameters:
-        // - Target price: 0.0001 ETH (0.1 finney) per energy unit at start (in WAD format)
-        // - Price decay: 10% per day when behind schedule  
-        // - Target rate: 1000 energy units per day (in WAD format)
-        // This means: early feeders get 10,000 energy per 1 ETH
-        // As energy accumulates, this rate decreases
+        // - Target price: 0.0001 ETH per energy unit at baseline
+        // - Price decay: 50% when energy is below target (more aggressive)
+        // - Target rate: 10 energy units per "time unit" (makes price increase faster)
+        // This creates a steep curve where energy gets expensive quickly
         vrgda = new AminalVRGDA(
-            int256(0.0001 ether), // 0.0001 ETH per energy unit at start
-            0.1e18,               // 10% decay per day
-            1000e18               // 1000 energy units per day target
+            int256(0.0001 ether), // 0.0001 ETH per energy unit at baseline
+            0.5e18,               // 50% decay when below target
+            10e18                 // 10 energy units per "time unit"
         );
     }
 
@@ -232,20 +227,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
             totalLove += msg.value;
             loveFromUser[msg.sender] += msg.value;
             
-            // Set feeding start time on first feeding
-            if (feedingStartTime == 0) {
-                feedingStartTime = block.timestamp;
-            }
-            
-            // Calculate time since feeding started (in days, scaled by 1e18)
-            // Convert seconds to days in WAD format
-            int256 timeSinceStart = toWadUnsafe(block.timestamp - feedingStartTime) / int256(1 days);
-            
             // Calculate energy gained using VRGDA
             // As the Aminal has more energy, it gains less energy per ETH
             uint256 energyGained = vrgda.getEnergyForETH(
-                timeSinceStart,
-                energy,  // Use current energy level
+                energy,  // Current energy level
                 msg.value
             );
             
@@ -300,13 +285,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
      * @return The ETH amount in wei needed for 1 energy unit
      */
     function getCurrentEnergyConversionRate() external view returns (uint256) {
-        if (feedingStartTime == 0) {
-            // If never fed before, return the target price
-            return uint256(vrgda.targetPrice());
-        }
-        
-        int256 timeSinceStart = toWadUnsafe(block.timestamp - feedingStartTime) / int256(1 days);
-        return vrgda.getVRGDAPrice(timeSinceStart, energy);
+        return vrgda.getEnergyConversionRate(energy);
     }
 
     /**
@@ -315,13 +294,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
      * @return The amount of energy that would be gained
      */
     function calculateEnergyForETH(uint256 ethAmount) external view returns (uint256) {
-        if (feedingStartTime == 0) {
-            // First feeding - use current time as start
-            return vrgda.getEnergyForETH(0, 0, ethAmount);
-        }
-        
-        int256 timeSinceStart = toWadUnsafe(block.timestamp - feedingStartTime) / int256(1 days);
-        return vrgda.getEnergyForETH(timeSinceStart, energy, ethAmount);
+        return vrgda.getEnergyForETH(energy, ethAmount);
     }
 
     /**
