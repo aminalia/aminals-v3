@@ -37,8 +37,18 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
         string misc;
     }
 
-    /// @dev The immutable traits for this specific Aminal
-    Traits public immutable traits;
+    /// @dev Individual traits for this specific Aminal
+    /// @notice These traits are set once during construction and cannot be changed
+    /// @dev While not immutable due to Solidity limitations, they are effectively immutable
+    ///      as the contract has no functions to modify them
+    string public BACK;
+    string public ARM;
+    string public TAIL;
+    string public EARS;
+    string public BODY;
+    string public FACE;
+    string public MOUTH;
+    string public MISC;
 
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
@@ -69,7 +79,16 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     ) ERC721(name, symbol) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
         baseTokenURI = baseURI;
-        traits = _traits;
+        
+        // Set individual immutable traits from the struct
+        BACK = _traits.back;
+        ARM = _traits.arm;
+        TAIL = _traits.tail;
+        EARS = _traits.ears;
+        BODY = _traits.body;
+        FACE = _traits.face;
+        MOUTH = _traits.mouth;
+        MISC = _traits.misc;
     }
 
     /**
@@ -133,7 +152,16 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @return The complete traits struct for this Aminal
      */
     function getTraits() external view returns (Traits memory) {
-        return traits;
+        return Traits({
+            back: BACK,
+            arm: ARM,
+            tail: TAIL,
+            ears: EARS,
+            body: BODY,
+            face: FACE,
+            mouth: MOUTH,
+            misc: MISC
+        });
     }
 
     /**

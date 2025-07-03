@@ -157,6 +157,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
      * @param tokenURI The URI for the token's metadata
+     * @param traits The immutable traits for this Aminal
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function _createAminal(
@@ -164,7 +165,8 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory name,
         string memory symbol,
         string memory description,
-        string memory tokenURI
+        string memory tokenURI,
+        Aminal.Traits memory traits
     ) internal returns (address) {
         if (to == address(0) || bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
             revert InvalidParameters();
@@ -183,7 +185,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
-        Aminal newAminal = new Aminal(address(this), name, symbol, baseTokenURI);
+        Aminal newAminal = new Aminal(address(this), name, symbol, baseTokenURI, traits);
         
         // Mint the single NFT (token ID 1) to the recipient
         // Each Aminal contract can only mint once, ensuring 1-of-1 uniqueness
@@ -215,6 +217,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param symbols Array of symbols for the Aminals
      * @param descriptions Array of descriptions for the Aminals
      * @param tokenURIs Array of URIs for the tokens' metadata
+     * @param traitsArray Array of traits for each Aminal
      * @return aminalContracts Array of addresses of the newly deployed Aminal contracts
      */
     function batchCreateAminals(
@@ -222,12 +225,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string[] memory names,
         string[] memory symbols,
         string[] memory descriptions,
-        string[] memory tokenURIs
+        string[] memory tokenURIs,
+        Aminal.Traits[] memory traitsArray
     ) external onlyOwner whenNotPaused nonReentrant returns (address[] memory) {
         if (recipients.length != names.length || 
             recipients.length != symbols.length ||
             recipients.length != descriptions.length || 
             recipients.length != tokenURIs.length ||
+            recipients.length != traitsArray.length ||
             recipients.length == 0) {
             revert InvalidParameters();
         }
@@ -235,7 +240,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         address[] memory aminalContracts = new address[](recipients.length);
 
         for (uint256 i = 0; i < recipients.length; i++) {
-            aminalContracts[i] = _createAminal(recipients[i], names[i], symbols[i], descriptions[i], tokenURIs[i]);
+            aminalContracts[i] = _createAminal(recipients[i], names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
         }
 
         return aminalContracts;

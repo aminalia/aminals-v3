@@ -32,6 +32,19 @@ contract AminalFactoryTest is Test {
         factory = new AminalFactory(owner, BASE_URI);
     }
 
+    function createSampleTraits(string memory variant) internal pure returns (Aminal.Traits memory) {
+        return Aminal.Traits({
+            back: string(abi.encodePacked(variant, " Wings")),
+            arm: string(abi.encodePacked(variant, " Arms")),
+            tail: string(abi.encodePacked(variant, " Tail")),
+            ears: string(abi.encodePacked(variant, " Ears")),
+            body: string(abi.encodePacked(variant, " Body")),
+            face: string(abi.encodePacked(variant, " Face")),
+            mouth: string(abi.encodePacked(variant, " Mouth")),
+            misc: string(abi.encodePacked(variant, " Misc"))
+        });
+    }
+
     function test_Constructor() external {
         assertEq(factory.owner(), owner);
         assertEq(factory.totalAminals(), 0);
@@ -49,9 +62,10 @@ contract AminalFactoryTest is Test {
         string memory symbol = "FDRAGON";
         string memory description = "A fierce dragon with fire breath";
         string memory tokenURI = "firedragon.json";
+        Aminal.Traits memory traits = createSampleTraits("Fire");
         
         vm.prank(owner);
-        address aminalContract = factory.createAminal(user1, name, symbol, description, tokenURI);
+        address aminalContract = factory.createAminal(user1, name, symbol, description, tokenURI, traits);
         
         assertTrue(aminalContract != address(0));
         assertEq(factory.totalAminals(), 1);
@@ -73,25 +87,25 @@ contract AminalFactoryTest is Test {
     function test_RevertWhen_CreateAminalWithZeroAddress() external {
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(address(0), "Dragon", "DRAGON", "A dragon", "dragon.json");
+        factory.createAminal(address(0), "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
     }
 
     function test_RevertWhen_CreateAminalWithEmptyName() external {
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(user1, "", "DRAGON", "A dragon", "dragon.json");
+        factory.createAminal(user1, "", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
     }
 
     function test_RevertWhen_CreateAminalWithEmptySymbol() external {
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(user1, "Dragon", "", "A dragon", "dragon.json");
+        factory.createAminal(user1, "Dragon", "", "A dragon", "dragon.json", createSampleTraits("Dragon"));
     }
 
     function test_RevertWhen_CreateAminalWithEmptyTokenURI() external {
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "");
+        factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "", createSampleTraits("Dragon"));
     }
 
     function test_RevertWhen_CreateAminalCalledByNonOwner() external {

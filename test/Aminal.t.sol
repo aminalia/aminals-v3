@@ -21,8 +21,20 @@ contract AminalTest is Test {
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
         
+        // Create sample traits
+        Aminal.Traits memory traits = Aminal.Traits({
+            back: "Dragon Wings",
+            arm: "Scaled Arms",
+            tail: "Fire Tail",
+            ears: "Pointed Ears",
+            body: "Dragon Body",
+            face: "Fierce Face",
+            mouth: "Fire Breath",
+            misc: "Golden Scales"
+        });
+        
         vm.prank(owner);
-        aminal = new Aminal(owner, NAME, SYMBOL, BASE_URI);
+        aminal = new Aminal(owner, NAME, SYMBOL, BASE_URI, traits);
     }
 
     function test_Constructor() external {
@@ -35,8 +47,19 @@ contract AminalTest is Test {
     }
 
     function test_RevertWhen_ConstructorWithZeroAddress() external {
+        Aminal.Traits memory traits = Aminal.Traits({
+            back: "Dragon Wings",
+            arm: "Scaled Arms",
+            tail: "Fire Tail",
+            ears: "Pointed Ears",
+            body: "Dragon Body",
+            face: "Fierce Face",
+            mouth: "Fire Breath",
+            misc: "Golden Scales"
+        });
+        
         vm.expectRevert();
-        new Aminal(address(0), NAME, SYMBOL, BASE_URI);
+        new Aminal(address(0), NAME, SYMBOL, BASE_URI, traits);
     }
 
     function test_Mint() external {
@@ -151,6 +174,29 @@ contract AminalTest is Test {
         
         // Verify public variables updated
         assertTrue(aminal.minted());
+    }
+
+    function test_Traits() external {
+        // Test individual trait access
+        assertEq(aminal.BACK(), "Dragon Wings");
+        assertEq(aminal.ARM(), "Scaled Arms");
+        assertEq(aminal.TAIL(), "Fire Tail");
+        assertEq(aminal.EARS(), "Pointed Ears");
+        assertEq(aminal.BODY(), "Dragon Body");
+        assertEq(aminal.FACE(), "Fierce Face");
+        assertEq(aminal.MOUTH(), "Fire Breath");
+        assertEq(aminal.MISC(), "Golden Scales");
+        
+        // Test getTraits function
+        Aminal.Traits memory traits = aminal.getTraits();
+        assertEq(traits.back, "Dragon Wings");
+        assertEq(traits.arm, "Scaled Arms");
+        assertEq(traits.tail, "Fire Tail");
+        assertEq(traits.ears, "Pointed Ears");
+        assertEq(traits.body, "Dragon Body");
+        assertEq(traits.face, "Fierce Face");
+        assertEq(traits.mouth, "Fire Breath");
+        assertEq(traits.misc, "Golden Scales");
     }
 
     function test_SupportsInterface() external {
