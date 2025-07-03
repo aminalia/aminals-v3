@@ -715,6 +715,129 @@ function exists(uint256 tokenId) external view returns (bool);
 - Verify both individual trait access and struct-based access
 - Test uniqueness guarantees across batch operations
 - Validate public variable accessibility and contract interaction
+
+## GeneNFT System Architecture
+
+### Overview
+GeneNFTs are regular ERC721 NFTs (not 1-of-1) that represent genetic components for the Aminals ecosystem. Each GeneNFT has a trait type and trait value stored in mappings, allowing for efficient querying and filtering.
+
+### Core Contract: GeneNFT.sol
+
+#### Key Features
+- **Regular NFT**: Standard token ID scheme (1, 2, 3, etc.) - not 1-of-1
+- **Trait Mappings**: Uses mappings for efficient trait storage and querying
+- **Public Variables**: Following Solidity best practices for transparency
+- **Batch Operations**: Supports batch minting for efficiency
+- **Trait Filtering**: Built-in functions to query tokens by trait type or value
+
+#### Trait Storage Architecture
+```solidity
+/// @dev Mapping from token ID to trait type (e.g., "BACK", "ARM", "TAIL")
+mapping(uint256 => string) public tokenTraitType;
+
+/// @dev Mapping from token ID to trait value (e.g., "Dragon Wings", "Fire Tail")
+mapping(uint256 => string) public tokenTraitValue;
+```
+
+#### Core Functions
+```solidity
+// Mint with trait information
+function mint(
+    address to,
+    string memory traitType,
+    string memory traitValue,
+    string memory uri
+) external onlyOwner returns (uint256);
+
+// Batch mint for efficiency
+function batchMint(
+    address[] memory recipients,
+    string[] memory traitTypes,
+    string[] memory traitValues,
+    string[] memory uris
+) external onlyOwner returns (uint256[] memory);
+
+// Query trait information
+function getTokenTraits(uint256 tokenId) external view returns (string memory traitType, string memory traitValue);
+
+// Filter tokens by trait type
+function getTokensByTraitType(string memory traitType) external view returns (uint256[] memory);
+
+// Filter tokens by trait value
+function getTokensByTraitValue(string memory traitValue) external view returns (uint256[] memory);
+```
+
+#### Trait Categories
+GeneNFTs support the same 8 trait categories as Aminals:
+- **BACK**: Wings, shells, backpacks, etc.
+- **ARM**: Arm characteristics and modifications
+- **TAIL**: Tail types and features
+- **EARS**: Ear shapes and styles
+- **BODY**: Body types and characteristics
+- **FACE**: Facial features and expressions
+- **MOUTH**: Mouth types and expressions
+- **MISC**: Additional unique features
+
+#### Usage Examples
+```solidity
+// Mint a Dragon Wings trait NFT
+uint256 tokenId = geneNFT.mint(user, "BACK", "Dragon Wings", "dragonwings1.json");
+
+// Query all BACK trait tokens
+uint256[] memory backTokens = geneNFT.getTokensByTraitType("BACK");
+
+// Query all Dragon Wings tokens (could be BACK, MISC, etc.)
+uint256[] memory dragonWingsTokens = geneNFT.getTokensByTraitValue("Dragon Wings");
+
+// Get specific token's traits
+(string memory traitType, string memory traitValue) = geneNFT.getTokenTraits(tokenId);
+```
+
+#### Architecture Benefits
+
+1. **Efficient Querying**: Mapping-based storage allows O(1) lookups for individual tokens
+2. **Flexible Filtering**: Built-in functions to filter by trait type or value
+3. **Gas Efficiency**: Direct mapping access without array iterations for single lookups
+4. **Scalability**: Regular NFT structure supports unlimited minting
+5. **Composability**: Can be easily integrated with other contracts
+
+#### Testing Strategy
+- **Trait Mapping Tests**: Verify correct storage and retrieval of trait information
+- **Filtering Tests**: Test getTokensByTraitType and getTokensByTraitValue functions
+- **Batch Operations**: Verify batch minting with mixed trait types and values
+- **Edge Cases**: Test with empty trait types/values, non-existent tokens
+- **Transfer Integrity**: Ensure trait mappings persist after token transfers
+
+### Integration with Aminals
+
+GeneNFTs are designed to eventually replace the hardcoded traits in Aminal contracts:
+
+1. **Current State**: Aminals have hardcoded trait strings set at construction
+2. **Future State**: Aminals will query trait information from GeneNFT contracts
+3. **Migration Path**: New Aminal contracts can reference GeneNFT token IDs for dynamic traits
+4. **Backward Compatibility**: Existing Aminals with hardcoded traits remain functional
+
+### GeneNFT Factory (Removed)
+
+Initially implemented a GeneNFTFactory, but simplified to make GeneNFT a regular NFT contract:
+- **Reasoning**: Regular NFTs don't need complex factory patterns
+- **Simplification**: Direct contract deployment and ownership model
+- **Efficiency**: Reduced gas costs and complexity
+- **Maintainability**: Easier to understand and modify single contract
+
+### Development Decisions
+
+#### Why Mappings Over Arrays
+- **Gas Efficiency**: O(1) access vs O(n) array searches
+- **Storage Optimization**: No need to maintain large arrays
+- **Query Flexibility**: Can filter by either trait type or trait value
+- **Scalability**: Performs well regardless of total token count
+
+#### Why Regular NFTs Over 1-of-1
+- **Volume**: Gene traits need multiple instances (many "Dragon Wings")
+- **Rarity Mechanics**: Multiple copies allow for rarity through scarcity
+- **Economics**: Standard NFT marketplace compatibility
+- **Composability**: Easier integration with existing NFT infrastructure
 </aminals_project>
 
 <user_prompt>
