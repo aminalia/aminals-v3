@@ -9,31 +9,28 @@ import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 /**
  * @title Aminal
  * @dev ERC721 contract for unique 1-of-1 NFTs representing Aminals
- * @dev Each Aminal is a unique NFT with its own metadata and characteristics
+ * @dev Each Aminal contract represents exactly one NFT with token ID 1
  */
 contract Aminal is ERC721, ERC721URIStorage, Ownable {
     using Strings for uint256;
 
-    /// @dev Counter for token IDs
-    uint256 private _nextTokenId;
+    /// @dev The fixed token ID for this Aminal (always 1)
+    uint256 public constant TOKEN_ID = 1;
 
     /// @dev Base URI for token metadata
     string private _baseTokenURI;
 
-    /// @dev Mapping to track if a token ID has been minted
-    mapping(uint256 => bool) private _tokenExists;
+    /// @dev Flag to track if the Aminal has been minted
+    bool private _minted;
 
-    /// @dev Event emitted when a new Aminal is created
+    /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
 
     /// @dev Event emitted when base URI is updated
     event BaseURIUpdated(string newBaseURI);
 
-    /// @dev Error thrown when trying to mint an already existing token
-    error TokenAlreadyExists(uint256 tokenId);
-
-    /// @dev Error thrown when trying to access a non-existent token
-    error TokenNotExists(uint256 tokenId);
+    /// @dev Error thrown when trying to mint more than one token
+    error AlreadyMinted();
 
     /// @dev Error thrown when providing invalid parameters
     error InvalidParameters();
@@ -41,36 +38,40 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     /**
      * @dev Constructor sets the name and symbol for the NFT collection
      * @param owner The address that will own the contract
+     * @param name The name of this specific Aminal
+     * @param symbol The symbol for this specific Aminal
      * @param baseURI The base URI for token metadata
      */
     constructor(
         address owner,
+        string memory name,
+        string memory symbol,
         string memory baseURI
-    ) ERC721("Aminals", "AMINAL") Ownable(owner) {
+    ) ERC721(name, symbol) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
         _baseTokenURI = baseURI;
     }
 
     /**
-     * @dev Mint a new Aminal NFT to the specified address
+     * @dev Mint the single Aminal NFT to the specified address
      * @param to The address that will receive the NFT
      * @param uri The URI for the token's metadata
-     * @return tokenId The ID of the newly minted token
+     * @return tokenId The ID of the newly minted token (always 1)
      */
     function mint(
         address to,
         string memory uri
     ) external onlyOwner returns (uint256) {
         if (to == address(0)) revert InvalidParameters();
+        if (_minted) revert AlreadyMinted();
         
-        uint256 tokenId = _nextTokenId++;
+        _minted = true;
+        _safeMint(to, TOKEN_ID);
+        _setTokenURI(TOKEN_ID, uri);
         
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+        emit AminalCreated(TOKEN_ID, to, uri);
         
-        emit AminalCreated(tokenId, to, uri);
-        
-        return tokenId;
+        return TOKEN_ID;
     }
 
     /**
@@ -83,11 +84,19 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     }
 
     /**
-     * @dev Get the total number of tokens minted
+     * @dev Get the total number of tokens minted (always 0 or 1)
      * @return The total supply of tokens
      */
     function totalSupply() external view returns (uint256) {
-        return _nextTokenId;
+        return _minted ? 1 : 0;
+    }
+
+    /**
+     * @dev Check if the Aminal has been minted
+     * @return True if the Aminal has been minted, false otherwise
+     */
+    function isMinted() external view returns (bool) {
+        return _minted;
     }
 
     /**
@@ -96,7 +105,7 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      * @return True if the token exists, false otherwise
      */
     function exists(uint256 tokenId) external view returns (bool) {
-        return _ownerOf(tokenId) != address(0);
+        return tokenId == TOKEN_ID && _minted;
     }
 
     /**

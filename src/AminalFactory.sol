@@ -8,27 +8,32 @@ import {Aminal} from "./Aminal.sol";
 /**
  * @title AminalFactory
  * @dev Factory contract for creating and managing Aminal NFTs
- * @dev Handles the creation of unique 1-of-1 Aminals with controlled minting
+ * @dev Each Aminal is deployed as a separate contract with a single NFT (token ID 1)
  */
 contract AminalFactory is Ownable, ReentrancyGuard {
-    /// @dev The Aminal NFT contract
-    Aminal public immutable aminalContract;
 
     /// @dev Counter for tracking total Aminals created
     uint256 private _totalCreated;
 
+    /// @dev Base URI for all Aminal metadata
+    string private _baseTokenURI;
+
     /// @dev Mapping to track created Aminals by their unique identifier
     mapping(bytes32 => bool) private _aminalExists;
 
-    /// @dev Mapping to track Aminals created by an address
-    mapping(address => uint256[]) private _createdByAddress;
+    /// @dev Mapping to track Aminal contracts created by an address
+    mapping(address => address[]) private _createdByAddress;
+
+    /// @dev Array of all created Aminal contracts
+    address[] private _allAminals;
 
     /// @dev Event emitted when a new Aminal is created
     event AminalFactoryCreated(
-        uint256 indexed tokenId,
+        address indexed aminalContract,
         address indexed creator,
         address indexed owner,
         string name,
+        string symbol,
         string description,
         string tokenURI
     );
@@ -55,53 +60,56 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Constructor initializes the factory with an Aminal contract
+     * @dev Constructor initializes the factory
      * @param owner The address that will own the factory
      * @param baseURI The base URI for Aminal metadata
      */
     constructor(address owner, string memory baseURI) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
-        
-        aminalContract = new Aminal(address(this), baseURI);
+        _baseTokenURI = baseURI;
     }
 
     /**
-     * @dev Create a new unique Aminal NFT
+     * @dev Create a new unique Aminal NFT as a separate contract
      * @param to The address that will receive the NFT
      * @param name The name of the Aminal
+     * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
      * @param tokenURI The URI for the token's metadata
-     * @return tokenId The ID of the newly created Aminal
+     * @return aminalContract The address of the newly created Aminal contract
      */
     function createAminal(
         address to,
         string memory name,
+        string memory symbol,
         string memory description,
         string memory tokenURI
-    ) external onlyOwner whenNotPaused nonReentrant returns (uint256) {
-        return _createAminal(to, name, description, tokenURI);
+    ) external onlyOwner whenNotPaused nonReentrant returns (address) {
+        return _createAminal(to, name, symbol, description, tokenURI);
     }
 
     /**
      * @dev Internal function to create a new unique Aminal NFT
      * @param to The address that will receive the NFT
      * @param name The name of the Aminal
+     * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
      * @param tokenURI The URI for the token's metadata
-     * @return tokenId The ID of the newly created Aminal
+     * @return aminalContract The address of the newly created Aminal contract
      */
     function _createAminal(
         address to,
         string memory name,
+        string memory symbol,
         string memory description,
         string memory tokenURI
-    ) internal returns (uint256) {
-        if (to == address(0) || bytes(name).length == 0 || bytes(tokenURI).length == 0) {
+    ) internal returns (address) {
+        if (to == address(0) || bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
             revert InvalidParameters();
         }
 
         // Create unique identifier for this Aminal
-        bytes32 identifier = keccak256(abi.encodePacked(name, description, tokenURI));
+        bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
         
         if (_aminalExists[identifier]) {
             revert AminalAlreadyExists(identifier);
@@ -110,46 +118,53 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         // Mark this Aminal as existing
         _aminalExists[identifier] = true;
 
-        // Mint the NFT
-        uint256 tokenId = aminalContract.mint(to, tokenURI);
+        // Deploy new Aminal contract
+        Aminal newAminal = new Aminal(address(this), name, symbol, _baseTokenURI);
+        
+        // Mint the single NFT
+        newAminal.mint(to, tokenURI);
 
         // Track creation
         _totalCreated++;
-        _createdByAddress[msg.sender].push(tokenId);
+        _createdByAddress[msg.sender].push(address(newAminal));
+        _allAminals.push(address(newAminal));
 
-        emit AminalFactoryCreated(tokenId, msg.sender, to, name, description, tokenURI);
+        emit AminalFactoryCreated(address(newAminal), msg.sender, to, name, symbol, description, tokenURI);
 
-        return tokenId;
+        return address(newAminal);
     }
 
     /**
      * @dev Batch create multiple Aminals
      * @param recipients Array of addresses that will receive the NFTs
      * @param names Array of names for the Aminals
+     * @param symbols Array of symbols for the Aminals
      * @param descriptions Array of descriptions for the Aminals
      * @param tokenURIs Array of URIs for the tokens' metadata
-     * @return tokenIds Array of IDs of the newly created Aminals
+     * @return aminalContracts Array of addresses of the newly created Aminal contracts
      */
     function batchCreateAminals(
         address[] memory recipients,
         string[] memory names,
+        string[] memory symbols,
         string[] memory descriptions,
         string[] memory tokenURIs
-    ) external onlyOwner whenNotPaused nonReentrant returns (uint256[] memory) {
+    ) external onlyOwner whenNotPaused nonReentrant returns (address[] memory) {
         if (recipients.length != names.length || 
+            recipients.length != symbols.length ||
             recipients.length != descriptions.length || 
             recipients.length != tokenURIs.length ||
             recipients.length == 0) {
             revert InvalidParameters();
         }
 
-        uint256[] memory tokenIds = new uint256[](recipients.length);
+        address[] memory aminalContracts = new address[](recipients.length);
 
         for (uint256 i = 0; i < recipients.length; i++) {
-            tokenIds[i] = _createAminal(recipients[i], names[i], descriptions[i], tokenURIs[i]);
+            aminalContracts[i] = _createAminal(recipients[i], names[i], symbols[i], descriptions[i], tokenURIs[i]);
         }
 
-        return tokenIds;
+        return aminalContracts;
     }
 
     /**
@@ -162,11 +177,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Update the base URI for Aminal metadata
+     * @dev Update the base URI for future Aminal metadata
      * @param newBaseURI The new base URI
      */
     function setBaseURI(string memory newBaseURI) external onlyOwner {
-        aminalContract.setBaseURI(newBaseURI);
+        _baseTokenURI = newBaseURI;
     }
 
     /**
@@ -178,27 +193,37 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Get the Aminals created by a specific address
+     * @dev Get the Aminal contracts created by a specific address
      * @param creator The address to query
-     * @return An array of token IDs created by the address
+     * @return An array of Aminal contract addresses created by the address
      */
-    function getCreatedByAddress(address creator) external view returns (uint256[] memory) {
+    function getCreatedByAddress(address creator) external view returns (address[] memory) {
         return _createdByAddress[creator];
+    }
+
+    /**
+     * @dev Get all created Aminal contracts
+     * @return An array of all Aminal contract addresses
+     */
+    function getAllAminals() external view returns (address[] memory) {
+        return _allAminals;
     }
 
     /**
      * @dev Check if an Aminal with the given identifier exists
      * @param name The name of the Aminal
+     * @param symbol The symbol for the Aminal
      * @param description The description of the Aminal
      * @param tokenURI The URI for the token's metadata
      * @return True if the Aminal exists, false otherwise
      */
     function aminalExists(
         string memory name,
+        string memory symbol,
         string memory description,
         string memory tokenURI
     ) external view returns (bool) {
-        bytes32 identifier = keccak256(abi.encodePacked(name, description, tokenURI));
+        bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
         return _aminalExists[identifier];
     }
 
@@ -211,10 +236,10 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Get the address of the Aminal contract
-     * @return The address of the Aminal contract
+     * @dev Get the current base URI for metadata
+     * @return The current base URI
      */
-    function getAminalContract() external view returns (address) {
-        return address(aminalContract);
+    function getBaseURI() external view returns (string memory) {
+        return _baseTokenURI;
     }
 }
