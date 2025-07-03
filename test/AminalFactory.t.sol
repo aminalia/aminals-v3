@@ -34,7 +34,7 @@ contract AminalFactoryTest is Test {
 
     function test_Constructor() external {
         assertEq(factory.owner(), owner);
-        assertEq(factory.totalCreated(), 0);
+        assertEq(factory.totalAminals(), 0);
         assertFalse(factory.isPaused());
         assertEq(factory.getBaseURI(), BASE_URI);
     }
@@ -54,7 +54,7 @@ contract AminalFactoryTest is Test {
         address aminalContract = factory.createAminal(user1, name, symbol, description, tokenURI);
         
         assertTrue(aminalContract != address(0));
-        assertEq(factory.totalCreated(), 1);
+        assertEq(factory.totalAminals(), 1);
         assertTrue(factory.aminalExists(name, symbol, description, tokenURI));
         
         address[] memory createdContracts = factory.getCreatedByAddress(owner);
@@ -145,7 +145,7 @@ contract AminalFactoryTest is Test {
         address[] memory aminalContracts = factory.batchCreateAminals(recipients, names, symbols, descriptions, tokenURIs);
         
         assertEq(aminalContracts.length, 3);
-        assertEq(factory.totalCreated(), 3);
+        assertEq(factory.totalAminals(), 3);
         
         for (uint256 i = 0; i < aminalContracts.length; i++) {
             Aminal aminal = Aminal(aminalContracts[i]);
@@ -156,8 +156,8 @@ contract AminalFactoryTest is Test {
             assertTrue(factory.aminalExists(names[i], symbols[i], descriptions[i], tokenURIs[i]));
         }
         
-        // Check getAllAminals
-        address[] memory allAminals = factory.getAllAminals();
+        // Check getAminalsByRange
+        address[] memory allAminals = factory.getAminalsByRange(1, 3);
         assertEq(allAminals.length, 3);
         for (uint256 i = 0; i < 3; i++) {
             assertEq(allAminals[i], aminalContracts[i]);
@@ -297,19 +297,46 @@ contract AminalFactoryTest is Test {
         assertEq(createdByOwner[0], aminalContract1);
         assertEq(createdByUser1.length, 1);
         assertEq(createdByUser1[0], aminalContract2);
-        assertEq(factory.totalCreated(), 2);
+        assertEq(factory.totalAminals(), 2);
     }
 
-    function test_GetAllAminals() external {
+    function test_GetAminalsByRange() external {
         vm.startPrank(owner);
         address aminal1 = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json");
         address aminal2 = factory.createAminal(user2, "Phoenix", "PHOENIX", "A phoenix", "phoenix.json");
         vm.stopPrank();
         
-        address[] memory allAminals = factory.getAllAminals();
-        assertEq(allAminals.length, 2);
-        assertEq(allAminals[0], aminal1);
-        assertEq(allAminals[1], aminal2);
+        address[] memory aminals = factory.getAminalsByRange(1, 2);
+        assertEq(aminals.length, 2);
+        assertEq(aminals[0], aminal1);
+        assertEq(aminals[1], aminal2);
+        
+        // Test getting individual Aminals
+        assertEq(factory.getAminalById(1), aminal1);
+        assertEq(factory.getAminalById(2), aminal2);
+        
+        // Test single item range
+        address[] memory singleAminal = factory.getAminalsByRange(1, 1);
+        assertEq(singleAminal.length, 1);
+        assertEq(singleAminal[0], aminal1);
+    }
+
+    function test_RevertWhen_GetAminalsByRangeInvalidParams() external {
+        vm.startPrank(owner);
+        factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json");
+        vm.stopPrank();
+        
+        // Test invalid start ID (0)
+        vm.expectRevert(AminalFactory.InvalidParameters.selector);
+        factory.getAminalsByRange(0, 1);
+        
+        // Test start > total
+        vm.expectRevert(AminalFactory.InvalidParameters.selector);
+        factory.getAminalsByRange(2, 2);
+        
+        // Test end < start
+        vm.expectRevert(AminalFactory.InvalidParameters.selector);
+        factory.getAminalsByRange(2, 1);
     }
 
     function testFuzz_CreateAminal(
@@ -330,7 +357,7 @@ contract AminalFactoryTest is Test {
         Aminal aminal = Aminal(aminalContract);
         assertEq(aminal.ownerOf(1), to);
         assertTrue(factory.aminalExists(name, symbol, description, tokenURI));
-        assertEq(factory.totalCreated(), 1);
+        assertEq(factory.totalAminals(), 1);
     }
 
     function testFuzz_DuplicateCreationReverts(
