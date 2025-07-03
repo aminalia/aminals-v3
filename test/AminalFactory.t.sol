@@ -77,7 +77,7 @@ contract AminalFactoryTest is Test {
         assertEq(createdContracts[0], aminalContract);
         
         // Verify the Aminal contract was properly minted
-        Aminal aminal = Aminal(aminalContract);
+        Aminal aminal = Aminal(payable(aminalContract));
         assertEq(aminal.name(), name);
         assertEq(aminal.symbol(), symbol);
         assertEq(aminal.ownerOf(1), user1);
@@ -168,7 +168,7 @@ contract AminalFactoryTest is Test {
         assertEq(factory.totalAminals(), 3);
         
         for (uint256 i = 0; i < aminalContracts.length; i++) {
-            Aminal aminal = Aminal(aminalContracts[i]);
+            Aminal aminal = Aminal(payable(aminalContracts[i]));
             assertEq(aminal.ownerOf(1), recipients[i]);
             assertEq(aminal.name(), names[i]);
             assertEq(aminal.symbol(), symbols[i]);
@@ -296,7 +296,7 @@ contract AminalFactoryTest is Test {
         vm.prank(owner);
         address aminalContract = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
         
-        Aminal aminal = Aminal(aminalContract);
+        Aminal aminal = Aminal(payable(aminalContract));
         assertEq(aminal.tokenURI(1), string(abi.encodePacked(newBaseURI, "dragon.json")));
     }
 
@@ -406,7 +406,7 @@ contract AminalFactoryTest is Test {
         vm.prank(owner);
         address aminalContract = factory.createAminal(to, name, symbol, description, tokenURI, createSampleTraits("Fuzz"));
         
-        Aminal aminal = Aminal(aminalContract);
+        Aminal aminal = Aminal(payable(aminalContract));
         assertEq(aminal.ownerOf(1), to);
         assertTrue(factory.checkAminalExists(name, symbol, description, tokenURI));
         assertEq(factory.totalAminals(), 1);

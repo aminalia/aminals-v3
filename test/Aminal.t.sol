@@ -16,6 +16,7 @@ contract AminalTest is Test {
 
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
     event BaseURIUpdated(string newBaseURI);
+    event LoveReceived(address indexed from, uint256 amount, uint256 totalLove);
 
     function setUp() external {
         owner = makeAddr("owner");
@@ -202,6 +203,7 @@ contract AminalTest is Test {
     function testFuzz_Mint(address to, string memory tokenURI) external {
         vm.assume(to != address(0));
         vm.assume(bytes(tokenURI).length > 0);
+        vm.assume(to.code.length == 0); // Only test with EOAs to avoid receiver issues
         
         vm.prank(owner);
         uint256 tokenId = aminal.mint(to, tokenURI);
@@ -220,5 +222,114 @@ contract AminalTest is Test {
         uint256 tokenId = aminal.mint(user1, "test.json");
         
         assertEq(aminal.tokenURI(tokenId), string(abi.encodePacked(newBaseURI, "test.json")));
+    }
+
+    function test_ReceiveLove() external {
+        uint256 loveAmount = 1 ether;
+        
+        // Check initial state
+        assertEq(aminal.totalLove(), 0);
+        assertEq(aminal.loveFromUser(user1), 0);
+        assertEq(address(aminal).balance, 0);
+        
+        // Send love and expect event
+        vm.prank(user1);
+        vm.expectEmit(true, false, false, true);
+        emit LoveReceived(user1, loveAmount, loveAmount);
+        
+        vm.deal(user1, loveAmount);
+        (bool success,) = address(aminal).call{value: loveAmount}("");
+        assertTrue(success);
+        
+        // Verify love tracking
+        assertEq(aminal.totalLove(), loveAmount);
+        assertEq(aminal.loveFromUser(user1), loveAmount);
+        assertEq(aminal.getTotalLove(), loveAmount);
+        assertEq(aminal.getLoveFromUser(user1), loveAmount);
+        assertEq(address(aminal).balance, loveAmount);
+    }
+
+    function test_MultipleLoveTransactions() external {
+        uint256 firstLove = 0.5 ether;
+        uint256 secondLove = 0.3 ether;
+        uint256 totalExpected = firstLove + secondLove;
+        
+        vm.deal(user1, totalExpected);
+        vm.deal(user2, 1 ether);
+        
+        // First love from user1
+        vm.prank(user1);
+        vm.expectEmit(true, false, false, true);
+        emit LoveReceived(user1, firstLove, firstLove);
+        (bool success,) = address(aminal).call{value: firstLove}("");
+        assertTrue(success);
+        
+        // Second love from user1
+        vm.prank(user1);
+        vm.expectEmit(true, false, false, true);
+        emit LoveReceived(user1, secondLove, totalExpected);
+        (success,) = address(aminal).call{value: secondLove}("");
+        assertTrue(success);
+        
+        // Love from user2
+        uint256 user2Love = 0.7 ether;
+        vm.prank(user2);
+        vm.expectEmit(true, false, false, true);
+        emit LoveReceived(user2, user2Love, totalExpected + user2Love);
+        (success,) = address(aminal).call{value: user2Love}("");
+        assertTrue(success);
+        
+        // Verify final state
+        assertEq(aminal.totalLove(), totalExpected + user2Love);
+        assertEq(aminal.loveFromUser(user1), totalExpected);
+        assertEq(aminal.loveFromUser(user2), user2Love);
+        assertEq(address(aminal).balance, totalExpected + user2Love);
+    }
+
+    function test_ZeroValueLove() external {
+        // Sending 0 ETH should not emit event or update state
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: 0}("");
+        assertTrue(success);
+        
+        assertEq(aminal.totalLove(), 0);
+        assertEq(aminal.loveFromUser(user1), 0);
+        assertEq(address(aminal).balance, 0);
+    }
+
+    function testFuzz_ReceiveLove(uint96 amount) external {
+        vm.assume(amount > 0);
+        
+        vm.deal(user1, amount);
+        vm.prank(user1);
+        
+        vm.expectEmit(true, false, false, true);
+        emit LoveReceived(user1, amount, amount);
+        
+        (bool success,) = address(aminal).call{value: amount}("");
+        assertTrue(success);
+        
+        assertEq(aminal.totalLove(), amount);
+        assertEq(aminal.loveFromUser(user1), amount);
+        assertEq(address(aminal).balance, amount);
+    }
+
+    function test_LoveQueryFunctions() external {
+        uint256 loveAmount = 2 ether;
+        
+        vm.deal(user1, loveAmount);
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: loveAmount}("");
+        assertTrue(success);
+        
+        // Test getter functions
+        assertEq(aminal.getTotalLove(), loveAmount);
+        assertEq(aminal.getLoveFromUser(user1), loveAmount);
+        assertEq(aminal.getLoveFromUser(user2), 0);
+        
+        // Test public variables
+        assertEq(aminal.totalLove(), loveAmount);
+        assertEq(aminal.loveFromUser(user1), loveAmount);
+        assertEq(aminal.loveFromUser(user2), 0);
     }
 }

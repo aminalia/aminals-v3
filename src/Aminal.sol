@@ -31,11 +31,20 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
     ///      as the contract has no functions to modify them
     ITraits.Traits public traits;
 
+    /// @dev Total love received by this Aminal (in wei)
+    uint256 public totalLove;
+
+    /// @dev Mapping from user address to amount of love they've given (in wei)
+    mapping(address => uint256) public loveFromUser;
+
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
 
     /// @dev Event emitted when base URI is updated
     event BaseURIUpdated(string newBaseURI);
+
+    /// @dev Event emitted when someone sends love (ETH) to the Aminal
+    event LoveReceived(address indexed from, uint256 amount, uint256 totalLove);
 
     /// @dev Error thrown when trying to mint more than one token
     error AlreadyMinted();
@@ -144,6 +153,35 @@ contract Aminal is ERC721, ERC721URIStorage, Ownable {
      */
     function _baseURI() internal view override returns (string memory) {
         return baseTokenURI;
+    }
+
+    /**
+     * @notice Receive function to accept ETH and track love
+     * @dev When ETH is sent to this contract, it's recorded as "love" from the sender
+     */
+    receive() external payable {
+        if (msg.value > 0) {
+            totalLove += msg.value;
+            loveFromUser[msg.sender] += msg.value;
+            emit LoveReceived(msg.sender, msg.value, totalLove);
+        }
+    }
+
+    /**
+     * @dev Get the amount of love a specific user has given to this Aminal
+     * @param user The address to query
+     * @return The amount of love (in wei) the user has given
+     */
+    function getLoveFromUser(address user) external view returns (uint256) {
+        return loveFromUser[user];
+    }
+
+    /**
+     * @dev Get the total amount of love this Aminal has received
+     * @return The total amount of love (in wei) received
+     */
+    function getTotalLove() external view returns (uint256) {
+        return totalLove;
     }
 
     /**
