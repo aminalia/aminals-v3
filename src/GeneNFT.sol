@@ -52,7 +52,8 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     }
 
     /**
-     * @dev Mint a GeneNFT to the specified address with trait information
+     * @notice Mint a GeneNFT to the specified address with trait information
+     * @dev Anyone can mint GeneNFTs. Traits are permanent and cannot be modified after minting.
      * @param to The address that will receive the NFT
      * @param traitType The trait type this NFT represents (e.g., "BACK", "ARM")
      * @param traitValue The specific trait value (e.g., "Dragon Wings", "Fire Tail")
@@ -64,7 +65,7 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         string memory traitType,
         string memory traitValue,
         string memory uri
-    ) external onlyOwner returns (uint256) {
+    ) external returns (uint256) {
         if (to == address(0)) revert InvalidParameters();
         if (bytes(traitType).length == 0) revert InvalidParameters();
         if (bytes(traitValue).length == 0) revert InvalidParameters();
@@ -84,7 +85,8 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     }
 
     /**
-     * @dev Batch mint multiple GeneNFTs to specified addresses
+     * @notice Batch mint multiple GeneNFTs to specified addresses
+     * @dev Anyone can mint GeneNFTs. Traits are permanent and cannot be modified after minting.
      * @param recipients Array of addresses that will receive the NFTs
      * @param traitTypes Array of trait types for each NFT
      * @param traitValues Array of trait values for each NFT
@@ -96,7 +98,7 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         string[] memory traitTypes,
         string[] memory traitValues,
         string[] memory uris
-    ) external onlyOwner returns (uint256[] memory) {
+    ) external returns (uint256[] memory) {
         if (recipients.length != traitTypes.length || 
             recipients.length != traitValues.length ||
             recipients.length != uris.length || 

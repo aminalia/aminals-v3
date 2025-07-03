@@ -43,7 +43,6 @@ contract GeneNFTTest is Test {
         string memory traitValue = "Dragon Wings";
         string memory tokenURI = "dragonwings1.json";
         
-        vm.prank(owner);
         vm.expectEmit(true, true, false, true);
         emit GeneNFTCreated(1, user1, traitType, traitValue, tokenURI);
         
@@ -59,13 +58,9 @@ contract GeneNFTTest is Test {
     }
 
     function test_MintMultiple() external {
-        vm.startPrank(owner);
-        
         uint256 tokenId1 = geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         uint256 tokenId2 = geneNFT.mint(user2, "ARM", "Scaled Arms", "scaledarms1.json");
         uint256 tokenId3 = geneNFT.mint(user1, "TAIL", "Fire Tail", "firetail1.json");
-        
-        vm.stopPrank();
         
         assertEq(tokenId1, 1);
         assertEq(tokenId2, 2);
@@ -89,27 +84,29 @@ contract GeneNFTTest is Test {
     }
 
     function test_RevertWhen_MintToZeroAddress() external {
-        vm.prank(owner);
         vm.expectRevert(GeneNFT.InvalidParameters.selector);
         geneNFT.mint(address(0), "BACK", "Dragon Wings", "dragonwings1.json");
     }
 
     function test_RevertWhen_MintWithEmptyTraitType() external {
-        vm.prank(owner);
         vm.expectRevert(GeneNFT.InvalidParameters.selector);
         geneNFT.mint(user1, "", "Dragon Wings", "dragonwings1.json");
     }
 
     function test_RevertWhen_MintWithEmptyTraitValue() external {
-        vm.prank(owner);
         vm.expectRevert(GeneNFT.InvalidParameters.selector);
         geneNFT.mint(user1, "BACK", "", "dragonwings1.json");
     }
 
-    function test_RevertWhen_MintCalledByNonOwner() external {
+    function test_MintCalledByAnyUser() external {
+        // Any user can mint GeneNFTs
         vm.prank(user1);
-        vm.expectRevert();
-        geneNFT.mint(user2, "BACK", "Dragon Wings", "dragonwings1.json");
+        uint256 tokenId = geneNFT.mint(user2, "BACK", "Dragon Wings", "dragonwings1.json");
+        
+        assertEq(tokenId, 1);
+        assertEq(geneNFT.ownerOf(tokenId), user2);
+        assertEq(geneNFT.tokenTraitType(tokenId), "BACK");
+        assertEq(geneNFT.tokenTraitValue(tokenId), "Dragon Wings");
     }
 
     function test_BatchMint() external {
@@ -133,7 +130,6 @@ contract GeneNFTTest is Test {
         uris[1] = "scaledarms1.json";
         uris[2] = "firetail1.json";
         
-        vm.prank(owner);
         uint256[] memory tokenIds = geneNFT.batchMint(recipients, traitTypes, traitValues, uris);
         
         assertEq(tokenIds.length, 3);
@@ -176,7 +172,6 @@ contract GeneNFTTest is Test {
         uris[0] = "dragonwings1.json";
         uris[1] = "scaledarms1.json";
         
-        vm.prank(owner);
         vm.expectRevert(GeneNFT.InvalidParameters.selector);
         geneNFT.batchMint(recipients, traitTypes, traitValues, uris);
     }
@@ -187,7 +182,6 @@ contract GeneNFTTest is Test {
         string[] memory traitValues = new string[](0);
         string[] memory uris = new string[](0);
         
-        vm.prank(owner);
         vm.expectRevert(GeneNFT.InvalidParameters.selector);
         geneNFT.batchMint(recipients, traitTypes, traitValues, uris);
     }
@@ -209,13 +203,11 @@ contract GeneNFTTest is Test {
         uris[0] = "dragonwings1.json";
         uris[1] = "scaledarms1.json";
         
-        vm.prank(owner);
         vm.expectRevert(GeneNFT.InvalidParameters.selector);
         geneNFT.batchMint(recipients, traitTypes, traitValues, uris);
     }
 
     function test_GetTokenTraits() external {
-        vm.prank(owner);
         uint256 tokenId = geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         
         (string memory traitType, string memory traitValue) = geneNFT.getTokenTraits(tokenId);
@@ -229,12 +221,10 @@ contract GeneNFTTest is Test {
     }
 
     function test_GetTokensByTraitType() external {
-        vm.startPrank(owner);
         geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         geneNFT.mint(user2, "ARM", "Scaled Arms", "scaledarms1.json");
         geneNFT.mint(user1, "BACK", "Angel Wings", "angelwings1.json");
         geneNFT.mint(user2, "TAIL", "Fire Tail", "firetail1.json");
-        vm.stopPrank();
         
         uint256[] memory backTokens = geneNFT.getTokensByTraitType("BACK");
         assertEq(backTokens.length, 2);
@@ -254,12 +244,10 @@ contract GeneNFTTest is Test {
     }
 
     function test_GetTokensByTraitValue() external {
-        vm.startPrank(owner);
         geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         geneNFT.mint(user2, "ARM", "Scaled Arms", "scaledarms1.json");
         geneNFT.mint(user1, "TAIL", "Dragon Wings", "dragonwings2.json"); // Same value different type
         geneNFT.mint(user2, "BACK", "Angel Wings", "angelwings1.json");
-        vm.stopPrank();
         
         uint256[] memory dragonWingsTokens = geneNFT.getTokensByTraitValue("Dragon Wings");
         assertEq(dragonWingsTokens.length, 2);
@@ -288,7 +276,6 @@ contract GeneNFTTest is Test {
         geneNFT.setBaseURI(newBaseURI);
         
         // Mint a token to test the new base URI
-        vm.prank(owner);
         uint256 tokenId = geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         
         assertEq(geneNFT.tokenURI(tokenId), string(abi.encodePacked(newBaseURI, "dragonwings1.json")));
@@ -301,7 +288,6 @@ contract GeneNFTTest is Test {
     }
 
     function test_TokenTransfer() external {
-        vm.prank(owner);
         uint256 tokenId = geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         
         vm.prank(user1);
@@ -317,11 +303,9 @@ contract GeneNFTTest is Test {
     }
 
     function test_TokenEnumeration() external {
-        vm.startPrank(owner);
         geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         geneNFT.mint(user2, "ARM", "Scaled Arms", "scaledarms1.json");
         geneNFT.mint(user1, "TAIL", "Fire Tail", "firetail1.json");
-        vm.stopPrank();
         
         // Test tokenByIndex
         assertEq(geneNFT.tokenByIndex(0), 1);
@@ -339,7 +323,6 @@ contract GeneNFTTest is Test {
         assertEq(geneNFT.currentTokenId(), 0);
         assertEq(geneNFT.baseTokenURI(), BASE_URI);
         
-        vm.prank(owner);
         uint256 tokenId = geneNFT.mint(user1, "BACK", "Dragon Wings", "dragonwings1.json");
         
         // Verify public variables updated
@@ -365,7 +348,6 @@ contract GeneNFTTest is Test {
         vm.assume(bytes(traitValue).length > 0);
         vm.assume(bytes(tokenURI).length > 0);
         
-        vm.prank(owner);
         uint256 tokenId = geneNFT.mint(to, traitType, traitValue, tokenURI);
         
         assertEq(geneNFT.ownerOf(tokenId), to);
@@ -379,7 +361,6 @@ contract GeneNFTTest is Test {
         vm.prank(owner);
         geneNFT.setBaseURI(newBaseURI);
         
-        vm.prank(owner);
         uint256 tokenId = geneNFT.mint(user1, "BACK", "Dragon Wings", "test.json");
         
         assertEq(geneNFT.tokenURI(tokenId), string(abi.encodePacked(newBaseURI, "test.json")));
