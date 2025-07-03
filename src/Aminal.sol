@@ -3,15 +3,35 @@ pragma solidity ^0.8.20;
 
 import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 
 /**
  * @title Aminal
- * @dev Self-sovereign ERC721 contract for unique 1-of-1 NFTs representing Aminals
+ * @dev Self-sovereign, non-transferable ERC721 contract for unique 1-of-1 NFTs representing Aminals
  * @dev Each Aminal contract represents exactly one NFT with token ID 1, owned by itself
  * @dev This design ensures true self-sovereignty - each Aminal owns itself and cannot be controlled by external parties
+ * @dev Aminals are permanently non-transferable, ensuring their self-sovereign status cannot be compromised
+ *
+ * @notice SELF-SOVEREIGN ARCHITECTURE:
+ * - Each Aminal is deployed as a separate smart contract instance (not just a token ID)
+ * - Each Aminal owns itself completely - the NFT is minted to address(this)
+ * - No external party can control or transfer an Aminal once initialized
+ * - Aminals are autonomous digital entities with their own blockchain identity
+ * - The contract address serves as the Aminal's permanent, unique identity
+ * - Administrative functions can only be called by the contract itself
+ * - Transfer functions are permanently disabled to maintain self-sovereignty
+ *
+ * @notice ARCHITECTURAL BENEFITS:
+ * - TRUE UNIQUENESS: Each Aminal is a 1-of-1 NFT with its own contract instance
+ * - SELF-SOVEREIGNTY: Complete autonomy with no external control possible
+ * - IMMUTABLE IDENTITY: Contract address serves as permanent blockchain identity
+ * - NON-TRANSFERABLE: Ensures permanent self-ownership and sovereignty
+ * - DECENTRALIZED: No single point of control over all Aminals
+ * - COMPOSABLE: Each Aminal can interact independently with other protocols
+ * - AUTONOMOUS: Operates as a truly independent digital entity
  */
 contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     using Strings for uint256;
@@ -74,6 +94,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
 
     /// @dev Error thrown when trying to call restricted functions from unauthorized addresses
     error NotAuthorized();
+
+    /// @dev Error thrown when trying to transfer a non-transferable NFT
+    error TransferNotAllowed();
 
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
@@ -232,8 +255,40 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     }
 
     /**
-     * @dev Implementation of ERC721Receiver to accept NFT transfers
-     * @dev This allows the Aminal to receive its own NFT and any other NFTs
+     * @dev Override _update to prevent all transfers - Aminals are non-transferable
+     * @dev This ensures permanent self-sovereignty - once an Aminal owns itself, it cannot be transferred
+     * @dev The only exception is during minting (from == address(0))
+     */
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        address from = _ownerOf(tokenId);
+        
+        // Allow minting (from == address(0)) but prevent all transfers
+        if (from != address(0)) {
+            revert TransferNotAllowed();
+        }
+        
+        return super._update(to, tokenId, auth);
+    }
+
+    /**
+     * @dev Override approve to prevent approvals - not needed for non-transferable NFTs
+     * @dev This prevents any approval mechanisms that could potentially be used for transfers
+     */
+    function approve(address /* to */, uint256 /* tokenId */) public pure override(ERC721, IERC721) {
+        revert TransferNotAllowed();
+    }
+
+    /**
+     * @dev Override setApprovalForAll to prevent approvals - not needed for non-transferable NFTs
+     * @dev This prevents any approval mechanisms that could potentially be used for transfers
+     */
+    function setApprovalForAll(address /* operator */, bool /* approved */) public pure override(ERC721, IERC721) {
+        revert TransferNotAllowed();
+    }
+
+    /**
+     * @dev Implementation of ERC721Receiver to accept NFT transfers during initialization only
+     * @dev This allows the Aminal to receive its own NFT during the initial mint, but prevents later transfers
      * @return selector The function selector to confirm receipt
      */
     function onERC721Received(

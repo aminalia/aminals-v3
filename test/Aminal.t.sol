@@ -141,27 +141,75 @@ contract AminalTest is Test {
         aminal.setBaseURI("https://newapi.aminals.com/metadata/");
     }
 
-    function test_TokenTransfer() external {
+    function test_RevertWhen_TransferFrom() external {
         uint256 tokenId = aminal.initialize("firedragon.json");
         
         // Aminal owns itself initially
         assertEq(aminal.ownerOf(tokenId), address(aminal));
         
-        // Transfer from the Aminal to user1
+        // Any transfer attempt should revert
         vm.prank(address(aminal));
+        vm.expectRevert(Aminal.TransferNotAllowed.selector);
         aminal.transferFrom(address(aminal), user1, tokenId);
         
-        assertEq(aminal.ownerOf(tokenId), user1);
-        assertEq(aminal.balanceOf(address(aminal)), 0);
-        assertEq(aminal.balanceOf(user1), 1);
+        // Verify Aminal still owns itself
+        assertEq(aminal.ownerOf(tokenId), address(aminal));
+    }
+
+    function test_RevertWhen_SafeTransferFrom() external {
+        uint256 tokenId = aminal.initialize("firedragon.json");
         
-        // Transfer from user1 to user2
-        vm.prank(user1);
-        aminal.transferFrom(user1, user2, tokenId);
+        // Any safe transfer attempt should revert
+        vm.prank(address(aminal));
+        vm.expectRevert(Aminal.TransferNotAllowed.selector);
+        aminal.safeTransferFrom(address(aminal), user1, tokenId);
         
-        assertEq(aminal.ownerOf(tokenId), user2);
+        // Verify Aminal still owns itself
+        assertEq(aminal.ownerOf(tokenId), address(aminal));
+    }
+
+    function test_RevertWhen_SafeTransferFromWithData() external {
+        uint256 tokenId = aminal.initialize("firedragon.json");
+        
+        // Any safe transfer with data attempt should revert
+        vm.prank(address(aminal));
+        vm.expectRevert(Aminal.TransferNotAllowed.selector);
+        aminal.safeTransferFrom(address(aminal), user1, tokenId, "data");
+        
+        // Verify Aminal still owns itself
+        assertEq(aminal.ownerOf(tokenId), address(aminal));
+    }
+
+    function test_RevertWhen_Approve() external {
+        aminal.initialize("firedragon.json");
+        
+        // Any approval attempt should revert
+        vm.prank(address(aminal));
+        vm.expectRevert(Aminal.TransferNotAllowed.selector);
+        aminal.approve(user1, 1);
+    }
+
+    function test_RevertWhen_SetApprovalForAll() external {
+        aminal.initialize("firedragon.json");
+        
+        // Any approval for all attempt should revert
+        vm.prank(address(aminal));
+        vm.expectRevert(Aminal.TransferNotAllowed.selector);
+        aminal.setApprovalForAll(user1, true);
+    }
+
+    function test_PermanentSelfOwnership() external {
+        uint256 tokenId = aminal.initialize("firedragon.json");
+        
+        // Verify permanent self-ownership
+        assertEq(aminal.ownerOf(tokenId), address(aminal));
+        assertEq(aminal.balanceOf(address(aminal)), 1);
         assertEq(aminal.balanceOf(user1), 0);
-        assertEq(aminal.balanceOf(user2), 1);
+        assertEq(aminal.balanceOf(user2), 0);
+        
+        // Verify no approvals are possible
+        assertEq(aminal.getApproved(tokenId), address(0));
+        assertFalse(aminal.isApprovedForAll(address(aminal), user1));
     }
 
     function test_Exists() external {
