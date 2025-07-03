@@ -10,5 +10,8 @@ out/
 # Docs
 docs/
 
+# Lib (individual users should install based on foundry.toml)
+lib/
+
 # Dotenv file
 .env
