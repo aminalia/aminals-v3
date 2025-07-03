@@ -119,6 +119,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param symbol The symbol for the Aminal (used for contract symbol)
      * @param description A description of the Aminal (used for uniqueness)
      * @param tokenURI The URI for the token's metadata
+     * @param traits The immutable traits for this Aminal
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function createAminal(
@@ -126,9 +127,10 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory name,
         string memory symbol,
         string memory description,
-        string memory tokenURI
+        string memory tokenURI,
+        Aminal.Traits memory traits
     ) external onlyOwner whenNotPaused nonReentrant returns (address) {
-        return _createAminal(to, name, symbol, description, tokenURI);
+        return _createAminal(to, name, symbol, description, tokenURI, traits);
     }
 
     /**
