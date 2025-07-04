@@ -5,6 +5,7 @@ import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.s
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
+import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
@@ -34,7 +35,7 @@ import {AminalVRGDA} from "src/AminalVRGDA.sol";
  * - COMPOSABLE: Each Aminal can interact independently with other protocols
  * - AUTONOMOUS: Operates as a truly independent digital entity
  */
-contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
+contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     using Strings for uint256;
 
     /// @dev The fixed token ID for this Aminal (always 1)
@@ -303,10 +304,11 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
      * @dev The skill function should return the energy cost as a uint256
      * @dev Falls back to 1 energy/love if no amount is returned or if the call fails to decode
      * @dev Consumes energy and love at a 1:1 ratio based on the returned cost
+     * @dev Protected against reentrancy attacks with nonReentrant modifier
      * @param target The contract address to call
      * @param data The raw ABI-encoded calldata for the skill
      */
-    function useSkill(address target, bytes calldata data) external {
+    function useSkill(address target, bytes calldata data) external nonReentrant {
         // Extract function selector for event
         bytes4 selector = bytes4(data);
         
