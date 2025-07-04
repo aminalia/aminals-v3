@@ -10,7 +10,6 @@ import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ERC165Checker} from "lib/openzeppelin-contracts/contracts/utils/introspection/ERC165Checker.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
-import {AminalSkillParser} from "src/AminalSkillParser.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
 
 /**
@@ -40,7 +39,6 @@ import {ISkill} from "src/interfaces/ISkill.sol";
  */
 contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     using Strings for uint256;
-    using AminalSkillParser for bytes;
     using ERC165Checker for address;
 
     /// @dev The fixed token ID for this Aminal (always 1)
@@ -122,6 +120,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /// @dev Error thrown when skill call fails
     error SkillCallFailed();
+    
+    /// @dev Error thrown when target doesn't support ISkill interface
+    error SkillNotSupported();
 
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
@@ -306,9 +307,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /**
      * @notice Use a skill by calling an external function and consuming energy/love
-     * @dev Supports two modes:
-     *      1. ISkill interface: Contracts implementing ISkill can specify exact costs
-     *      2. Legacy mode: Falls back to parsing return data for backwards compatibility
+     * @dev Only works with contracts implementing the ISkill interface
      * @dev Consumes energy and love at a 1:1 ratio based on the cost
      * @dev Protected against reentrancy attacks with nonReentrant modifier
      * @dev SECURITY: Always calls with 0 ETH value to prevent draining funds through skills
@@ -316,27 +315,24 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @param data The raw ABI-encoded calldata for the skill
      */
     function useSkill(address target, bytes calldata data) external nonReentrant {
+        // Check if the target implements ISkill interface
+        if (!target.supportsInterface(type(ISkill).interfaceId)) {
+            revert SkillNotSupported();
+        }
+        
         // Extract function selector for event
         bytes4 selector = bytes4(data);
         
+        // Get the energy cost from the skill contract
         uint256 energyCost;
-        
-        // Check if the target implements ISkill interface using ERC165Checker
-        if (target.supportsInterface(type(ISkill).interfaceId)) {
-            // Target implements ISkill, get the cost from the interface
-            try ISkill(target).skillEnergyCost(data) returns (uint256 cost) {
-                energyCost = cost;
-            } catch {
-                // If cost query fails, default to 1
-                energyCost = 1;
-            }
-        } else {
-            // Doesn't support ISkill interface or EIP-165, use legacy parsing
-            energyCost = _useSkillLegacy(target, data);
+        try ISkill(target).skillEnergyCost(data) returns (uint256 cost) {
+            energyCost = cost;
+        } catch {
+            // If cost query fails, default to 1
+            energyCost = 1;
         }
         
         // Cap at a reasonable maximum to prevent accidental huge costs
-        // But ensure we always require at least 1 energy
         if (energyCost > 10000) {
             energyCost = energy > 10000 ? 10000 : energy;
         }
@@ -346,10 +342,16 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
             energyCost = 1;
         }
         
-        // Consume energy and love
+        // Check resources before execution
         if (energy < energyCost) revert InsufficientEnergy();
         if (loveFromUser[msg.sender] < energyCost) revert InsufficientLove();
         
+        // Execute the skill first (before consuming resources)
+        // CRITICAL: Use call with 0 value to prevent spending ETH
+        (bool success,) = target.call{value: 0}(data);
+        if (!success) revert SkillCallFailed();
+        
+        // Only consume resources after successful execution
         energy -= energyCost;
         loveFromUser[msg.sender] -= energyCost;
         totalLove -= energyCost;
@@ -357,22 +359,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         emit EnergyLost(msg.sender, energyCost, energy);
         emit LoveConsumed(msg.sender, energyCost, loveFromUser[msg.sender]);
         emit SkillUsed(msg.sender, target, energyCost, selector);
-    }
-    
-    /**
-     * @dev Legacy skill execution that parses return data to determine cost
-     * @param target The contract address to call
-     * @param data The calldata to send
-     * @return energyCost The parsed energy cost
-     */
-    function _useSkillLegacy(address target, bytes calldata data) private returns (uint256 energyCost) {
-        // Call the skill
-        // CRITICAL: Use call with 0 value to prevent spending ETH
-        (bool success, bytes memory returnData) = target.call{value: 0}(data);
-        if (!success) revert SkillCallFailed();
-        
-        // Parse the return data intelligently to get energy cost
-        energyCost = returnData.parseEnergyCost();
     }
 
     /**
