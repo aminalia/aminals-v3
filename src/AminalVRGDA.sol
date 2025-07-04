@@ -69,21 +69,26 @@ contract AminalVRGDA is LogisticVRGDA {
             // Map VRGDA price to love multiplier with inverse relationship
             // As VRGDA price increases (energy increases), love multiplier decreases
             // This creates the desired diminishing returns for well-fed Aminals
-            if (vrgdaPrice <= uint256(targetPrice)) {
-                // Below target price = low energy = high multiplier
+            
+            // VRGDA price DECREASES as energy increases (we're "ahead of schedule")
+            // We want love multiplier to DECREASE as energy increases
+            // So we need to invert the relationship
+            
+            if (vrgdaPrice == 0) {
+                loveMultiplier = MIN_LOVE_MULTIPLIER; // Very high energy
+            } else if (vrgdaPrice >= uint256(targetPrice)) {
+                // Price at or above target = low energy = high multiplier
                 loveMultiplier = MAX_LOVE_MULTIPLIER;
             } else {
-                // Above target price = higher energy = lower multiplier
-                // As price goes from 1 ETH to 10 ETH, multiplier goes from 10x to 0.1x
-                uint256 priceRatio = (vrgdaPrice * 1 ether) / uint256(targetPrice);
+                // Price below target = higher energy = lower multiplier
+                // Map price range [0 to targetPrice] to multiplier range [MIN to MAX]
+                // As price goes from targetPrice to 0, multiplier goes from MAX to MIN
                 
-                // Invert and scale: high price ratio = low love multiplier
-                if (priceRatio >= 100 ether) {
-                    loveMultiplier = MIN_LOVE_MULTIPLIER;
-                } else {
-                    // Interpolate: at price ratio 1x, love = 10x; at ratio 100x, love = 0.1x
-                    loveMultiplier = (10 ether * 1 ether) / priceRatio;
-                }
+                uint256 progress = (vrgdaPrice * 1 ether) / uint256(targetPrice);
+                uint256 range = MAX_LOVE_MULTIPLIER - MIN_LOVE_MULTIPLIER;
+                
+                // Linear interpolation: high price (near target) = high multiplier
+                loveMultiplier = MIN_LOVE_MULTIPLIER + (range * progress / 1 ether);
             }
             
             // Apply bounds to keep multiplier reasonable
