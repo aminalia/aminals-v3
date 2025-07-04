@@ -650,7 +650,7 @@ Self-sovereign ERC721 contract where the NFT owns itself:
 Key functions:
 - `initialize(uri)`: One-time mint to self
 - `receive()`: Accept ETH as love/energy
-- `squeak(amount)`: Consume energy and love at 1:1 ratio
+- `squeak(amount)`: Consume energy and love equally
 - `useSkill(target, data)`: Call external skills, consuming resources based on return
 - `setBaseURI()`: Only callable by self
 
@@ -706,7 +706,7 @@ Regular ERC721 NFTs representing genetic traits:
   - Multi-tier energy scaling for gradual curve: sqrt-like from 0-1k, linear from 1k-100k
   - VRGDA price decreases with energy; inverted to create decreasing love multipliers
   - Parameters: 1% decay, 30 asymptote, 30 time scale for extremely smooth transitions
-- **squeak()**: Consumes both energy (global) and love (from caller) at 1:1 ratio
+- **squeak()**: Consumes both energy (global) and love (from caller) equally
 - **useSkill()**: Calls external contracts as skills, consuming energy/love based on return value
 
 ### Incentive Design & Economic Dynamics
@@ -746,7 +746,7 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 Aminals can use skills by calling external functions and consuming energy/love:
 - **Flexible Design**: Any external contract can be a skill provider
 - **Dynamic Cost**: Skills return their energy cost as uint256
-- **Automatic Consumption**: Energy and love consumed at 1:1 ratio based on returned cost
+- **Automatic Consumption**: Energy and love consumed equally based on returned cost
 - **Fallback Behavior**: Defaults to 1 energy/love if no cost returned or zero cost
 - **Safety**: Reverts if skill call fails or insufficient resources
 - **Per-User Love**: Only the caller's love can be consumed, maintaining individual relationships

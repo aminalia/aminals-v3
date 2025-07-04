@@ -287,7 +287,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /**
      * @notice Make the Aminal squeak, consuming both love and energy
-     * @dev Both resources decrease by the specified amount at a 1:1 ratio
+     * @dev Both resources decrease by the specified amount equally
      * @dev Reverts if insufficient energy or if user has insufficient love
      * @dev Energy is global per Aminal (shared by all users) while love is per user per Aminal,
      *      ensuring users can only spend their own contributions
@@ -308,7 +308,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /**
      * @notice Use a skill by calling an external function and consuming energy/love
      * @dev Only works with contracts implementing the ISkill interface
-     * @dev Consumes resources at a 1:1 ratio based on the cost:
+     * @dev Consumes resources equally based on the cost:
      *      - Energy: Deducted from global pool (per Aminal, shared by all users)
      *      - Love: Deducted from caller's personal love balance (per user per Aminal)
      * @dev Protected against reentrancy attacks with nonReentrant modifier
