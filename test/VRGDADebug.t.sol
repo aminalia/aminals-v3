@@ -10,8 +10,9 @@ contract VRGDADebugTest is Test {
     function setUp() public {
         vrgda = new AminalVRGDA(
             int256(1 ether),  
-            0.9e18,           
-            100e18            
+            0.01e18,
+            10000e18,
+            2000e18        
         );
     }
     
