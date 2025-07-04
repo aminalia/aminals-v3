@@ -11,6 +11,11 @@ import {ERC165Checker} from "lib/openzeppelin-contracts/contracts/utils/introspe
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
+import {IGeneStaking} from "src/interfaces/IGeneStaking.sol";
+import {GeneNFT} from "src/GeneNFT.sol";
+import {GeneRenderer} from "src/GeneRenderer.sol";
+import {LibString} from "solady/utils/LibString.sol";
+import {Base64} from "solady/utils/Base64.sol";
 
 /**
  * @title Aminal
@@ -39,6 +44,7 @@ import {ISkill} from "src/interfaces/ISkill.sol";
  */
 contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     using Strings for uint256;
+    using LibString for string;
     using ERC165Checker for address;
 
     /// @dev The fixed token ID for this Aminal (always 1)
@@ -59,6 +65,23 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /// @dev While not immutable due to Solidity limitations, they are effectively immutable
     ///      as the contract has no functions to modify them
     ITraits.Traits public traits;
+
+    /// @dev Structure to store a GeneNFT reference
+    struct GeneReference {
+        address geneContract;  // The GeneNFT contract address
+        uint256 tokenId;       // The specific token ID
+    }
+
+    /// @dev Immutable GeneNFT references for each trait type
+    /// @notice These define the visual appearance of the Aminal by referencing specific GeneNFTs
+    GeneReference public backGene;
+    GeneReference public armGene;
+    GeneReference public tailGene;
+    GeneReference public earsGene;
+    GeneReference public bodyGene;
+    GeneReference public faceGene;
+    GeneReference public mouthGene;
+    GeneReference public miscGene;
 
     /// @dev Total love received by this Aminal (in energy units)
     /// @notice Love is tracked per-user to create individual relationships
@@ -158,17 +181,39 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Initialize the contract by minting the single Aminal NFT to itself
+     * @dev Initialize the contract by minting the single Aminal NFT to itself (backward compatible)
      * @dev This function can only be called once and makes the Aminal self-sovereign
      * @param uri The URI for the token's metadata
      * @return tokenId The ID of the newly minted token (always 1)
      */
     function initialize(string memory uri) external returns (uint256) {
+        GeneReference[8] memory emptyGenes;
+        return initialize(uri, emptyGenes);
+    }
+
+    /**
+     * @dev Initialize the contract by minting the single Aminal NFT to itself and setting gene references
+     * @dev This function can only be called once and makes the Aminal self-sovereign
+     * @param uri The URI for the token's metadata (can be empty as we'll generate it from genes)
+     * @param genes Array of gene references in order: back, arm, tail, ears, body, face, mouth, misc
+     * @return tokenId The ID of the newly minted token (always 1)
+     */
+    function initialize(string memory uri, GeneReference[8] memory genes) public returns (uint256) {
         if (minted) revert AlreadyMinted();
         if (initialized) revert AlreadyInitialized();
         
         initialized = true;
         minted = true;
+        
+        // Set the immutable gene references
+        backGene = genes[0];
+        armGene = genes[1];
+        tailGene = genes[2];
+        earsGene = genes[3];
+        bodyGene = genes[4];
+        faceGene = genes[5];
+        mouthGene = genes[6];
+        miscGene = genes[7];
         
         // Mint to self - the Aminal owns itself!
         _safeMint(address(this), TOKEN_ID);
@@ -207,6 +252,71 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
+     * @dev Compose the Aminal's appearance from its GeneNFTs
+     * @return The composed SVG as a string
+     */
+    function composeAminal() public view returns (string memory) {
+        // Base body (if gene is set)
+        string memory composition = "";
+        
+        // Add body base layer
+        if (bodyGene.geneContract != address(0)) {
+            composition = string.concat(
+                composition,
+                _createGeneImage(bodyGene, 50, 50, 100, 100)
+            );
+        } else {
+            // Default body if no gene
+            composition = GeneRenderer.svgImage(
+                50, 50, 100, 100,
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100"><circle cx="0" cy="0" r="40" fill="#FFE4B5" stroke="#000" stroke-width="2"/></svg>'
+            );
+        }
+        
+        // Layer other traits
+        if (backGene.geneContract != address(0)) {
+            composition = string.concat(composition, _createGeneImage(backGene, 0, 0, 200, 200));
+        }
+        if (tailGene.geneContract != address(0)) {
+            composition = string.concat(composition, _createGeneImage(tailGene, 100, 100, 60, 80));
+        }
+        if (earsGene.geneContract != address(0)) {
+            composition = string.concat(composition, _createGeneImage(earsGene, 50, 0, 100, 60));
+        }
+        if (faceGene.geneContract != address(0)) {
+            composition = string.concat(composition, _createGeneImage(faceGene, 60, 60, 80, 80));
+        }
+        if (mouthGene.geneContract != address(0)) {
+            composition = string.concat(composition, _createGeneImage(mouthGene, 70, 90, 60, 40));
+        }
+        if (armGene.geneContract != address(0)) {
+            composition = string.concat(composition, _createGeneImage(armGene, 20, 70, 160, 60));
+        }
+        if (miscGene.geneContract != address(0)) {
+            composition = string.concat(composition, _createGeneImage(miscGene, 0, 0, 200, 200));
+        }
+        
+        return GeneRenderer.svg("0 0 200 200", composition);
+    }
+
+    /**
+     * @dev Create an image element from a gene reference
+     */
+    function _createGeneImage(
+        GeneReference memory gene,
+        int256 x,
+        int256 y,
+        uint256 width,
+        uint256 height
+    ) private view returns (string memory) {
+        try GeneNFT(gene.geneContract).gene(gene.tokenId) returns (string memory svg) {
+            return GeneRenderer.svgImage(x, y, width, height, svg);
+        } catch {
+            return ""; // Return empty if gene can't be read
+        }
+    }
+
+    /**
      * @dev Check if a token exists
      * @param tokenId The token ID to check
      * @return True if the token exists, false otherwise
@@ -223,14 +333,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         return traits;
     }
 
-    /**
-     * @dev Override tokenURI to return the full URI for a token
-     * @param tokenId The token ID to get the URI for
-     * @return The complete URI for the token
-     */
-    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
 
     /**
      * @dev Override _baseURI to return the base URI
@@ -414,6 +516,39 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         bytes calldata /* data */
     ) external pure override returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /**
+     * @dev Override tokenURI to generate metadata from composed GeneNFTs
+     * @param tokenId The token ID (always 1 for Aminals)
+     * @return The complete data URI with metadata
+     */
+    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+        if (!_exists(tokenId)) revert InvalidParameters();
+        
+        // Compose the Aminal SVG from its genes
+        string memory composedSvg = composeAminal();
+        string memory imageDataURI = GeneRenderer.svgToBase64DataURI(composedSvg);
+        
+        // Build the metadata
+        string memory metadata = GeneRenderer.generateMetadata(
+            name(),  // Use the Aminal's name
+            string.concat("A self-sovereign Aminal with energy: ", energy.toString(), " and total love: ", totalLove.toString()),
+            imageDataURI,
+            "Aminal",
+            "Self-Sovereign"
+        );
+        
+        return GeneRenderer.jsonToBase64DataURI(metadata);
+    }
+
+    /**
+     * @dev Check if a token exists
+     * @param tokenId The token ID to check
+     * @return True if the token exists
+     */
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return tokenId == TOKEN_ID && minted;
     }
 
     /**

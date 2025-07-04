@@ -175,6 +175,6 @@ contract AminalComposerAdvanced {
             miscId: 0
         });
         
-        return composeAminalWithPositions(geneContract, traits);
+        return this.composeAminalWithPositions(geneContract, traits);
     }
 }
