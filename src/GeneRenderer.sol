@@ -14,6 +14,43 @@ library GeneRenderer {
     using LibString for string;
 
     /**
+     * @dev Generate tokenURI for a GeneNFT
+     * @param name The gene name
+     * @param traitType The trait type (back, arm, tail, etc.)
+     * @param svg The SVG content
+     * @param attributes Additional attributes for metadata
+     * @return The complete data URI with metadata
+     */
+    function geneTokenURI(
+        string memory name,
+        string memory traitType,
+        string memory svg,
+        string memory attributes
+    ) internal pure returns (string memory) {
+        string memory imageDataURI = svgToBase64DataURI(svg);
+        
+        string memory metadata = string.concat(
+            '{"name":"',
+            name,
+            '","description":"A GeneNFT trait of type: ',
+            traitType,
+            '","image":"',
+            imageDataURI,
+            '","attributes":[{"trait_type":"Type","value":"',
+            traitType,
+            '"}'
+        );
+        
+        if (bytes(attributes).length > 0) {
+            metadata = string.concat(metadata, ',', attributes);
+        }
+        
+        metadata = string.concat(metadata, ']}');
+        
+        return jsonToBase64DataURI(metadata);
+    }
+
+    /**
      * @dev Generate an SVG rectangle element
      */
     function rect(

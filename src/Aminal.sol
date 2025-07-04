@@ -14,6 +14,7 @@ import {ISkill} from "src/interfaces/ISkill.sol";
 import {IGeneStaking} from "src/interfaces/IGeneStaking.sol";
 import {GeneNFT} from "src/GeneNFT.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
+import {AminalRenderer} from "src/AminalRenderer.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
 
@@ -98,6 +99,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /// @dev VRGDA contract for calculating feeding costs
     AminalVRGDA public immutable vrgda;
+    
+    /// @dev Renderer contract for generating metadata
+    AminalRenderer public immutable renderer;
 
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
@@ -178,6 +182,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
             30e18,            // Low asymptote for very early curve activation
             30e18             // Large time scale for very smooth transition
         );
+        
+        // Deploy the renderer for this Aminal
+        renderer = new AminalRenderer();
     }
 
     /**
@@ -519,27 +526,13 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Override tokenURI to generate metadata from composed GeneNFTs
+     * @dev Override tokenURI to use the renderer for metadata generation
      * @param tokenId The token ID (always 1 for Aminals)
      * @return The complete data URI with metadata
      */
     function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         if (!_exists(tokenId)) revert InvalidParameters();
-        
-        // Compose the Aminal SVG from its genes
-        string memory composedSvg = composeAminal();
-        string memory imageDataURI = GeneRenderer.svgToBase64DataURI(composedSvg);
-        
-        // Build the metadata
-        string memory metadata = GeneRenderer.generateMetadata(
-            name(),  // Use the Aminal's name
-            string.concat("A self-sovereign Aminal with energy: ", energy.toString(), " and total love: ", totalLove.toString()),
-            imageDataURI,
-            "Aminal",
-            "Self-Sovereign"
-        );
-        
-        return GeneRenderer.jsonToBase64DataURI(metadata);
+        return renderer.tokenURI(this, tokenId);
     }
 
     /**
