@@ -5,10 +5,10 @@ import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
-import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
+import {Skill} from "src/Skill.sol";
 
 // Proper skill implementation
-contract ValidSkill is ISkill {
+contract ValidSkill is Skill {
     event SkillExecuted(string message);
     
     function action1() external {
@@ -34,11 +34,6 @@ contract ValidSkill is ISkill {
         
         return 1; // Default cost
     }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
-    }
 }
 
 // Contract without ISkill interface
@@ -49,18 +44,13 @@ contract NonSkillContract {
 }
 
 // Skill that reverts on cost query
-contract FaultySkill is ISkill {
+contract FaultySkill is Skill {
     function doSomething() external pure returns (bool) {
         return true;
     }
     
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         revert("Cost calculation failed");
-    }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
     }
 }
 
@@ -234,7 +224,7 @@ contract AminalSkillsSimplifiedTest is Test {
 }
 
 // Helper contracts
-contract ExcessiveCostSkill is ISkill {
+contract ExcessiveCostSkill is Skill {
     function expensiveAction() external pure returns (bool) {
         return true;
     }
@@ -242,14 +232,9 @@ contract ExcessiveCostSkill is ISkill {
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 999999;
     }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
-    }
 }
 
-contract ZeroCostSkill is ISkill {
+contract ZeroCostSkill is Skill {
     function freeAction() external pure returns (string memory) {
         return "Free!";
     }
@@ -257,24 +242,14 @@ contract ZeroCostSkill is ISkill {
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 0;
     }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
-    }
 }
 
-contract RevertingSkill is ISkill {
+contract RevertingSkill is Skill {
     function failingAction() external pure {
         revert("Action failed!");
     }
     
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 10;
-    }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
     }
 }

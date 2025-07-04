@@ -5,10 +5,10 @@ import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
-import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
+import {Skill} from "src/Skill.sol";
 
 // Skill that expects ETH
-contract GreedySkill is ISkill {
+contract GreedySkill is Skill {
     uint256 public ethReceived;
     
     function payableAction() external payable {
@@ -28,15 +28,10 @@ contract GreedySkill is ISkill {
         }
         return 1;
     }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
-    }
 }
 
 // Malicious skill trying to drain funds
-contract MaliciousSkill is ISkill {
+contract MaliciousSkill is Skill {
     address payable public attacker;
     
     constructor() {
@@ -55,11 +50,6 @@ contract MaliciousSkill is ISkill {
     
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 5; // Low cost to encourage usage
-    }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
     }
 }
 

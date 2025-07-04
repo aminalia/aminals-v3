@@ -5,10 +5,10 @@ import {Test} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
-import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
+import {Skill} from "src/Skill.sol";
 
 // Malicious skill that attempts reentrancy
-contract ReentrantSkill is ISkill {
+contract ReentrantSkill is Skill {
     Aminal public aminal;
     uint256 public attackCount;
     bool public reentrancyAttempted;
@@ -34,15 +34,10 @@ contract ReentrantSkill is ISkill {
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 10;
     }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
-    }
 }
 
 // Safe skill for testing legitimate calls
-contract SafeSkill is ISkill {
+contract SafeSkill is Skill {
     uint256 public callCount;
     
     function action() external {
@@ -51,11 +46,6 @@ contract SafeSkill is ISkill {
     
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 5;
-    }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
     }
 }
 
@@ -160,7 +150,7 @@ contract AminalReentrancySimplifiedTest is Test {
 }
 
 // Skill that chains to another reentrant skill
-contract ChainedReentrantSkill is ISkill {
+contract ChainedReentrantSkill is Skill {
     Aminal public aminal;
     address public otherSkill;
     
@@ -177,10 +167,5 @@ contract ChainedReentrantSkill is ISkill {
     
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 15;
-    }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
     }
 }

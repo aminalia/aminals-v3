@@ -6,6 +6,7 @@ import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
 import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
+import {Skill} from "src/Skill.sol";
 import {ERC165Checker} from "lib/openzeppelin-contracts/contracts/utils/introspection/ERC165Checker.sol";
 
 /**
@@ -54,14 +55,9 @@ contract ERC165CheckerDemo is Test {
 }
 
 // Proper implementation
-contract SkillWithProperEIP165 is ISkill {
+contract SkillWithProperEIP165 is Skill {
     function skillEnergyCost(bytes calldata) external pure returns (uint256) {
         return 50;
-    }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
     }
 }
 
@@ -183,7 +179,7 @@ contract AminalSkillsERC165CheckerTest is Test {
 }
 
 // Skill implementations for testing
-contract ProperSkillWithERC165Checker is ISkill {
+contract ProperSkillWithERC165Checker is Skill {
     function performAction() external pure returns (string memory) {
         return "Action performed!";
     }
@@ -194,11 +190,6 @@ contract ProperSkillWithERC165Checker is ISkill {
             return 75;
         }
         return 1;
-    }
-    
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(ISkill).interfaceId || 
-               interfaceId == type(IERC165).interfaceId;
     }
 }
 
