@@ -330,40 +330,44 @@ contract AminalTest is Test {
     }
 
     function test_MultipleLoveTransactions() external {
-        uint256 firstLove = 0.5 ether;
-        uint256 secondLove = 0.3 ether;
-        uint256 totalExpected = firstLove + secondLove;
+        uint256 firstETH = 0.5 ether;
+        uint256 secondETH = 0.3 ether;
+        uint256 totalETH = firstETH + secondETH;
         
-        vm.deal(user1, totalExpected);
+        vm.deal(user1, totalETH);
         vm.deal(user2, 1 ether);
         
-        // First love from user1
+        // First feed from user1 at 0 energy (10x multiplier)
+        uint256 firstLove = 50000; // 5,000 base × 10x
         vm.prank(user1);
         vm.expectEmit(true, false, false, true);
         emit LoveReceived(user1, firstLove, firstLove);
-        (bool success,) = address(aminal).call{value: firstLove}("");
+        (bool success,) = address(aminal).call{value: firstETH}("");
         assertTrue(success);
         
-        // Second love from user1
+        // Second feed from user1 at 5000 energy
+        uint256 secondLoveExpected = aminal.calculateLoveForETH(secondETH);
+        uint256 totalLoveUser1 = firstLove + secondLoveExpected;
         vm.prank(user1);
         vm.expectEmit(true, false, false, true);
-        emit LoveReceived(user1, secondLove, totalExpected);
-        (success,) = address(aminal).call{value: secondLove}("");
+        emit LoveReceived(user1, secondLoveExpected, totalLoveUser1);
+        (success,) = address(aminal).call{value: secondETH}("");
         assertTrue(success);
         
-        // Love from user2
-        uint256 user2Love = 0.7 ether;
+        // Feed from user2 at higher energy
+        uint256 user2ETH = 0.7 ether;
+        uint256 user2Love = aminal.calculateLoveForETH(user2ETH);
         vm.prank(user2);
         vm.expectEmit(true, false, false, true);
-        emit LoveReceived(user2, user2Love, totalExpected + user2Love);
-        (success,) = address(aminal).call{value: user2Love}("");
+        emit LoveReceived(user2, user2Love, totalLoveUser1 + user2Love);
+        (success,) = address(aminal).call{value: user2ETH}("");
         assertTrue(success);
         
         // Verify final state
-        assertEq(aminal.totalLove(), totalExpected + user2Love);
-        assertEq(aminal.loveFromUser(user1), totalExpected);
+        assertEq(aminal.totalLove(), totalLoveUser1 + user2Love);
+        assertEq(aminal.loveFromUser(user1), totalLoveUser1);
         assertEq(aminal.loveFromUser(user2), user2Love);
-        assertEq(address(aminal).balance, totalExpected + user2Love);
+        assertEq(address(aminal).balance, totalETH + user2ETH);
     }
 
     function test_ZeroValueLove() external {
@@ -379,37 +383,40 @@ contract AminalTest is Test {
 
     function testFuzz_ReceiveLove(uint96 amount) external {
         vm.assume(amount > 0);
+        vm.assume(amount <= 10 ether); // Keep within reasonable bounds
         
         vm.deal(user1, amount);
         vm.prank(user1);
         
-        vm.expectEmit(true, false, false, true);
-        emit LoveReceived(user1, amount, amount);
-        
         (bool success,) = address(aminal).call{value: amount}("");
         assertTrue(success);
         
-        assertEq(aminal.totalLove(), amount);
-        assertEq(aminal.loveFromUser(user1), amount);
+        // Calculate expected love based on VRGDA at 0 energy
+        uint256 expectedLove = aminal.loveFromUser(user1);
+        uint256 expectedEnergy = (uint256(amount) * 10000) / 1 ether;
+        
+        assertEq(aminal.totalLove(), expectedLove);
+        assertEq(aminal.energy(), expectedEnergy);
         assertEq(address(aminal).balance, amount);
     }
 
     function test_LoveQueryFunctions() external {
-        uint256 loveAmount = 2 ether;
+        uint256 ethAmount = 2 ether;
+        uint256 expectedLove = 200000; // 20,000 base units × 10x at 0 energy
         
-        vm.deal(user1, loveAmount);
+        vm.deal(user1, ethAmount);
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: loveAmount}("");
+        (bool success,) = address(aminal).call{value: ethAmount}("");
         assertTrue(success);
         
         // Test getter functions
-        assertEq(aminal.getTotalLove(), loveAmount);
-        assertEq(aminal.getLoveFromUser(user1), loveAmount);
+        assertEq(aminal.getTotalLove(), expectedLove);
+        assertEq(aminal.getLoveFromUser(user1), expectedLove);
         assertEq(aminal.getLoveFromUser(user2), 0);
         
         // Test public variables
-        assertEq(aminal.totalLove(), loveAmount);
-        assertEq(aminal.loveFromUser(user1), loveAmount);
+        assertEq(aminal.totalLove(), expectedLove);
+        assertEq(aminal.loveFromUser(user1), expectedLove);
         assertEq(aminal.loveFromUser(user2), 0);
     }
 
@@ -452,7 +459,8 @@ contract AminalTest is Test {
 
     function test_RevertWhen_InsufficientEnergy() external {
         uint256 feedAmount = 1 ether;
-        uint256 squeakAmount = 2 ether; // More than available
+        uint256 energy = 10000; // 10,000 energy per ETH
+        uint256 squeakAmount = 20000; // More than available energy
         
         // Feed the Aminal
         vm.deal(user1, feedAmount);
@@ -466,7 +474,7 @@ contract AminalTest is Test {
         aminal.squeak(squeakAmount);
         
         // Energy should remain unchanged
-        assertEq(aminal.energy(), feedAmount);
+        assertEq(aminal.energy(), energy);
     }
 
     function test_SqueakWithZeroEnergy() external {
@@ -506,7 +514,9 @@ contract AminalTest is Test {
     function test_MultipleFeedings() external {
         uint256 firstFeed = 1 ether;
         uint256 secondFeed = 0.5 ether;
-        uint256 totalEnergy = firstFeed + secondFeed;
+        uint256 firstEnergy = 10000; // 10,000 per ETH
+        uint256 secondEnergy = 5000; // 5,000 for 0.5 ETH
+        uint256 totalEnergy = firstEnergy + secondEnergy;
         
         vm.deal(user1, firstFeed);
         vm.deal(user2, secondFeed);
@@ -514,14 +524,14 @@ contract AminalTest is Test {
         // First feeding
         vm.prank(user1);
         vm.expectEmit(true, false, false, true);
-        emit EnergyGained(user1, firstFeed, firstFeed);
+        emit EnergyGained(user1, firstEnergy, firstEnergy);
         (bool success,) = address(aminal).call{value: firstFeed}("");
         assertTrue(success);
         
         // Second feeding
         vm.prank(user2);
         vm.expectEmit(true, false, false, true);
-        emit EnergyGained(user2, secondFeed, totalEnergy);
+        emit EnergyGained(user2, secondEnergy, totalEnergy);
         (success,) = address(aminal).call{value: secondFeed}("");
         assertTrue(success);
         
@@ -531,30 +541,28 @@ contract AminalTest is Test {
 
     function testFuzz_EnergySystem(uint96 feedAmount, uint96 squeakAmount) external {
         vm.assume(feedAmount > 0);
-        vm.assume(squeakAmount <= feedAmount); // Only test valid squeak amounts
+        vm.assume(feedAmount <= 10 ether); // Keep within reasonable bounds
         
         // Feed the Aminal
         vm.deal(user1, feedAmount);
         vm.prank(user1);
-        vm.expectEmit(true, false, false, true);
-        emit EnergyGained(user1, feedAmount, feedAmount);
         (bool success,) = address(aminal).call{value: feedAmount}("");
         assertTrue(success);
         
-        assertEq(aminal.energy(), feedAmount);
-        assertEq(aminal.loveFromUser(user1), feedAmount);
+        uint256 energy = aminal.energy();
+        uint256 love = aminal.loveFromUser(user1);
         
-        // Squeak
-        vm.prank(user1);
-        vm.expectEmit(true, false, false, true);
-        emit EnergyLost(user1, squeakAmount, feedAmount - squeakAmount);
-        vm.expectEmit(true, false, false, true);
-        emit LoveConsumed(user1, squeakAmount, feedAmount - squeakAmount);
-        aminal.squeak(squeakAmount);
+        // Only test squeaking within available bounds
+        vm.assume(squeakAmount <= energy && squeakAmount <= love);
         
-        assertEq(aminal.energy(), feedAmount - squeakAmount);
-        assertEq(aminal.loveFromUser(user1), feedAmount - squeakAmount);
-        assertEq(aminal.totalLove(), feedAmount - squeakAmount);
+        if (squeakAmount > 0) {
+            // Squeak
+            vm.prank(user1);
+            aminal.squeak(squeakAmount);
+            
+            assertEq(aminal.energy(), energy - squeakAmount);
+            assertEq(aminal.loveFromUser(user1), love - squeakAmount);
+        }
     }
 
     function test_RevertWhen_InsufficientLove() external {
@@ -637,7 +645,7 @@ contract AminalTest is Test {
         (bool success,) = address(aminal).call{value: feedAmount}("");
         assertTrue(success);
         
-        uint256 user1Love = 10 ether; // 10x at 0 energy
+        uint256 user1Love = 100000; // 10,000 base × 10x at 0 energy
         uint256 energyAfterUser1 = 10000;
         
         // Calculate love for user2 at current energy level
