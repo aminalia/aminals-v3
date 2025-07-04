@@ -751,12 +751,15 @@ Aminals can use skills by calling external functions and consuming energy/love:
 - **Safety**: Reverts if skill call fails or insufficient resources
 - **Per-User Love**: Only the caller's love can be consumed, maintaining individual relationships
 - **Reentrancy Protection**: Uses OpenZeppelin's ReentrancyGuard to prevent exploitation
+- **ETH Protection**: Skills CANNOT spend the Aminal's ETH - all calls are made with 0 value
 
 Implementation:
 - `useSkill(address target, bytes calldata data)`: Execute skill with raw calldata
 - Skill contracts should return energy cost as first 32 bytes
 - Complex return types (structs) will use first 32 bytes as cost
 - Events track skill usage: `SkillUsed(user, target, cost, selector)`
+- **CRITICAL SECURITY**: All skill calls use `{value: 0}` to prevent ETH drainage
+- Exception: Breeding skills will have a separate, controlled mechanism (future feature)
 
 ### Testing Approach
 - Unit tests for all functionality

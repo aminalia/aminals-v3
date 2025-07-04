@@ -305,6 +305,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @dev Falls back to 1 energy/love if no amount is returned or if the call fails to decode
      * @dev Consumes energy and love at a 1:1 ratio based on the returned cost
      * @dev Protected against reentrancy attacks with nonReentrant modifier
+     * @dev SECURITY: Always calls with 0 ETH value to prevent draining funds through skills
      * @param target The contract address to call
      * @param data The raw ABI-encoded calldata for the skill
      */
@@ -313,7 +314,8 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         bytes4 selector = bytes4(data);
         
         // Call the skill and get the energy cost
-        (bool success, bytes memory returnData) = target.call(data);
+        // CRITICAL: Use call with 0 value to prevent spending ETH
+        (bool success, bytes memory returnData) = target.call{value: 0}(data);
         if (!success) revert SkillCallFailed();
         
         // Try to decode the return value as uint256 (energy cost)
