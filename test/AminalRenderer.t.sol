@@ -65,31 +65,11 @@ contract AminalRendererTest is Test {
         assertTrue(bytes(uri).length > 0);
         
         // Test compose function
-        string memory svg = renderer.composeAminal(aminal);
+        string memory svg = aminal.composeAminal();
         console.log("Composed SVG:");
         console.log(svg);
         
         assertTrue(bytes(svg).length > 0);
-        
-        vm.stopPrank();
-    }
-    
-    function test_PreviewComposition() public {
-        vm.startPrank(user);
-        
-        // Mint genes
-        uint256 wingsId = geneNFT.mint(user, "back", "Dragon Wings", DRAGON_WINGS, "Majestic dragon wings");
-        
-        // Create gene reference array for preview
-        Aminal.GeneReference[8] memory genes;
-        genes[0] = Aminal.GeneReference(address(geneNFT), wingsId);
-        
-        // Preview without deploying an Aminal
-        string memory preview = renderer.previewComposition(genes);
-        console.log("Preview SVG:");
-        console.log(preview);
-        
-        assertTrue(bytes(preview).length > 0);
         
         vm.stopPrank();
     }

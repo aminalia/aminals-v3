@@ -14,43 +14,6 @@ library GeneRenderer {
     using LibString for string;
 
     /**
-     * @dev Generate tokenURI for a GeneNFT
-     * @param name The gene name
-     * @param traitType The trait type (back, arm, tail, etc.)
-     * @param svg The SVG content
-     * @param attributes Additional attributes for metadata
-     * @return The complete data URI with metadata
-     */
-    function geneTokenURI(
-        string memory name,
-        string memory traitType,
-        string memory svg,
-        string memory attributes
-    ) internal pure returns (string memory) {
-        string memory imageDataURI = svgToBase64DataURI(svg);
-        
-        string memory metadata = string.concat(
-            '{"name":"',
-            name,
-            '","description":"A GeneNFT trait of type: ',
-            traitType,
-            '","image":"',
-            imageDataURI,
-            '","attributes":[{"trait_type":"Type","value":"',
-            traitType,
-            '"}'
-        );
-        
-        if (bytes(attributes).length > 0) {
-            metadata = string.concat(metadata, ',', attributes);
-        }
-        
-        metadata = string.concat(metadata, ']}');
-        
-        return jsonToBase64DataURI(metadata);
-    }
-
-    /**
      * @dev Generate an SVG rectangle element
      */
     function rect(
@@ -69,28 +32,6 @@ library GeneRenderer {
             width.toString(),
             '" height="',
             height.toString(),
-            '" fill="',
-            fill,
-            '"/>'
-        );
-    }
-
-    /**
-     * @dev Generate an SVG circle element
-     */
-    function circle(
-        uint256 cx,
-        uint256 cy,
-        uint256 r,
-        string memory fill
-    ) internal pure returns (string memory) {
-        return string.concat(
-            '<circle cx="',
-            cx.toString(),
-            '" cy="',
-            cy.toString(),
-            '" r="',
-            r.toString(),
             '" fill="',
             fill,
             '"/>'
@@ -122,19 +63,6 @@ library GeneRenderer {
             '">',
             content,
             '</text>'
-        );
-    }
-
-    /**
-     * @dev Generate an SVG group element with transform
-     */
-    function group(string memory transform, string memory content) internal pure returns (string memory) {
-        return string.concat(
-            '<g transform="',
-            transform,
-            '">',
-            content,
-            '</g>'
         );
     }
 
@@ -246,102 +174,4 @@ library GeneRenderer {
         );
     }
 
-    /**
-     * @dev Compose multiple gene SVGs into a single Aminal using image tags
-     */
-    function composeAminal(
-        string memory bodyBaseSvg,
-        string memory backSvg,
-        string memory tailSvg,
-        string memory earsSvg,
-        string memory faceSvg,
-        string memory mouthSvg,
-        string memory armSvg,
-        string memory miscSvg
-    ) internal pure returns (string memory) {
-        string memory composition = "";
-        
-        // Base body (centered)
-        if (bytes(bodyBaseSvg).length > 0) {
-            composition = string.concat(composition, svgImage(0, 0, 200, 200, bodyBaseSvg));
-        }
-        
-        // Back features (behind body)
-        if (bytes(backSvg).length > 0) {
-            composition = string.concat(composition, svgImage(-50, -50, 300, 300, backSvg));
-        }
-        
-        // Tail (offset to back)
-        if (bytes(tailSvg).length > 0) {
-            composition = string.concat(composition, svgImage(50, 100, 100, 100, tailSvg));
-        }
-        
-        // Ears (on top)
-        if (bytes(earsSvg).length > 0) {
-            composition = string.concat(composition, svgImage(0, -100, 200, 150, earsSvg));
-        }
-        
-        // Face features (centered on face area)
-        if (bytes(faceSvg).length > 0) {
-            composition = string.concat(composition, svgImage(50, 25, 100, 100, faceSvg));
-        }
-        
-        // Mouth (lower face)
-        if (bytes(mouthSvg).length > 0) {
-            composition = string.concat(composition, svgImage(50, 75, 100, 50, mouthSvg));
-        }
-        
-        // Arms (sides)
-        if (bytes(armSvg).length > 0) {
-            composition = string.concat(composition, svgImage(-25, 50, 250, 100, armSvg));
-        }
-        
-        // Misc effects (overlay)
-        if (bytes(miscSvg).length > 0) {
-            composition = string.concat(composition, svgImage(-50, -50, 300, 300, miscSvg));
-        }
-        
-        return svg("0 0 200 200", composition);
-    }
-
-    /**
-     * @dev Create a gradient definition
-     */
-    function linearGradient(
-        string memory id,
-        string memory color1,
-        string memory color2
-    ) internal pure returns (string memory) {
-        return string.concat(
-            '<defs><linearGradient id="',
-            id,
-            '"><stop offset="0%" stop-color="',
-            color1,
-            '"/><stop offset="100%" stop-color="',
-            color2,
-            '"/></linearGradient></defs>'
-        );
-    }
-
-    /**
-     * @dev Create an animated element
-     */
-    function animate(
-        string memory attributeName,
-        string memory values,
-        string memory dur,
-        string memory repeatCount
-    ) internal pure returns (string memory) {
-        return string.concat(
-            '<animate attributeName="',
-            attributeName,
-            '" values="',
-            values,
-            '" dur="',
-            dur,
-            '" repeatCount="',
-            repeatCount,
-            '"/>'
-        );
-    }
 }
