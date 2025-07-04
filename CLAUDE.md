@@ -650,7 +650,8 @@ Self-sovereign ERC721 contract where the NFT owns itself:
 Key functions:
 - `initialize(uri)`: One-time mint to self
 - `receive()`: Accept ETH as love/energy
-- `squeak(amount)`: Consume energy
+- `squeak(amount)`: Consume energy and love equally
+- `useSkill(target, data)`: Call external skills, consuming resources based on return
 - `setBaseURI()`: Only callable by self
 
 #### AminalFactory.sol
@@ -705,7 +706,8 @@ Regular ERC721 NFTs representing genetic traits:
   - Multi-tier energy scaling for gradual curve: sqrt-like from 0-1k, linear from 1k-100k
   - VRGDA price decreases with energy; inverted to create decreasing love multipliers
   - Parameters: 1% decay, 30 asymptote, 30 time scale for extremely smooth transitions
-- **squeak()**: Consumes both energy (global) and love (from caller) at 1:1 ratio
+- **squeak()**: Consumes both energy (global) and love (from caller) equally
+- **useSkill()**: Calls external contracts as skills, consuming energy/love based on return value
 
 ### Incentive Design & Economic Dynamics
 
@@ -739,6 +741,33 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 - **Thresholds**: Hard boundaries at 0.001 and 100 ETH prevent VRGDA calculation edge cases
 - **Energy Scaling**: Non-linear scaling (varying divisors by range) spreads curve evenly across 0.001-100 ETH
 
+### Skills System
+
+Aminals can use skills by calling external functions and consuming energy/love:
+- **Flexible Design**: Any external contract can be a skill provider
+- **Dynamic Cost**: Skills return their energy cost as uint256
+- **Automatic Consumption**: Energy and love consumed equally based on returned cost
+- **Fallback Behavior**: Defaults to 1 energy/love if no cost returned or zero cost
+- **Safety**: Reverts if skill call fails or insufficient resources
+- **Per-User Love**: Only the caller's love can be consumed, maintaining individual relationships
+- **Reentrancy Protection**: Uses OpenZeppelin's ReentrancyGuard to prevent exploitation
+- **ETH Protection**: Skills CANNOT spend the Aminal's ETH - all calls are made with 0 value
+
+Implementation:
+- `useSkill(address target, bytes calldata data)`: Execute skill with raw calldata
+- Skill contracts should return energy cost as uint256
+- **Intelligent Parsing**: AminalSkillParser detects return types and defaults non-uint256 to 1:
+  - Dynamic types (strings, arrays, bytes): Default to 1
+  - Addresses and negative numbers: Default to 1
+  - Multiple return values: Default to 1 (safety)
+  - Booleans: 0→1, 1→1
+  - Reasonable uint256 (1-1,000,000): Used as cost
+- Events track skill usage: `SkillUsed(user, target, cost, selector)`
+- **CRITICAL SECURITY**: All skill calls use `{value: 0}` to prevent ETH drainage
+- **Safety Cap**: Energy costs are capped at min(10000, available energy) to prevent accidents
+- **Minimum Cost**: Always requires at least 1 energy/love to prevent free execution
+- Exception: Breeding skills will have a separate, controlled mechanism (future feature)
+
 ### Testing Approach
 - Unit tests for all functionality
 - Fuzz testing for edge cases
@@ -746,6 +775,7 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 - Transfer prevention testing
 - Energy/love system validation
 - VRGDA mechanics testing
+- Skills system testing with various return types
 - CSV data generation scripts for curve visualization
 </aminals_project>
 

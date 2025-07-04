@@ -5,9 +5,12 @@ import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.s
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
+import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {ERC165Checker} from "lib/openzeppelin-contracts/contracts/utils/introspection/ERC165Checker.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
+import {ISkill} from "src/interfaces/ISkill.sol";
 
 /**
  * @title Aminal
@@ -34,8 +37,9 @@ import {AminalVRGDA} from "src/AminalVRGDA.sol";
  * - COMPOSABLE: Each Aminal can interact independently with other protocols
  * - AUTONOMOUS: Operates as a truly independent digital entity
  */
-contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
+contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     using Strings for uint256;
+    using ERC165Checker for address;
 
     /// @dev The fixed token ID for this Aminal (always 1)
     uint256 public constant TOKEN_ID = 1;
@@ -64,7 +68,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /// @notice Each user builds their own bond with the Aminal through their love contributions
     mapping(address => uint256) public loveFromUser;
 
-    /// @dev Current energy level of this Aminal (global, not per-user)
+    /// @dev Current energy level of this Aminal (global per Aminal, shared by all users)
     /// @notice Energy is shared globally as it represents the Aminal's overall vitality,
     ///         while love is per-user to maintain individual connections and prevent exploitation
     uint256 public energy;
@@ -90,6 +94,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /// @dev Event emitted when love is consumed through squeaking
     event LoveConsumed(address indexed squeaker, uint256 amount, uint256 remainingLove);
 
+    /// @dev Event emitted when a skill is used
+    event SkillUsed(address indexed user, uint256 energyCost, address indexed target, bytes4 indexed selector);
+
     /// @dev Error thrown when trying to mint more than one token
     error AlreadyMinted();
 
@@ -110,6 +117,12 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
 
     /// @dev Error thrown when trying to transfer a non-transferable NFT
     error TransferNotAllowed();
+
+    /// @dev Error thrown when skill call fails
+    error SkillCallFailed();
+    
+    /// @dev Error thrown when target doesn't support ISkill interface
+    error SkillNotSupported();
 
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
@@ -230,8 +243,8 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /**
      * @notice Receive function to accept ETH, track love using VRGDA, and increase energy by fixed amount
      * @dev When ETH is sent to this contract:
-     *      - Energy increases by a fixed rate (10,000 energy per ETH) - shared globally
-     *      - Love received varies based on current energy level via VRGDA - tracked per user
+     *      - Energy increases by a fixed rate (10,000 energy per ETH) - global per Aminal
+     *      - Love received varies based on current energy level via VRGDA - per user per Aminal
      *      - High energy = less love per ETH, Low energy = more love per ETH
      * @dev This design ensures fair resource consumption: users can only squeak using their own love,
      *      preventing free-riding while energy remains a shared resource representing overall health
@@ -274,10 +287,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
 
     /**
      * @notice Make the Aminal squeak, consuming both love and energy
-     * @dev Energy and love both decrease by the specified amount at a 1:1 ratio
+     * @dev Both resources decrease by the specified amount equally
      * @dev Reverts if insufficient energy or if user has insufficient love
-     * @dev Energy is global (shared by all users) while love is per-user, ensuring
-     *      users can only spend their own contributions
+     * @dev Energy is global per Aminal (shared by all users) while love is per user per Aminal,
+     *      ensuring users can only spend their own contributions
      * @param amount The amount of energy and love to consume for squeaking
      */
     function squeak(uint256 amount) external {
@@ -290,6 +303,64 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
         
         emit EnergyLost(msg.sender, amount, energy);
         emit LoveConsumed(msg.sender, amount, loveFromUser[msg.sender]);
+    }
+
+    /**
+     * @notice Use a skill by calling an external function and consuming energy/love
+     * @dev Only works with contracts implementing the ISkill interface
+     * @dev Consumes resources equally based on the cost:
+     *      - Energy: Deducted from global pool (per Aminal, shared by all users)
+     *      - Love: Deducted from caller's personal love balance (per user per Aminal)
+     * @dev Protected against reentrancy attacks with nonReentrant modifier
+     * @dev SECURITY: Always calls with 0 ETH value to prevent draining funds through skills
+     * @param target The contract address to call
+     * @param data The raw ABI-encoded calldata for the skill
+     */
+    function useSkill(address target, bytes calldata data) external nonReentrant {
+        // Check if the target implements ISkill interface
+        if (!target.supportsInterface(type(ISkill).interfaceId)) {
+            revert SkillNotSupported();
+        }
+        
+        // Extract function selector for event
+        bytes4 selector = bytes4(data);
+        
+        // Get the cost from the skill contract
+        uint256 energyCost;
+        try ISkill(target).skillCost(data) returns (uint256 cost) {
+            energyCost = cost;
+        } catch {
+            // If cost query fails, default to 1
+            energyCost = 1;
+        }
+        
+        // Cap at a reasonable maximum to prevent accidental huge costs
+        if (energyCost > 10000) {
+            energyCost = energy > 10000 ? 10000 : energy;
+        }
+        
+        // Ensure minimum cost of 1
+        if (energyCost == 0) {
+            energyCost = 1;
+        }
+        
+        // Check resources before execution
+        if (energy < energyCost) revert InsufficientEnergy();
+        if (loveFromUser[msg.sender] < energyCost) revert InsufficientLove();
+        
+        // Execute the skill first (before consuming resources)
+        // CRITICAL: Use call with 0 value to prevent spending ETH
+        (bool success,) = target.call{value: 0}(data);
+        if (!success) revert SkillCallFailed();
+        
+        // Only consume resources after successful execution
+        energy -= energyCost;
+        loveFromUser[msg.sender] -= energyCost;
+        totalLove -= energyCost;
+        
+        emit EnergyLost(msg.sender, energyCost, energy);
+        emit LoveConsumed(msg.sender, energyCost, loveFromUser[msg.sender]);
+        emit SkillUsed(msg.sender, energyCost, target, selector);
     }
 
     /**
