@@ -66,7 +66,7 @@ contract AminalFactoryTest is Test {
         ITraits.Traits memory traits = createSampleTraits("Fire");
         
         vm.prank(owner);
-        address aminalContract = factory.createAminal(user1, name, symbol, description, tokenURI, traits);
+        address aminalContract = factory.createAminal(name, symbol, description, tokenURI, traits);
         
         assertTrue(aminalContract != address(0));
         assertEq(factory.totalAminals(), 1);
@@ -86,34 +86,40 @@ contract AminalFactoryTest is Test {
         assertEq(aminal.totalSupply(), 1);
     }
 
-    function test_RevertWhen_CreateAminalWithZeroAddress() external {
-        vm.prank(owner);
-        vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(address(0), "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+    function test_CreateAminalWithZeroAddress() external {
+        // Zero address is now acceptable since Aminals always own themselves
+        vm.prank(user1);
+        address aminalContract = factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        
+        Aminal aminal = Aminal(payable(aminalContract));
+        assertEq(aminal.ownerOf(1), aminalContract); // Aminal owns itself
     }
 
     function test_RevertWhen_CreateAminalWithEmptyName() external {
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(user1, "", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        factory.createAminal("", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
     }
 
     function test_RevertWhen_CreateAminalWithEmptySymbol() external {
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(user1, "Dragon", "", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        factory.createAminal("Dragon", "", "A dragon", "dragon.json", createSampleTraits("Dragon"));
     }
 
     function test_RevertWhen_CreateAminalWithEmptyTokenURI() external {
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "", createSampleTraits("Dragon"));
+        factory.createAminal("Dragon", "DRAGON", "A dragon", "", createSampleTraits("Dragon"));
     }
 
-    function test_RevertWhen_CreateAminalCalledByNonOwner() external {
+    function test_CreateAminalCalledByNonOwner() external {
+        // Now anyone can create Aminals, not just the owner
         vm.prank(user1);
-        vm.expectRevert();
-        factory.createAminal(user2, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        address aminalContract = factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        
+        assertTrue(aminalContract != address(0));
+        assertEq(factory.totalAminals(), 1);
     }
 
     function test_RevertWhen_CreateDuplicateAminal() external {
@@ -123,20 +129,15 @@ contract AminalFactoryTest is Test {
         string memory tokenURI = "firedragon.json";
         
         vm.startPrank(owner);
-        factory.createAminal(user1, name, symbol, description, tokenURI, createSampleTraits("Fire"));
+        factory.createAminal(name, symbol, description, tokenURI, createSampleTraits("Fire"));
         
         bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
         vm.expectRevert(abi.encodeWithSelector(AminalFactory.AminalAlreadyExists.selector, identifier));
-        factory.createAminal(user2, name, symbol, description, tokenURI, createSampleTraits("Fire"));
+        factory.createAminal(name, symbol, description, tokenURI, createSampleTraits("Fire"));
         vm.stopPrank();
     }
 
     function test_BatchCreateAminals() external {
-        address[] memory recipients = new address[](3);
-        recipients[0] = user1;
-        recipients[1] = user2;
-        recipients[2] = user1;
-        
         string[] memory names = new string[](3);
         names[0] = "Fire Dragon";
         names[1] = "Ice Phoenix";
@@ -163,7 +164,7 @@ contract AminalFactoryTest is Test {
         traitsArray[2] = createSampleTraits("Earth");
         
         vm.prank(owner);
-        address[] memory aminalContracts = factory.batchCreateAminals(recipients, names, symbols, descriptions, tokenURIs, traitsArray);
+        address[] memory aminalContracts = factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
         
         assertEq(aminalContracts.length, 3);
         assertEq(factory.totalAminals(), 3);
@@ -187,10 +188,6 @@ contract AminalFactoryTest is Test {
     }
 
     function test_RevertWhen_BatchCreateWithMismatchedArrays() external {
-        address[] memory recipients = new address[](2);
-        recipients[0] = user1;
-        recipients[1] = user2;
-        
         string[] memory names = new string[](3);
         names[0] = "Dragon";
         names[1] = "Phoenix";
@@ -214,11 +211,10 @@ contract AminalFactoryTest is Test {
         
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.batchCreateAminals(recipients, names, symbols, descriptions, tokenURIs, traitsArray);
+        factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
     }
 
     function test_RevertWhen_BatchCreateWithEmptyArrays() external {
-        address[] memory recipients = new address[](0);
         string[] memory names = new string[](0);
         string[] memory symbols = new string[](0);
         string[] memory descriptions = new string[](0);
@@ -228,7 +224,7 @@ contract AminalFactoryTest is Test {
         
         vm.prank(owner);
         vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.batchCreateAminals(recipients, names, symbols, descriptions, tokenURIs, traitsArray);
+        factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
     }
 
     function test_SetPaused() external {
@@ -261,15 +257,13 @@ contract AminalFactoryTest is Test {
         
         vm.prank(owner);
         vm.expectRevert(AminalFactory.FactoryIsPaused.selector);
-        factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
     }
 
     function test_RevertWhen_BatchCreateWhilePaused() external {
         vm.prank(owner);
         factory.setPaused(true);
         
-        address[] memory recipients = new address[](1);
-        recipients[0] = user1;
         string[] memory names = new string[](1);
         names[0] = "Dragon";
         string[] memory symbols = new string[](1);
@@ -284,7 +278,7 @@ contract AminalFactoryTest is Test {
         
         vm.prank(owner);
         vm.expectRevert(AminalFactory.FactoryIsPaused.selector);
-        factory.batchCreateAminals(recipients, names, symbols, descriptions, tokenURIs, traitsArray);
+        factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
     }
 
     function test_SetBaseURI() external {
@@ -296,7 +290,7 @@ contract AminalFactoryTest is Test {
         assertEq(factory.baseTokenURI(), newBaseURI);
         
         vm.prank(owner);
-        address aminalContract = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        address aminalContract = factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
         
         Aminal aminal = Aminal(payable(aminalContract));
         assertEq(aminal.tokenURI(1), string(abi.encodePacked(newBaseURI, "dragon.json")));
@@ -311,7 +305,7 @@ contract AminalFactoryTest is Test {
     function test_MultipleCreators() external {
         // Create first Aminal
         vm.prank(owner);
-        address aminalContract1 = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        address aminalContract1 = factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
         
         // Transfer ownership to user1
         vm.prank(owner);
@@ -319,7 +313,7 @@ contract AminalFactoryTest is Test {
         
         // Create second Aminal with new owner
         vm.prank(user1);
-        address aminalContract2 = factory.createAminal(user2, "Phoenix", "PHOENIX", "A phoenix", "phoenix.json", createSampleTraits("Phoenix"));
+        address aminalContract2 = factory.createAminal("Phoenix", "PHOENIX", "A phoenix", "phoenix.json", createSampleTraits("Phoenix"));
         
         address[] memory createdByOwner = factory.getCreatedByAddress(owner);
         address[] memory createdByUser1 = factory.getCreatedByAddress(user1);
@@ -333,8 +327,8 @@ contract AminalFactoryTest is Test {
 
     function test_GetAminalsByRange() external {
         vm.startPrank(owner);
-        address aminal1 = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
-        address aminal2 = factory.createAminal(user2, "Phoenix", "PHOENIX", "A phoenix", "phoenix.json", createSampleTraits("Phoenix"));
+        address aminal1 = factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        address aminal2 = factory.createAminal("Phoenix", "PHOENIX", "A phoenix", "phoenix.json", createSampleTraits("Phoenix"));
         vm.stopPrank();
         
         address[] memory aminals = factory.getAminalsByRange(1, 2);
@@ -359,7 +353,7 @@ contract AminalFactoryTest is Test {
         assertEq(factory.baseTokenURI(), BASE_URI);
         
         vm.startPrank(owner);
-        address aminal1 = factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        address aminal1 = factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
         vm.stopPrank();
         
         // Verify public variables updated
@@ -377,7 +371,7 @@ contract AminalFactoryTest is Test {
 
     function test_RevertWhen_GetAminalsByRangeInvalidParams() external {
         vm.startPrank(owner);
-        factory.createAminal(user1, "Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
+        factory.createAminal("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
         vm.stopPrank();
         
         // Test invalid start ID (0)
@@ -394,19 +388,17 @@ contract AminalFactoryTest is Test {
     }
 
     function testFuzz_CreateAminal(
-        address to,
         string memory name,
         string memory symbol,
         string memory description,
         string memory tokenURI
     ) external {
-        vm.assume(to != address(0));
         vm.assume(bytes(name).length > 0);
         vm.assume(bytes(symbol).length > 0);
         vm.assume(bytes(tokenURI).length > 0);
         
         vm.prank(owner);
-        address aminalContract = factory.createAminal(to, name, symbol, description, tokenURI, createSampleTraits("Fuzz"));
+        address aminalContract = factory.createAminal(name, symbol, description, tokenURI, createSampleTraits("Fuzz"));
         
         Aminal aminal = Aminal(payable(aminalContract));
         assertEq(aminal.ownerOf(1), aminalContract); // Self-owned
@@ -415,24 +407,21 @@ contract AminalFactoryTest is Test {
     }
 
     function testFuzz_DuplicateCreationReverts(
-        address to1,
-        address to2,
         string memory name,
         string memory symbol,
         string memory description,
         string memory tokenURI
     ) external {
-        vm.assume(to1 != address(0) && to2 != address(0));
         vm.assume(bytes(name).length > 0);
         vm.assume(bytes(symbol).length > 0);
         vm.assume(bytes(tokenURI).length > 0);
         
         vm.startPrank(owner);
-        factory.createAminal(to1, name, symbol, description, tokenURI, createSampleTraits("Fuzz1"));
+        factory.createAminal(name, symbol, description, tokenURI, createSampleTraits("Fuzz1"));
         
         bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
         vm.expectRevert(abi.encodeWithSelector(AminalFactory.AminalAlreadyExists.selector, identifier));
-        factory.createAminal(to2, name, symbol, description, tokenURI, createSampleTraits("Fuzz2"));
+        factory.createAminal(name, symbol, description, tokenURI, createSampleTraits("Fuzz2"));
         vm.stopPrank();
     }
 }

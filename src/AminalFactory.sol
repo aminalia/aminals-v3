@@ -117,7 +117,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * Each Aminal is guaranteed to be unique based on the combination of
      * name, symbol, description, and tokenURI. Duplicate combinations are rejected.
      * 
-     * @param to The address that will receive the NFT (note: Aminal will own itself) (note: the Aminal will own itself)
      * @param name The name of the Aminal (used for contract name)
      * @param symbol The symbol for the Aminal (used for contract symbol)
      * @param description A description of the Aminal (used for uniqueness)
@@ -126,14 +125,13 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function createAminal(
-        address to,
         string memory name,
         string memory symbol,
         string memory description,
         string memory tokenURI,
         ITraits.Traits memory traits
-    ) external onlyOwner whenNotPaused nonReentrant returns (address) {
-        return _createAminal(to, name, symbol, description, tokenURI, traits);
+    ) external whenNotPaused nonReentrant returns (address) {
+        return _createAminal(name, symbol, description, tokenURI, traits);
     }
 
     /**
@@ -156,7 +154,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * - Gas costs are distributed across deployments rather than centralized
      * - Enables true composability with other protocols
      * 
-     * @param to The address that will receive the NFT (note: Aminal will own itself)
      * @param name The name of the Aminal
      * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
@@ -165,14 +162,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function _createAminal(
-        address to,
         string memory name,
         string memory symbol,
         string memory description,
         string memory tokenURI,
         ITraits.Traits memory traits
     ) internal returns (address) {
-        if (to == address(0) || bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
+        // Note: 'to' is ignored since Aminals always own themselves
+        if (bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
             revert InvalidParameters();
         }
 
@@ -216,7 +213,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * - Maintains uniqueness guarantees across the batch
      * - Each Aminal still gets its own contract instance and address
      * 
-     * @param recipients Array of addresses that will receive the NFTs
      * @param names Array of names for the Aminals
      * @param symbols Array of symbols for the Aminals
      * @param descriptions Array of descriptions for the Aminals
@@ -225,26 +221,24 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContracts Array of addresses of the newly deployed Aminal contracts
      */
     function batchCreateAminals(
-        address[] memory recipients,
         string[] memory names,
         string[] memory symbols,
         string[] memory descriptions,
         string[] memory tokenURIs,
         ITraits.Traits[] memory traitsArray
-    ) external onlyOwner whenNotPaused nonReentrant returns (address[] memory) {
-        if (recipients.length != names.length || 
-            recipients.length != symbols.length ||
-            recipients.length != descriptions.length || 
-            recipients.length != tokenURIs.length ||
-            recipients.length != traitsArray.length ||
-            recipients.length == 0) {
+    ) external whenNotPaused nonReentrant returns (address[] memory) {
+        if (names.length != symbols.length ||
+            names.length != descriptions.length || 
+            names.length != tokenURIs.length ||
+            names.length != traitsArray.length ||
+            names.length == 0) {
             revert InvalidParameters();
         }
 
-        address[] memory aminalContracts = new address[](recipients.length);
+        address[] memory aminalContracts = new address[](names.length);
 
-        for (uint256 i = 0; i < recipients.length; i++) {
-            aminalContracts[i] = _createAminal(recipients[i], names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
+        for (uint256 i = 0; i < names.length; i++) {
+            aminalContracts[i] = _createAminal(names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
         }
 
         return aminalContracts;
