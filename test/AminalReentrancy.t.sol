@@ -1,43 +1,58 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {ISkill} from "src/interfaces/ISkill.sol";
+import {Skill} from "src/Skill.sol";
 
-// Malicious contract that attempts reentrancy
-contract ReentrantSkill {
+// Malicious skill that attempts reentrancy
+contract ReentrantSkill is Skill {
     Aminal public aminal;
     uint256 public attackCount;
-    bool public attacking;
+    bool public reentrancyAttempted;
     
-    constructor(Aminal _aminal) {
-        aminal = _aminal;
+    constructor(address _aminal) {
+        aminal = Aminal(payable(_aminal));
     }
     
-    // This skill attempts to re-enter useSkill during execution
-    function maliciousSkill() external returns (uint256) {
+    function attack() external {
         attackCount++;
         
-        if (!attacking) {
-            attacking = true;
-            // Try to call useSkill again (reentrancy attempt)
-            bytes memory data = abi.encodeWithSelector(this.maliciousSkill.selector);
-            try aminal.useSkill(address(this), data) {
+        // Try to call useSkill again (reentrancy attempt)
+        if (attackCount < 3) {
+            reentrancyAttempted = true;
+            try aminal.useSkill(address(this), abi.encodeWithSelector(this.attack.selector)) {
                 // If this succeeds, reentrancy protection failed
             } catch {
-                // Expected - reentrancy should be blocked
+                // Expected - reentrancy should fail
             }
-            attacking = false;
         }
-        
-        return 10; // Cost 10 energy
+    }
+    
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        return 10;
+    }
+}
+
+// Safe skill for testing legitimate calls
+contract SafeSkill is Skill {
+    uint256 public callCount;
+    
+    function action() external {
+        callCount++;
+    }
+    
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        return 5;
     }
 }
 
 contract AminalReentrancyTest is Test {
     Aminal public aminal;
     ReentrantSkill public reentrantSkill;
+    SafeSkill public safeSkill;
     
     address public user1 = makeAddr("user1");
     
@@ -54,37 +69,40 @@ contract AminalReentrancyTest is Test {
             misc: "sparkles"
         });
         
-        // Deploy contracts
+        // Deploy Aminal
         aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits);
         aminal.initialize("test-uri");
         
-        reentrantSkill = new ReentrantSkill(aminal);
+        // Deploy skills
+        reentrantSkill = new ReentrantSkill(address(aminal));
+        safeSkill = new SafeSkill();
         
         // Fund user
         deal(user1, 10 ether);
     }
     
     function test_ReentrancyProtection() public {
-        // Feed the Aminal to give it energy and love
+        // Feed the Aminal
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
+        // Attempt reentrancy attack
+        bytes memory attackData = abi.encodeWithSelector(ReentrantSkill.attack.selector);
         
-        // Call the malicious skill
-        bytes memory skillData = abi.encodeWithSelector(ReentrantSkill.maliciousSkill.selector);
-        
+        // The skill will execute and try to reenter, which will fail
         vm.prank(user1);
-        aminal.useSkill(address(reentrantSkill), skillData);
+        aminal.useSkill(address(reentrantSkill), attackData);
         
-        // Should have only executed once despite reentrancy attempt
-        assertEq(reentrantSkill.attackCount(), 1, "Skill should only execute once");
+        // Attack should have been called
+        assertEq(reentrantSkill.attackCount(), 1);
+        assertTrue(reentrantSkill.reentrancyAttempted(), "Should have attempted reentrancy");
         
-        // Should have consumed energy/love only once
-        assertEq(aminal.energy(), initialEnergy - 10);
-        assertEq(aminal.loveFromUser(user1), initialLove - 10);
+        // Energy SHOULD have been consumed for the successful first call
+        assertEq(aminal.energy(), 9990); // 10000 - 10
+        
+        // The reentrancy protection prevents attackCount from going above 1
+        // because the nested call fails
     }
     
     function test_LegitimateSequentialCalls() public {
@@ -93,23 +111,61 @@ contract AminalReentrancyTest is Test {
         (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
+        bytes memory actionData = abi.encodeWithSelector(SafeSkill.action.selector);
         
-        // Make two legitimate sequential calls
-        bytes memory skillData = abi.encodeWithSelector(ReentrantSkill.maliciousSkill.selector);
+        // Make multiple legitimate sequential calls
+        vm.startPrank(user1);
+        
+        aminal.useSkill(address(safeSkill), actionData);
+        assertEq(safeSkill.callCount(), 1);
+        assertEq(aminal.energy(), 9995); // 10000 - 5
+        
+        aminal.useSkill(address(safeSkill), actionData);
+        assertEq(safeSkill.callCount(), 2);
+        assertEq(aminal.energy(), 9990); // 9995 - 5
+        
+        aminal.useSkill(address(safeSkill), actionData);
+        assertEq(safeSkill.callCount(), 3);
+        assertEq(aminal.energy(), 9985); // 9990 - 5
+        
+        vm.stopPrank();
+    }
+    
+    function test_ProtectionAcrossMultipleContracts() public {
+        // Test that reentrancy protection works even through different contracts
+        ChainedReentrantSkill chainedSkill = new ChainedReentrantSkill(address(aminal), address(reentrantSkill));
+        
+        // Feed the Aminal
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: 1 ether}("");
+        assertTrue(success);
+        
+        // Try chained reentrancy
+        bytes memory chainData = abi.encodeWithSelector(ChainedReentrantSkill.chainAttack.selector);
         
         vm.prank(user1);
-        aminal.useSkill(address(reentrantSkill), skillData);
-        
-        vm.prank(user1);
-        aminal.useSkill(address(reentrantSkill), skillData);
-        
-        // Both calls should succeed (nested call is blocked by reentrancy guard)
-        assertEq(reentrantSkill.attackCount(), 2, "Should count two successful calls (nested attempts blocked)");
-        
-        // Should have consumed energy/love twice
-        assertEq(aminal.energy(), initialEnergy - 20);
-        assertEq(aminal.loveFromUser(user1), initialLove - 20);
+        vm.expectRevert(Aminal.SkillCallFailed.selector);
+        aminal.useSkill(address(chainedSkill), chainData);
+    }
+}
+
+// Skill that chains to another reentrant skill
+contract ChainedReentrantSkill is Skill {
+    Aminal public aminal;
+    address public otherSkill;
+    
+    constructor(address _aminal, address _otherSkill) {
+        aminal = Aminal(payable(_aminal));
+        otherSkill = _otherSkill;
+    }
+    
+    function chainAttack() external {
+        // Try to call another skill that will attempt reentrancy
+        bytes memory data = abi.encodeWithSelector(ReentrantSkill.attack.selector);
+        aminal.useSkill(otherSkill, data);
+    }
+    
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        return 15;
     }
 }

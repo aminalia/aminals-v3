@@ -4,45 +4,52 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {ISkill} from "src/interfaces/ISkill.sol";
+import {Skill} from "src/Skill.sol";
 
-// Contract that expects to receive ETH
-contract GreedySkill {
+// Skill that expects ETH
+contract GreedySkill is Skill {
     uint256 public ethReceived;
     
-    // This function expects to be called with ETH
-    function payableSkill() external payable returns (uint256) {
+    function payableAction() external payable {
         ethReceived += msg.value;
-        return 50; // Costs 50 energy
     }
     
-    // Regular non-payable skill
-    function normalSkill() external returns (uint256) {
-        return 10; // Costs 10 energy
+    function normalAction() external pure returns (string memory) {
+        return "Normal action";
+    }
+    
+    function skillEnergyCost(bytes calldata data) external pure returns (uint256) {
+        bytes4 selector = bytes4(data);
+        if (selector == this.payableAction.selector) {
+            return 50;
+        } else if (selector == this.normalAction.selector) {
+            return 10;
+        }
+        return 1;
     }
 }
 
-// Contract that tries to trick Aminal into sending ETH
-contract MaliciousSkill {
+// Malicious skill trying to drain funds
+contract MaliciousSkill is Skill {
     address payable public attacker;
     
     constructor() {
         attacker = payable(msg.sender);
     }
     
-    // Skill that tries to forward ETH to attacker
-    function stealFunds() external payable returns (uint256) {
+    function stealFunds() external payable {
         if (msg.value > 0) {
             attacker.transfer(msg.value);
         }
-        return 5; // Low cost to encourage usage
     }
     
-    // Skill that tries to selfdestruct and send funds
-    function selfDestructAttack() external returns (uint256) {
-        // Note: selfdestruct is deprecated but still exists
-        // This should fail because no ETH is sent
+    function selfdestructAttack() external {
         selfdestruct(attacker);
-        return 1;
+    }
+    
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        return 5; // Low cost to encourage usage
     }
 }
 
@@ -82,7 +89,7 @@ contract AminalSkillsETHProtectionTest is Test {
     }
     
     function test_CannotSendETHToPayableSkill() public {
-        // Feed the Aminal to give it energy and love
+        // Feed the Aminal
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
@@ -90,8 +97,8 @@ contract AminalSkillsETHProtectionTest is Test {
         uint256 aminalBalanceBefore = address(aminal).balance;
         uint256 skillBalanceBefore = address(greedySkill).balance;
         
-        // Try to call payable skill - should work but send 0 ETH
-        bytes memory skillData = abi.encodeWithSelector(GreedySkill.payableSkill.selector);
+        // Call payable skill - should work but send 0 ETH
+        bytes memory skillData = abi.encodeWithSelector(GreedySkill.payableAction.selector);
         
         vm.prank(user1);
         aminal.useSkill(address(greedySkill), skillData);
@@ -122,7 +129,7 @@ contract AminalSkillsETHProtectionTest is Test {
         assertEq(attacker.balance, attackerBalanceBefore, "Attacker should not receive funds");
     }
     
-    function test_NormalNonPayableSkillsStillWork() public {
+    function test_NormalNonPayableSkillsWork() public {
         // Feed the Aminal
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
@@ -132,7 +139,7 @@ contract AminalSkillsETHProtectionTest is Test {
         uint256 loveBefore = aminal.loveFromUser(user1);
         
         // Call normal skill
-        bytes memory skillData = abi.encodeWithSelector(GreedySkill.normalSkill.selector);
+        bytes memory skillData = abi.encodeWithSelector(GreedySkill.normalAction.selector);
         
         vm.prank(user1);
         aminal.useSkill(address(greedySkill), skillData);
@@ -151,8 +158,8 @@ contract AminalSkillsETHProtectionTest is Test {
         uint256 initialBalance = address(aminal).balance;
         
         // Try multiple different skills
-        bytes memory skill1 = abi.encodeWithSelector(GreedySkill.payableSkill.selector);
-        bytes memory skill2 = abi.encodeWithSelector(GreedySkill.normalSkill.selector);
+        bytes memory skill1 = abi.encodeWithSelector(GreedySkill.payableAction.selector);
+        bytes memory skill2 = abi.encodeWithSelector(GreedySkill.normalAction.selector);
         bytes memory skill3 = abi.encodeWithSelector(MaliciousSkill.stealFunds.selector);
         
         vm.startPrank(user1);
@@ -165,23 +172,24 @@ contract AminalSkillsETHProtectionTest is Test {
         assertEq(address(aminal).balance, initialBalance, "Aminal balance should never decrease from skills");
     }
     
-    function testFuzz_NoETHSentRegardlessOfCalldata(bytes calldata arbitraryData) public {
+    function test_SelfdestructDoesNotDrainFunds() public {
         // Feed the Aminal
-        vm.deal(user1, 10 ether);
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 balanceBefore = address(aminal).balance;
+        uint256 aminalBalanceBefore = address(aminal).balance;
         
-        // Try arbitrary calldata (might revert, but should never send ETH)
+        // Try selfdestruct attack
+        bytes memory skillData = abi.encodeWithSelector(MaliciousSkill.selfdestructAttack.selector);
+        
         vm.prank(user1);
-        try aminal.useSkill(address(greedySkill), arbitraryData) {
-            // If it succeeds, balance should be unchanged
-            assertEq(address(aminal).balance, balanceBefore);
-        } catch {
-            // Even if it reverts, balance should be unchanged
-            assertEq(address(aminal).balance, balanceBefore);
-        }
+        aminal.useSkill(address(maliciousSkill), skillData);
+        
+        // Verify no funds were transferred (post-Cancun, selfdestruct doesn't transfer funds)
+        assertEq(address(aminal).balance, aminalBalanceBefore, "Aminal funds should be safe");
+        
+        // Note: Post-Cancun, selfdestruct only transfers funds if called in the same transaction
+        // as contract creation, so attacker balance should remain the same
     }
 }

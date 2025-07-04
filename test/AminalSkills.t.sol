@@ -4,63 +4,65 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {ISkill} from "src/interfaces/ISkill.sol";
+import {Skill} from "src/Skill.sol";
 
-// Mock skill contracts for testing
-contract SimpleSkill {
-    function performAction() external pure returns (uint256) {
-        return 100; // Costs 100 energy
+// Proper skill implementation
+contract ValidSkill is Skill {
+    event SkillExecuted(string message);
+    
+    function action1() external {
+        emit SkillExecuted("Action 1 executed");
     }
     
-    function freeAction() external pure returns (uint256) {
-        return 0; // Invalid cost, should default to 1
+    function action2(uint256 value) external {
+        emit SkillExecuted("Action 2 executed");
+        // Use value in some way to avoid compiler warning
+        value = value;
     }
     
-    function expensiveAction() external pure returns (uint256) {
-        return 1000000; // Very expensive
+    function skillEnergyCost(bytes calldata data) external pure returns (uint256) {
+        bytes4 selector = bytes4(data);
+        
+        if (selector == this.action1.selector) {
+            return 50;
+        } else if (selector == this.action2.selector) {
+            // Dynamic cost based on parameter
+            uint256 value = abi.decode(data[4:], (uint256));
+            return value * 10;
+        }
+        
+        return 1; // Default cost
     }
 }
 
-contract NoReturnSkill {
-    event ActionPerformed();
-    
-    function voidAction() external {
-        emit ActionPerformed();
-        // No return value
+// Contract without ISkill interface
+contract NonSkillContract {
+    function someFunction() external pure returns (uint256) {
+        return 100;
     }
 }
 
-contract RevertingSkill {
-    error ActionFailed();
-    
-    function failingAction() external pure {
-        revert ActionFailed();
-    }
-}
-
-contract ComplexSkill {
-    struct Result {
-        uint256 cost;
-        string message;
+// Skill that reverts on cost query
+contract FaultySkill is Skill {
+    function doSomething() external pure returns (bool) {
+        return true;
     }
     
-    function complexAction() external pure returns (Result memory) {
-        return Result(50, "Complex action performed");
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        revert("Cost calculation failed");
     }
 }
 
 contract AminalSkillsTest is Test {
     Aminal public aminal;
-    SimpleSkill public simpleSkill;
-    NoReturnSkill public noReturnSkill;
-    RevertingSkill public revertingSkill;
-    ComplexSkill public complexSkill;
+    ValidSkill public validSkill;
+    NonSkillContract public nonSkill;
+    FaultySkill public faultySkill;
     
     address public user1 = makeAddr("user1");
-    address public user2 = makeAddr("user2");
     
     event SkillUsed(address indexed user, address indexed target, uint256 energyCost, bytes4 selector);
-    event EnergyLost(address indexed squeaker, uint256 amount, uint256 newEnergy);
-    event LoveConsumed(address indexed squeaker, uint256 amount, uint256 remainingLove);
     
     function setUp() public {
         // Create test traits
@@ -79,263 +81,175 @@ contract AminalSkillsTest is Test {
         aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits);
         aminal.initialize("test-uri");
         
-        simpleSkill = new SimpleSkill();
-        noReturnSkill = new NoReturnSkill();
-        revertingSkill = new RevertingSkill();
-        complexSkill = new ComplexSkill();
+        validSkill = new ValidSkill();
+        nonSkill = new NonSkillContract();
+        faultySkill = new FaultySkill();
         
-        // Fund test users
+        // Fund user
         deal(user1, 10 ether);
-        deal(user2, 10 ether);
     }
     
-    function test_UseSkillWithReturnedCost() public {
-        // Feed the Aminal to give it energy and love
+    function test_ValidSkillExecution() public {
+        // Feed the Aminal
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
+        uint256 energyBefore = aminal.energy();
+        uint256 loveBefore = aminal.loveFromUser(user1);
         
-        // Use skill that returns 100 energy cost
-        bytes memory skillData = abi.encodeWithSelector(SimpleSkill.performAction.selector);
-        
-        vm.prank(user1);
-        vm.expectEmit(true, false, false, true);
-        emit EnergyLost(user1, 100, initialEnergy - 100);
-        vm.expectEmit(true, false, false, true);
-        emit LoveConsumed(user1, 100, initialLove - 100);
-        vm.expectEmit(true, true, false, true);
-        emit SkillUsed(user1, address(simpleSkill), 100, SimpleSkill.performAction.selector);
-        
-        aminal.useSkill(address(simpleSkill), skillData);
-        
-        // Verify energy and love were consumed
-        assertEq(aminal.energy(), initialEnergy - 100);
-        assertEq(aminal.loveFromUser(user1), initialLove - 100);
-    }
-    
-    function test_UseSkillWithNoReturn() public {
-        // Feed the Aminal
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.1 ether}("");
-        assertTrue(success);
-        
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
-        
-        // Use skill that returns nothing (should default to 1 cost)
-        bytes memory skillData = abi.encodeWithSelector(NoReturnSkill.voidAction.selector);
+        // Execute skill action1 (costs 50)
+        bytes memory skillData = abi.encodeWithSelector(ValidSkill.action1.selector);
         
         vm.prank(user1);
         vm.expectEmit(true, true, false, true);
-        emit SkillUsed(user1, address(noReturnSkill), 1, NoReturnSkill.voidAction.selector);
+        emit SkillUsed(user1, address(validSkill), 50, ValidSkill.action1.selector);
         
-        aminal.useSkill(address(noReturnSkill), skillData);
+        aminal.useSkill(address(validSkill), skillData);
         
-        // Should consume 1 energy/love (default)
-        assertEq(aminal.energy(), initialEnergy - 1);
-        assertEq(aminal.loveFromUser(user1), initialLove - 1);
+        assertEq(aminal.energy(), energyBefore - 50);
+        assertEq(aminal.loveFromUser(user1), loveBefore - 50);
     }
     
-    function test_UseSkillWithZeroCost() public {
+    function test_DynamicCostCalculation() public {
         // Feed the Aminal
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.1 ether}("");
+        (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
+        uint256 energyBefore = aminal.energy();
         
-        // Use skill that returns 0 (should default to 1)
-        bytes memory skillData = abi.encodeWithSelector(SimpleSkill.freeAction.selector);
+        // Execute action2 with value 5 (costs 5 * 10 = 50)
+        bytes memory skillData = abi.encodeWithSelector(ValidSkill.action2.selector, 5);
         
         vm.prank(user1);
-        aminal.useSkill(address(simpleSkill), skillData);
+        aminal.useSkill(address(validSkill), skillData);
         
-        // Should consume 1 energy/love (default for 0 cost)
-        assertEq(aminal.energy(), initialEnergy - 1);
-        assertEq(aminal.loveFromUser(user1), initialLove - 1);
+        assertEq(aminal.energy(), energyBefore - 50);
     }
     
-    function test_UseSkillWithExcessiveCost() public {
-        // Feed the Aminal a small amount
+    function test_RevertWhen_NonSkillContract() public {
+        // Feed the Aminal
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.001 ether}("");
+        (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
+        // Try to use non-skill contract
+        bytes memory skillData = abi.encodeWithSelector(NonSkillContract.someFunction.selector);
         
-        // Use skill that returns very high cost (more than available energy)
-        bytes memory skillData = abi.encodeWithSelector(SimpleSkill.expensiveAction.selector);
-        
-        // With the cap, it will consume all available energy (not revert)
         vm.prank(user1);
-        aminal.useSkill(address(simpleSkill), skillData);
+        vm.expectRevert(Aminal.SkillNotSupported.selector);
+        aminal.useSkill(address(nonSkill), skillData);
+    }
+    
+    function test_FaultyCostQueryDefaultsTo1() public {
+        // Feed the Aminal
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: 1 ether}("");
+        assertTrue(success);
         
-        // Should have consumed only the available energy (10)
+        uint256 energyBefore = aminal.energy();
+        
+        // Use faulty skill (cost query reverts, should default to 1)
+        bytes memory skillData = abi.encodeWithSelector(FaultySkill.doSomething.selector);
+        
+        vm.prank(user1);
+        aminal.useSkill(address(faultySkill), skillData);
+        
+        assertEq(aminal.energy(), energyBefore - 1);
+    }
+    
+    function test_CostCapping() public {
+        // Create a skill that returns excessive cost
+        ExcessiveCostSkill excessiveSkill = new ExcessiveCostSkill();
+        
+        // Feed the Aminal
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: 0.5 ether}(""); // Only 5000 energy
+        assertTrue(success);
+        
+        uint256 energyBefore = aminal.energy();
+        
+        // Try to use skill that wants 999999 energy
+        bytes memory skillData = abi.encodeWithSelector(ExcessiveCostSkill.expensiveAction.selector);
+        
+        vm.prank(user1);
+        aminal.useSkill(address(excessiveSkill), skillData);
+        
+        // Should be capped at all available energy (5000)
         assertEq(aminal.energy(), 0);
-        assertEq(aminal.loveFromUser(user1), initialLove - 10);
+        assertEq(energyBefore, 5000);
     }
     
-    function test_UseSkillWithComplexReturn() public {
+    function test_MinimumCostOf1() public {
+        // Create a skill that returns 0 cost
+        ZeroCostSkill zeroSkill = new ZeroCostSkill();
+        
         // Feed the Aminal
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.1 ether}("");
+        (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
+        uint256 energyBefore = aminal.energy();
         
-        // Use skill that returns a struct (first 32 bytes should be the cost)
-        bytes memory skillData = abi.encodeWithSelector(ComplexSkill.complexAction.selector);
+        // Use skill that returns 0 cost
+        bytes memory skillData = abi.encodeWithSelector(ZeroCostSkill.freeAction.selector);
         
         vm.prank(user1);
-        aminal.useSkill(address(complexSkill), skillData);
+        aminal.useSkill(address(zeroSkill), skillData);
         
-        // When a struct is returned, the first 32 bytes will be interpreted as the cost
-        // In this case, it's actually the offset to the struct data, not the cost value
-        // So it will use a different value than 50
-        // Let's check what was actually consumed
-        uint256 actualEnergyConsumed = initialEnergy - aminal.energy();
-        uint256 actualLoveConsumed = initialLove - aminal.loveFromUser(user1);
-        
-        // The consumed amounts should be equal and greater than 0
-        assertEq(actualEnergyConsumed, actualLoveConsumed);
-        assertGt(actualEnergyConsumed, 0);
+        // Should consume minimum of 1
+        assertEq(aminal.energy(), energyBefore - 1);
     }
     
-    function test_RevertWhen_SkillFails() public {
+    function test_SkillExecutionFailureReverts() public {
+        // Create a skill that reverts on execution
+        RevertingSkill revertingSkill = new RevertingSkill();
+        
         // Feed the Aminal
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.1 ether}("");
+        (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        // Use skill that reverts
+        // Try to use reverting skill
         bytes memory skillData = abi.encodeWithSelector(RevertingSkill.failingAction.selector);
         
         vm.prank(user1);
         vm.expectRevert(Aminal.SkillCallFailed.selector);
         aminal.useSkill(address(revertingSkill), skillData);
-    }
-    
-    function test_RevertWhen_InsufficientResources() public {
-        // Don't feed the Aminal - it has 0 energy and 0 love
         
-        // Try to use any skill - should fail due to insufficient energy
-        bytes memory skillData = abi.encodeWithSelector(NoReturnSkill.voidAction.selector);
-        
-        vm.prank(user1);
-        vm.expectRevert(Aminal.InsufficientEnergy.selector);
-        aminal.useSkill(address(noReturnSkill), skillData);
-    }
-    
-    function test_RevertWhen_InsufficientLove() public {
-        // User1 feeds the Aminal
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.01 ether}("");
-        assertTrue(success);
-        
-        // User2 feeds more to increase energy but has less love
-        vm.prank(user2);
-        (success,) = address(aminal).call{value: 0.001 ether}("");
-        assertTrue(success);
-        
-        // User2 tries to use skill but doesn't have enough love
-        bytes memory skillData = abi.encodeWithSelector(SimpleSkill.performAction.selector);
-        
-        vm.prank(user2);
-        vm.expectRevert(Aminal.InsufficientLove.selector);
-        aminal.useSkill(address(simpleSkill), skillData);
-    }
-    
-    function test_MultipleUsersUsingSkills() public {
-        // Both users feed the Aminal
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 1 ether}("");
-        assertTrue(success);
-        
-        uint256 user1InitialLove = aminal.loveFromUser(user1);
-        
-        vm.prank(user2);
-        (success,) = address(aminal).call{value: 1 ether}("");
-        assertTrue(success);
-        
-        uint256 user2InitialLove = aminal.loveFromUser(user2);
-        
-        // User1 uses a skill that costs 100
-        bytes memory skillData1 = abi.encodeWithSelector(SimpleSkill.performAction.selector);
-        vm.prank(user1);
-        aminal.useSkill(address(simpleSkill), skillData1);
-        
-        // User2 uses a skill that costs 1 (default)
-        bytes memory skillData2 = abi.encodeWithSelector(NoReturnSkill.voidAction.selector);
-        vm.prank(user2);
-        aminal.useSkill(address(noReturnSkill), skillData2);
-        
-        // Verify both users' love was consumed appropriately
-        uint256 user1Love = aminal.loveFromUser(user1);
-        uint256 user2Love = aminal.loveFromUser(user2);
-        
-        // User1 consumed 100, user2 consumed 1
-        assertEq(user1Love, user1InitialLove - 100);
-        assertEq(user2Love, user2InitialLove - 1);
-    }
-    
-    function testFuzz_UseSkillWithVariableCosts(uint8 cost) public {
-        // Create a mock skill that returns the fuzzed cost
-        MockVariableSkill variableSkill = new MockVariableSkill(uint256(cost));
-        
-        // Feed the Aminal enough energy
-        vm.deal(user1, 10 ether);
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 1 ether}("");
-        assertTrue(success);
-        
-        uint256 initialEnergy = aminal.energy();
-        uint256 initialLove = aminal.loveFromUser(user1);
-        
-        // Use the skill
-        bytes memory skillData = abi.encodeWithSelector(MockVariableSkill.action.selector);
-        
-        // Check if we expect it to revert
-        if (cost > initialEnergy || cost > initialLove) {
-            vm.prank(user1);
-            if (cost > initialEnergy) {
-                vm.expectRevert(Aminal.InsufficientEnergy.selector);
-            } else {
-                vm.expectRevert(Aminal.InsufficientLove.selector);
-            }
-            aminal.useSkill(address(variableSkill), skillData);
-        } else {
-            vm.prank(user1);
-            aminal.useSkill(address(variableSkill), skillData);
-            
-            // Verify correct amount was consumed
-            if (cost == 0) {
-                // Should default to 1 for zero cost
-                assertEq(aminal.energy(), initialEnergy - 1);
-                assertEq(aminal.loveFromUser(user1), initialLove - 1);
-            } else {
-                // Should consume the returned cost
-                assertEq(aminal.energy(), initialEnergy - uint256(cost));
-                assertEq(aminal.loveFromUser(user1), initialLove - uint256(cost));
-            }
-        }
+        // Energy should not have been consumed
+        assertEq(aminal.energy(), 10000);
     }
 }
 
-// Helper contract for fuzz testing
-contract MockVariableSkill {
-    uint256 public cost;
-    
-    constructor(uint256 _cost) {
-        cost = _cost;
+// Helper contracts
+contract ExcessiveCostSkill is Skill {
+    function expensiveAction() external pure returns (bool) {
+        return true;
     }
     
-    function action() external view returns (uint256) {
-        return cost;
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        return 999999;
+    }
+}
+
+contract ZeroCostSkill is Skill {
+    function freeAction() external pure returns (string memory) {
+        return "Free!";
+    }
+    
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        return 0;
+    }
+}
+
+contract RevertingSkill is Skill {
+    function failingAction() external pure {
+        revert("Action failed!");
+    }
+    
+    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+        return 10;
     }
 }

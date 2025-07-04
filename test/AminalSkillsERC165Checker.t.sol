@@ -26,7 +26,7 @@ contract ERC165CheckerDemo is Test {
         gasLimitSkill = new GasLimitSkill();
     }
     
-    function test_ERC165CheckerHandlesAllCases() public {
+    function test_ERC165CheckerHandlesAllCases() public view {
         // Proper implementation
         assertTrue(address(properSkill).supportsInterface(type(ISkill).interfaceId));
         assertTrue(address(properSkill).supportsInterface(type(IERC165).interfaceId));
@@ -88,10 +88,8 @@ contract AminalSkillsERC165CheckerTest is Test {
     Aminal public aminal;
     address public user1 = makeAddr("user1");
     
-    // Various skill implementations
+    // Skill implementation
     ProperSkillWithERC165Checker public properSkill;
-    SkillWithoutEIP165 public legacySkill;
-    BrokenEIP165Skill public brokenSkill;
     
     function setUp() public {
         // Create test traits
@@ -111,14 +109,12 @@ contract AminalSkillsERC165CheckerTest is Test {
         aminal.initialize("test-uri");
         
         properSkill = new ProperSkillWithERC165Checker();
-        legacySkill = new SkillWithoutEIP165();
-        brokenSkill = new BrokenEIP165Skill();
         
         // Fund user
         deal(user1, 10 ether);
     }
     
-    function test_HandlesProperImplementation() public {
+    function test_ProperSkillImplementation() public {
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
@@ -130,55 +126,19 @@ contract AminalSkillsERC165CheckerTest is Test {
         assertEq(energyBefore - aminal.energy(), 75, "Should use interface cost");
     }
     
-    function test_HandlesLegacyContracts() public {
+    function test_NonSkillContractReverts() public {
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
         assertTrue(success);
         
-        uint256 energyBefore = aminal.energy();
+        // Try to use a non-skill contract (e.g., the test contract itself)
         vm.prank(user1);
-        aminal.useSkill(address(legacySkill), abi.encodeWithSelector(SkillWithoutEIP165.doSomething.selector));
-        
-        assertEq(energyBefore - aminal.energy(), 100, "Should use legacy parsing");
-    }
-    
-    function test_HandlesBrokenEIP165() public {
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 1 ether}("");
-        assertTrue(success);
-        
-        uint256 energyBefore = aminal.energy();
-        vm.prank(user1);
-        aminal.useSkill(address(brokenSkill), abi.encodeWithSelector(BrokenEIP165Skill.action.selector));
-        
-        // Should fall back to legacy parsing (return value 42)
-        assertEq(energyBefore - aminal.energy(), 42, "Should fall back to legacy when EIP165 is broken");
-    }
-    
-    function test_GasEfficiencyWithERC165Checker() public {
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 2 ether}("");
-        assertTrue(success);
-        
-        // Test with proper skill
-        uint256 gasStart = gasleft();
-        vm.prank(user1);
-        aminal.useSkill(address(properSkill), abi.encodeWithSelector(ProperSkillWithERC165Checker.performAction.selector));
-        uint256 gasWithChecker = gasStart - gasleft();
-        
-        // Test with legacy
-        gasStart = gasleft();
-        vm.prank(user1);
-        aminal.useSkill(address(legacySkill), abi.encodeWithSelector(SkillWithoutEIP165.doSomething.selector));
-        uint256 gasLegacy = gasStart - gasleft();
-        
-        console.log("Gas with ERC165Checker:", gasWithChecker);
-        console.log("Gas with legacy parsing:", gasLegacy);
-        console.log("Overhead:", gasWithChecker > gasLegacy ? gasWithChecker - gasLegacy : 0);
+        vm.expectRevert(Aminal.SkillNotSupported.selector);
+        aminal.useSkill(address(this), abi.encodeWithSelector(this.test_NonSkillContractReverts.selector));
     }
 }
 
-// Skill implementations for testing
+// Skill implementation for testing
 contract ProperSkillWithERC165Checker is Skill {
     function performAction() external pure returns (string memory) {
         return "Action performed!";
@@ -190,22 +150,5 @@ contract ProperSkillWithERC165Checker is Skill {
             return 75;
         }
         return 1;
-    }
-}
-
-contract SkillWithoutEIP165 {
-    function doSomething() external pure returns (uint256) {
-        return 100; // Energy cost via legacy parsing
-    }
-}
-
-contract BrokenEIP165Skill {
-    function action() external pure returns (uint256) {
-        return 42;
-    }
-    
-    // Broken supportsInterface that returns garbage
-    function supportsInterface(bytes4) external pure returns (string memory) {
-        return "This is not a boolean!";
     }
 }
