@@ -65,8 +65,9 @@ contract AminalVRGDATest is Test {
         (bool success1,) = address(aminal).call{value: feedAmount1}("");
         assertTrue(success1);
         
-        // At 0 energy, love should be 10x ETH sent (maximum multiplier)
-        assertEq(aminal.totalLove(), feedAmount1 * 10);
+        // At 0 energy, love should be 10x base units (maximum multiplier)
+        uint256 expectedLoveAtZero = (feedAmount1 * vrgda.ENERGY_PER_ETH() * 10) / 1 ether;
+        assertEq(aminal.totalLove(), expectedLoveAtZero);
         assertEq(aminal.totalLove(), expectedLove1);
         
         // Feed more to increase energy significantly  
@@ -101,8 +102,8 @@ contract AminalVRGDATest is Test {
         // Check initial love multiplier at 0 energy
         uint256 initialMultiplier = aminal.getCurrentLoveMultiplier();
         
-        // At 0 energy, love multiplier should be at maximum (10x)
-        assertEq(initialMultiplier, 10 ether);
+        // At 0 energy, love multiplier should be at maximum (100,000 units for 1 ETH)
+        assertEq(initialMultiplier, 100000); // 10,000 base * 10x
         
         // Feed small amount first to get just above threshold
         vm.prank(user1);
@@ -112,16 +113,16 @@ contract AminalVRGDATest is Test {
         // Love multiplier should decrease from 100x to something lower
         uint256 newMultiplier = aminal.getCurrentLoveMultiplier();
         assertLt(newMultiplier, initialMultiplier);
-        assertLt(newMultiplier, 10 ether);
+        assertLt(newMultiplier, 100000); // Less than 10x multiplier
         
         // Feed much more to reach high energy threshold
         vm.prank(user2);
         (bool success2,) = address(aminal).call{value: 1001 ether}("");
         assertTrue(success2);
         
-        // At >1M energy, multiplier should be at minimum (0.1x)
+        // At >1M energy, multiplier should be at minimum (1,000 units for 1 ETH)
         uint256 highEnergyMultiplier = aminal.getCurrentLoveMultiplier();
-        assertEq(highEnergyMultiplier, 0.1 ether);
+        assertEq(highEnergyMultiplier, 1000); // 10,000 base * 0.1x
     }
     
     function test_SqueakingImprovesLoveMultiplier() public {
@@ -132,8 +133,9 @@ contract AminalVRGDATest is Test {
         
         uint256 multiplierWithHighEnergy = aminal.getCurrentLoveMultiplier();
         
-        // Squeak to reduce energy
+        // Squeak to reduce energy (need to use user1 who has love)
         uint256 squeakAmount = aminal.energy() / 2;
+        vm.prank(user1);
         aminal.squeak(squeakAmount);
         
         // Love multiplier should improve (increase) when energy is lower
@@ -232,18 +234,26 @@ contract AminalVRGDATest is Test {
     function test_ZeroEnergyMaximumLove() public {
         // At 0 energy, love multiplier should be at maximum
         uint256 multiplierAtZero = aminal.getCurrentLoveMultiplier();
+        assertEq(multiplierAtZero, 100000); // 10x multiplier
         
-        // Feed a small amount
+        // Feed a larger amount to ensure we have enough love
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.01 ether}("");
+        (bool success,) = address(aminal).call{value: 0.1 ether}("");
         assertTrue(success);
         
         // Multiplier should decrease or stay roughly the same
         uint256 multiplierAfterFeeding = aminal.getCurrentLoveMultiplier();
         assertLe(multiplierAfterFeeding, multiplierAtZero);
         
-        // Squeak all energy back to 0
-        aminal.squeak(aminal.energy());
+        // Squeak all energy back to 0 (use user1 who has love)
+        uint256 currentEnergy = aminal.energy();
+        uint256 userLove = aminal.loveFromUser(user1);
+        
+        // Only squeak what we can afford (min of energy and love)
+        uint256 squeakAmount = currentEnergy < userLove ? currentEnergy : userLove;
+        
+        vm.prank(user1);
+        aminal.squeak(squeakAmount);
         assertEq(aminal.energy(), 0);
         
         // Multiplier should be back to maximum
