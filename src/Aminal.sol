@@ -329,6 +329,12 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
             if (energyCost == 0) {
                 energyCost = 1;
             }
+            // Cap at a reasonable maximum to prevent accidental huge costs
+            // This prevents issues with addresses, negative numbers, or string offsets
+            uint256 maxReasonableCost = energy > 10000 ? 10000 : energy;
+            if (energyCost > maxReasonableCost) {
+                energyCost = maxReasonableCost;
+            }
         }
         
         // Consume energy and love using squeak mechanism

@@ -759,6 +759,7 @@ Implementation:
 - Complex return types (structs) will use first 32 bytes as cost
 - Events track skill usage: `SkillUsed(user, target, cost, selector)`
 - **CRITICAL SECURITY**: All skill calls use `{value: 0}` to prevent ETH drainage
+- **Safety Cap**: Energy costs are capped at min(10000, available energy) to prevent accidents
 - Exception: Breeding skills will have a separate, controlled mechanism (future feature)
 
 ### Testing Approach

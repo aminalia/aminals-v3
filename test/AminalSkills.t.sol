@@ -171,14 +171,13 @@ contract AminalSkillsTest is Test {
         // Use skill that returns very high cost (more than available energy)
         bytes memory skillData = abi.encodeWithSelector(SimpleSkill.expensiveAction.selector);
         
-        // Should revert with InsufficientEnergy since cost exceeds available energy
+        // With the cap, it will consume all available energy (not revert)
         vm.prank(user1);
-        vm.expectRevert(Aminal.InsufficientEnergy.selector);
         aminal.useSkill(address(simpleSkill), skillData);
         
-        // Energy and love should remain unchanged
-        assertEq(aminal.energy(), initialEnergy);
-        assertEq(aminal.loveFromUser(user1), initialLove);
+        // Should have consumed only the available energy (10)
+        assertEq(aminal.energy(), 0);
+        assertEq(aminal.loveFromUser(user1), initialLove - 10);
     }
     
     function test_UseSkillWithComplexReturn() public {
@@ -222,18 +221,15 @@ contract AminalSkillsTest is Test {
         aminal.useSkill(address(revertingSkill), skillData);
     }
     
-    function test_RevertWhen_InsufficientEnergy() public {
-        // Feed the Aminal a tiny amount
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.001 ether}("");
-        assertTrue(success);
+    function test_RevertWhen_InsufficientResources() public {
+        // Don't feed the Aminal - it has 0 energy and 0 love
         
-        // Try to use skill that costs more energy than available
-        bytes memory skillData = abi.encodeWithSelector(SimpleSkill.performAction.selector);
+        // Try to use any skill - should fail due to insufficient energy
+        bytes memory skillData = abi.encodeWithSelector(NoReturnSkill.voidAction.selector);
         
         vm.prank(user1);
         vm.expectRevert(Aminal.InsufficientEnergy.selector);
-        aminal.useSkill(address(simpleSkill), skillData);
+        aminal.useSkill(address(noReturnSkill), skillData);
     }
     
     function test_RevertWhen_InsufficientLove() public {
