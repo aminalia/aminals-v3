@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {LogisticVRGDA} from "lib/VRGDAs/src/LogisticVRGDA.sol";
 import {toWadUnsafe, wadDiv} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMath.sol";
+import {FixedPointMathLib} from "lib/VRGDAs/lib/solmate/src/utils/FixedPointMathLib.sol";
 
 /**
  * @title AminalVRGDA
@@ -59,8 +60,25 @@ contract AminalVRGDA is LogisticVRGDA {
             loveMultiplier = MIN_LOVE_MULTIPLIER;
         } else {
             // Use VRGDA for normal energy levels
-            // Scale energy to work well with VRGDA
-            uint256 scaledEnergy = currentEnergy / 10000; // 1 ETH = 1 unit
+            // Apply logarithmic-like scaling to spread the curve more evenly
+            // This creates a more gradual transition across the entire range
+            uint256 scaledEnergy;
+            if (currentEnergy < 50) {
+                // Very low energy: start curve immediately
+                scaledEnergy = currentEnergy / 50; // 0.02 to 1
+            } else if (currentEnergy < 1000) {
+                // Low energy: very gradual scaling  
+                scaledEnergy = 1 + (currentEnergy - 50) / 200; // 1 to ~5.75
+            } else if (currentEnergy < 10000) {
+                // Low to medium energy: gradual scaling
+                scaledEnergy = 6 + (currentEnergy - 1000) / 1500; // 6 to ~12
+            } else if (currentEnergy < 100000) {
+                // Medium energy: moderate scaling
+                scaledEnergy = 12 + (currentEnergy - 10000) / 10000; // 12 to ~21
+            } else {
+                // High energy: slower scaling to avoid overflow
+                scaledEnergy = 21 + (currentEnergy - 100000) / 50000; // 21 to ~39
+            }
             
             // Get VRGDA price for current energy level
             // For Logistic VRGDA: price starts low and increases with "time" (energy)

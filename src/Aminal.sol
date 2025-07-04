@@ -123,15 +123,15 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
         
         // Initialize Logistic VRGDA with parameters for love calculation:
         // - Target price: 1 ETH (baseline price for VRGDA calculation)
-        // - Price decay: 5% when energy is below target (steeper curve for better differentiation)
-        // - Logistic asymptote: 100 (representing 100 ETH when scaled by 10000)
-        // - Time scale: 10 (controls transition speed of S-curve)
-        // This creates a smooth S-curve where love diminishes gradually as energy increases
+        // - Price decay: 1% for very gradual changes
+        // - Logistic asymptote: 30 for very early curve start
+        // - Time scale: 30 for extremely smooth transition
+        // This creates an extremely gradual S-curve where love diminishes very smoothly
         vrgda = new AminalVRGDA(
             int256(1 ether),  // Base price for VRGDA
-            0.05e18,          // 5% decay when below target
-            100e18,           // Asymptotic max (100 units = 100 ETH after scaling)
-            10e18             // Time scale for smooth transition
+            0.01e18,          // 1% decay for very gradual changes
+            30e18,            // Low asymptote for very early curve activation
+            30e18             // Large time scale for very smooth transition
         );
     }
 
