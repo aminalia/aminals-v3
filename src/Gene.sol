@@ -11,12 +11,12 @@ import {ITraits} from "src/interfaces/ITraits.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
 
 /**
- * @title GeneNFT
+ * @title Gene
  * @dev Fully onchain ERC721 NFT contract for trait-based NFTs with SVG generation
  * @dev Each NFT represents a genetic trait that can be composed into larger Aminals
  * @notice Features dual output: raw SVG for composability and OpenSea-compatible metadata
  */
-contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
+contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     using LibString for uint256;
     using LibString for string;
     /// @dev Base URI for token metadata
@@ -37,8 +37,8 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     /// @dev Mapping from token ID to trait description
     mapping(uint256 => string) public tokenDescription;
 
-    /// @dev Event emitted when a GeneNFT is created
-    event GeneNFTCreated(uint256 indexed tokenId, address indexed owner, string traitType, string traitValue, string tokenURI);
+    /// @dev Event emitted when a Gene is created
+    event GeneCreated(uint256 indexed tokenId, address indexed owner, string traitType, string traitValue, string tokenURI);
 
     /// @dev Event emitted when base URI is updated
     event BaseURIUpdated(string newBaseURI);
@@ -95,14 +95,14 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         
         _safeMint(to, tokenId);
         
-        emit GeneNFTCreated(tokenId, to, traitType, traitValue, "");
+        emit GeneCreated(tokenId, to, traitType, traitValue, "");
         
         return tokenId;
     }
 
     /**
-     * @notice Batch mint multiple GeneNFTs to specified addresses
-     * @dev Anyone can mint GeneNFTs. Traits are permanent and cannot be modified after minting.
+     * @notice Batch mint multiple Genes to specified addresses
+     * @dev Anyone can mint Genes. Traits are permanent and cannot be modified after minting.
      * @param recipients Array of addresses that will receive the NFTs
      * @param traitTypes Array of trait types for each NFT
      * @param traitValues Array of trait values for each NFT
@@ -144,7 +144,7 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
             _safeMint(recipients[i], tokenId);
             
             tokenIds[i] = tokenId;
-            emit GeneNFTCreated(tokenId, recipients[i], traitTypes[i], traitValues[i], "");
+            emit GeneCreated(tokenId, recipients[i], traitTypes[i], traitValues[i], "");
         }
 
         return tokenIds;

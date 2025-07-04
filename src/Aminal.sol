@@ -71,14 +71,14 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     ///      as the contract has no functions to modify them
     ITraits.Traits public traits;
 
-    /// @dev Structure to store a GeneNFT reference
+    /// @dev Structure to store a Gene reference
     struct GeneReference {
-        address geneContract;  // The GeneNFT contract address
+        address geneContract;  // The Gene contract address
         uint256 tokenId;       // The specific token ID
     }
     
-    /// @dev Immutable GeneNFT references for each trait type
-    /// @notice These define the visual appearance of the Aminal by referencing specific GeneNFTs
+    /// @dev Immutable Gene references for each trait type
+    /// @notice These define the visual appearance of the Aminal by referencing specific Genes
     GeneReference public backGene;
     GeneReference public armGene;
     GeneReference public tailGene;
@@ -267,7 +267,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Compose the Aminal's appearance from its GeneNFTs
+     * @dev Compose the Aminal's appearance from its Genes
      * @notice DATA FLOW: This is a convenience function that delegates to the renderer
      *         1. Passes the entire Aminal contract instance (`this`) to renderer.composeAminal()
      *         2. The renderer accesses gene references and traits from this contract
@@ -490,7 +490,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      *         2. The renderer can then access all public state variables and functions:
      *            - name(), energy(), totalLove() for metadata description
      *            - getTraits() to determine positioning logic
-     *            - Gene references (backGene, armGene, etc.) to fetch SVGs from GeneNFT contracts
+     *            - Gene references (backGene, armGene, etc.) to fetch SVGs from Gene contracts
      *         3. The renderer composes the SVG and generates OpenSea-compatible metadata
      *         4. Returns a base64-encoded data URI containing the complete metadata JSON
      * @param tokenId The token ID (always 1 for Aminals)

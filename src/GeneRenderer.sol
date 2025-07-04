@@ -6,7 +6,7 @@ import {Base64} from "solady/utils/Base64.sol";
 
 /**
  * @title GeneRenderer
- * @dev Onchain SVG renderer for GeneNFT traits using Solady utilities
+ * @dev Onchain SVG renderer for Gene traits using Solady utilities
  * @notice Provides efficient SVG generation and composition functions
  */
 library GeneRenderer {

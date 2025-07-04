@@ -5,7 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {AminalRenderer} from "src/AminalRenderer.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
 import {Aminal} from "src/Aminal.sol";
-import {GeneNFT} from "src/GeneNFT.sol";
+import {Gene} from "src/Gene.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
@@ -20,7 +20,7 @@ contract OutputAminalRenderings is Script {
     using LibString for uint256;
 
     AminalRenderer public renderer;
-    GeneNFT public geneNFT;
+    Gene public gene;
     
     // Sample trait SVGs
     string constant DRAGON_WINGS = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200"><path d="M-50,-30 Q-80,-50 -90,-30 L-70,-10 Q-60,-20 -50,-30" fill="#8B4513"/><path d="M50,-30 Q80,-50 90,-30 L70,-10 Q60,-20 50,-30" fill="#8B4513"/></svg>';
@@ -52,9 +52,9 @@ contract OutputAminalRenderings is Script {
         // Deploy renderer
         renderer = new AminalRenderer();
         
-        // Deploy a mock GeneNFT for testing
+        // Deploy a mock Gene for testing
         address owner = address(0x1234567890123456789012345678901234567890);
-        geneNFT = new GeneNFT(owner, "Test Genes", "GENE", "");
+        gene = new Gene(owner, "Test Genes", "GENE", "");
         
         // Generate individual SVG files
         generateIndividualSVGs();
@@ -293,8 +293,8 @@ contract OutputAminalRenderings is Script {
     function generateGeneExamples() private view returns (string memory) {
         string memory section = string.concat(
             '    <div class="section">\n',
-            '      <h2>GeneNFT Examples: Raw SVG vs TokenURI</h2>\n',
-            '      <p style="text-align: center; color: #666; margin-bottom: 30px;">Each GeneNFT stores raw SVG data for composition and provides tokenURI metadata for OpenSea display</p>\n',
+            '      <h2>Gene Examples: Raw SVG vs TokenURI</h2>\n',
+            '      <p style="text-align: center; color: #666; margin-bottom: 30px;">Each Gene stores raw SVG data for composition and provides tokenURI metadata for OpenSea display</p>\n',
             '      <div class="genes-grid">\n'
         );
 
@@ -396,7 +396,7 @@ contract OutputAminalRenderings is Script {
         return string.concat(
             '{\n',
             '  "name": "', name, '",\n',
-            '  "description": "A GeneNFT trait of type: ', traitType, '",\n',
+            '  "description": "A Gene trait of type: ', traitType, '",\n',
             '  "image": "', truncatedImageURI, '",\n',
             '  "attributes": [\n',
             '    {\n',

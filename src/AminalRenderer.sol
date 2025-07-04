@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Aminal} from "src/Aminal.sol";
-import {GeneNFT} from "src/GeneNFT.sol";
+import {Gene} from "src/Gene.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {LibString} from "solady/utils/LibString.sol";
@@ -27,11 +27,11 @@ import {Base64} from "solady/utils/Base64.sol";
  * 3. DATA ACCESS (renderer reading from Aminal):
  *    - Public state variables: name, energy, totalLove, traits
  *    - Gene references: backGene, armGene, tailGene, etc. (returns tuples)
- *    - Each gene reference points to: (GeneNFT address, tokenId)
+ *    - Each gene reference points to: (Gene address, tokenId)
  * 
  * 4. SVG COMPOSITION:
  *    - Renderer → aminal.getTraits() to determine positioning
- *    - Renderer → GeneNFT.gene(tokenId) for each trait's SVG
+ *    - Renderer → Gene.gene(tokenId) for each trait's SVG
  *    - Positions and layers SVGs based on trait characteristics
  * 
  * 5. METADATA GENERATION:
@@ -112,7 +112,7 @@ contract AminalRenderer {
     }
     
     /**
-     * @dev Compose the Aminal's appearance from its GeneNFTs
+     * @dev Compose the Aminal's appearance from its Genes
      * @notice DATA FLOW - Complete rendering process:
      *         1. INPUT: Receives Aminal contract instance containing all state
      *         2. TRAIT ANALYSIS: Calls aminal.getTraits() to determine positioning
@@ -122,7 +122,7 @@ contract AminalRenderer {
      *            - aminal.backGene() returns (address geneContract, uint256 tokenId)
      *            - Must destructure tuples since Solidity public getters don't return structs
      *         4. SVG RETRIEVAL: For each gene reference:
-     *            - Calls GeneNFT(geneContract).gene(tokenId) to get raw SVG
+     *            - Calls Gene(geneContract).gene(tokenId) to get raw SVG
      *            - Wraps in image tags with calculated positions
      *         5. COMPOSITION: Layers genes in specific order (back->body->tail->arms->ears->face->mouth->misc)
      *         6. OUTPUT: Returns complete SVG with 200x200 viewBox
@@ -268,7 +268,7 @@ contract AminalRenderer {
         uint256 width,
         uint256 height
     ) private view returns (string memory) {
-        try GeneNFT(gene.geneContract).gene(gene.tokenId) returns (string memory svg) {
+        try Gene(gene.geneContract).gene(gene.tokenId) returns (string memory svg) {
             return GeneRenderer.svgImage(x, y, width, height, svg);
         } catch {
             return ""; // Return empty if gene can't be read

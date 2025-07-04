@@ -661,7 +661,7 @@ Deploys individual Aminal contracts:
 - Supports batch deployment
 - Pausable for controlled minting
 
-### GeneNFT System
+### Gene System
 
 Fully onchain ERC721 NFTs representing genetic traits with SVG rendering:
 - **Onchain SVG Storage**: Each gene stores complete self-contained SVG with viewBox
@@ -692,7 +692,7 @@ Fully onchain ERC721 NFTs representing genetic traits with SVG rendering:
 ### Trait System
 - 8 categories: back, arm, tail, ears, body, face, mouth, misc
 - Set once at construction via `ITraits.Traits` struct
-- Future: Query from GeneNFT contracts for dynamic traits
+- Future: Query from Gene contracts for dynamic traits
 
 ### VRGDA Feeding Mechanics
 - **Logistic VRGDA**: Smooth S-curve for love distribution based on energy level

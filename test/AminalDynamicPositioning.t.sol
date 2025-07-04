@@ -3,11 +3,11 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
-import {GeneNFT} from "src/GeneNFT.sol";
+import {Gene} from "src/Gene.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 
 contract AminalDynamicPositioningTest is Test {
-    GeneNFT public geneNFT;
+    Gene public gene;
     address public owner = address(0x1);
     address public user = address(0x2);
     
@@ -20,7 +20,7 @@ contract AminalDynamicPositioningTest is Test {
     
     function setUp() public {
         vm.startPrank(owner);
-        geneNFT = new GeneNFT(owner, "Test Genes", "GENE", "");
+        gene = new Gene(owner, "Test Genes", "GENE", "");
         vm.stopPrank();
     }
     
@@ -28,10 +28,10 @@ contract AminalDynamicPositioningTest is Test {
         vm.startPrank(user);
         
         // Mint genes
-        uint256 tallBodyId = geneNFT.mint(user, "body", "Tall Body", TALL_BODY, "A tall slender body");
-        uint256 earsId = geneNFT.mint(user, "ears", "Bunny Ears", BUNNY_EARS, "Long bunny ears");
-        uint256 faceId = geneNFT.mint(user, "face", "Cute Face", CUTE_FACE, "A cute face");
-        uint256 tailId = geneNFT.mint(user, "tail", "Dragon Tail", DRAGON_TAIL, "A long dragon tail");
+        uint256 tallBodyId = gene.mint(user, "body", "Tall Body", TALL_BODY, "A tall slender body");
+        uint256 earsId = gene.mint(user, "ears", "Bunny Ears", BUNNY_EARS, "Long bunny ears");
+        uint256 faceId = gene.mint(user, "face", "Cute Face", CUTE_FACE, "A cute face");
+        uint256 tailId = gene.mint(user, "tail", "Dragon Tail", DRAGON_TAIL, "A long dragon tail");
         
         // Create a tall Aminal
         ITraits.Traits memory tallTraits = ITraits.Traits({
@@ -54,10 +54,10 @@ contract AminalDynamicPositioningTest is Test {
         
         // Initialize with genes
         Aminal.GeneReference[8] memory genes;
-        genes[4] = Aminal.GeneReference(address(geneNFT), tallBodyId); // body
-        genes[3] = Aminal.GeneReference(address(geneNFT), earsId);     // ears
-        genes[5] = Aminal.GeneReference(address(geneNFT), faceId);     // face
-        genes[2] = Aminal.GeneReference(address(geneNFT), tailId);     // tail
+        genes[4] = Aminal.GeneReference(address(gene), tallBodyId); // body
+        genes[3] = Aminal.GeneReference(address(gene), earsId);     // ears
+        genes[5] = Aminal.GeneReference(address(gene), faceId);     // face
+        genes[2] = Aminal.GeneReference(address(gene), tailId);     // tail
         
         tallAminal.initialize("", genes);
         
@@ -75,10 +75,10 @@ contract AminalDynamicPositioningTest is Test {
         vm.startPrank(user);
         
         // Mint genes
-        uint256 chubbyBodyId = geneNFT.mint(user, "body", "Chubby Body", CHUBBY_BODY, "A chubby round body");
-        uint256 earsId = geneNFT.mint(user, "ears", "Bunny Ears", BUNNY_EARS, "Long bunny ears");
-        uint256 faceId = geneNFT.mint(user, "face", "Cute Face", CUTE_FACE, "A cute face");
-        uint256 tailId = geneNFT.mint(user, "tail", "Dragon Tail", DRAGON_TAIL, "A long dragon tail");
+        uint256 chubbyBodyId = gene.mint(user, "body", "Chubby Body", CHUBBY_BODY, "A chubby round body");
+        uint256 earsId = gene.mint(user, "ears", "Bunny Ears", BUNNY_EARS, "Long bunny ears");
+        uint256 faceId = gene.mint(user, "face", "Cute Face", CUTE_FACE, "A cute face");
+        uint256 tailId = gene.mint(user, "tail", "Dragon Tail", DRAGON_TAIL, "A long dragon tail");
         
         // Create a chubby Aminal
         ITraits.Traits memory chubbyTraits = ITraits.Traits({
@@ -101,10 +101,10 @@ contract AminalDynamicPositioningTest is Test {
         
         // Initialize with genes
         Aminal.GeneReference[8] memory genes;
-        genes[4] = Aminal.GeneReference(address(geneNFT), chubbyBodyId); // body
-        genes[3] = Aminal.GeneReference(address(geneNFT), earsId);        // ears
-        genes[5] = Aminal.GeneReference(address(geneNFT), faceId);        // face
-        genes[2] = Aminal.GeneReference(address(geneNFT), tailId);        // tail
+        genes[4] = Aminal.GeneReference(address(gene), chubbyBodyId); // body
+        genes[3] = Aminal.GeneReference(address(gene), earsId);        // ears
+        genes[5] = Aminal.GeneReference(address(gene), faceId);        // face
+        genes[2] = Aminal.GeneReference(address(gene), tailId);        // tail
         
         chubbyAminal.initialize("", genes);
         
@@ -139,9 +139,9 @@ contract AminalDynamicPositioningTest is Test {
     
     function createAminalWithBody(string memory bodyType, string memory bodySvg) private returns (string memory) {
         // Mint the same genes for comparison
-        uint256 bodyId = geneNFT.mint(user, "body", bodyType, bodySvg, "Body type");
-        uint256 earsId = geneNFT.mint(user, "ears", "Bunny Ears", BUNNY_EARS, "Long bunny ears");
-        uint256 faceId = geneNFT.mint(user, "face", "Cute Face", CUTE_FACE, "A cute face");
+        uint256 bodyId = gene.mint(user, "body", bodyType, bodySvg, "Body type");
+        uint256 earsId = gene.mint(user, "ears", "Bunny Ears", BUNNY_EARS, "Long bunny ears");
+        uint256 faceId = gene.mint(user, "face", "Cute Face", CUTE_FACE, "A cute face");
         
         // Create traits
         ITraits.Traits memory traits = ITraits.Traits({
@@ -165,9 +165,9 @@ contract AminalDynamicPositioningTest is Test {
         
         // Initialize with genes
         Aminal.GeneReference[8] memory genes;
-        genes[4] = Aminal.GeneReference(address(geneNFT), bodyId); // body
-        genes[3] = Aminal.GeneReference(address(geneNFT), earsId); // ears
-        genes[5] = Aminal.GeneReference(address(geneNFT), faceId); // face
+        genes[4] = Aminal.GeneReference(address(gene), bodyId); // body
+        genes[3] = Aminal.GeneReference(address(gene), earsId); // ears
+        genes[5] = Aminal.GeneReference(address(gene), faceId); // face
         
         aminal.initialize("", genes);
         

@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {GeneNFT} from "src/GeneNFT.sol";
+import {Gene} from "src/Gene.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
-contract GeneNFTTest is Test {
+contract GeneTest is Test {
     using Strings for uint256;
 
-    GeneNFT public geneNFT;
+    Gene public gene;
     address public owner = address(0x1);
     address public user1 = address(0x2);
     address public user2 = address(0x3);
@@ -22,21 +22,21 @@ contract GeneNFTTest is Test {
 
     function setUp() public {
         vm.startPrank(owner);
-        geneNFT = new GeneNFT(owner, "Aminal Genes", "GENE", "");
+        gene = new Gene(owner, "Aminal Genes", "GENE", "");
         vm.stopPrank();
     }
 
     function test_Deployment() public {
-        assertEq(geneNFT.name(), "Aminal Genes");
-        assertEq(geneNFT.symbol(), "GENE");
-        assertEq(geneNFT.owner(), owner);
-        assertEq(geneNFT.currentTokenId(), 0);
+        assertEq(gene.name(), "Aminal Genes");
+        assertEq(gene.symbol(), "GENE");
+        assertEq(gene.owner(), owner);
+        assertEq(gene.currentTokenId(), 0);
     }
 
     function test_MintGene() public {
         vm.startPrank(user1);
         
-        uint256 tokenId = geneNFT.mint(
+        uint256 tokenId = gene.mint(
             user1,
             "back",
             "Dragon Wings",
@@ -45,11 +45,11 @@ contract GeneNFTTest is Test {
         );
         
         assertEq(tokenId, 1);
-        assertEq(geneNFT.ownerOf(tokenId), user1);
-        assertEq(geneNFT.currentTokenId(), 1);
+        assertEq(gene.ownerOf(tokenId), user1);
+        assertEq(gene.currentTokenId(), 1);
         
         // Check gene data
-        (string memory traitType, string memory traitValue, string memory svg, string memory description) = geneNFT.getTokenTraits(tokenId);
+        (string memory traitType, string memory traitValue, string memory svg, string memory description) = gene.getTokenTraits(tokenId);
         assertEq(traitType, "back");
         assertEq(traitValue, "Dragon Wings");
         assertEq(svg, DRAGON_WINGS_SVG);
@@ -61,7 +61,7 @@ contract GeneNFTTest is Test {
     function test_GetRawGene() public {
         vm.startPrank(user1);
         
-        uint256 tokenId = geneNFT.mint(
+        uint256 tokenId = gene.mint(
             user1,
             "tail",
             "Fire Tail",
@@ -70,7 +70,7 @@ contract GeneNFTTest is Test {
         );
         
         // Test the raw gene getter (for composability)
-        string memory rawSvg = geneNFT.gene(tokenId);
+        string memory rawSvg = gene.gene(tokenId);
         assertEq(rawSvg, FIRE_TAIL_SVG);
         
         vm.stopPrank();
@@ -79,7 +79,7 @@ contract GeneNFTTest is Test {
     function test_GenerateStandaloneSVG() public {
         vm.startPrank(user1);
         
-        uint256 tokenId = geneNFT.mint(
+        uint256 tokenId = gene.mint(
             user1,
             "ears",
             "Bunny Ears",
@@ -87,7 +87,7 @@ contract GeneNFTTest is Test {
             "Soft, fluffy bunny ears that twitch with emotion"
         );
         
-        string memory standaloneSvg = geneNFT.generateStandaloneSVG(tokenId);
+        string memory standaloneSvg = gene.generateStandaloneSVG(tokenId);
         
         // Check that it contains the wrapper elements
         assertTrue(bytes(standaloneSvg).length > 0);
@@ -99,7 +99,7 @@ contract GeneNFTTest is Test {
     function test_TokenURI() public {
         vm.startPrank(user1);
         
-        uint256 tokenId = geneNFT.mint(
+        uint256 tokenId = gene.mint(
             user1,
             "misc",
             "Sparkles",
@@ -107,7 +107,7 @@ contract GeneNFTTest is Test {
             "Magical sparkles that follow the Aminal wherever it goes"
         );
         
-        string memory uri = geneNFT.tokenURI(tokenId);
+        string memory uri = gene.tokenURI(tokenId);
         
         // Check that it's a data URI
         assertTrue(bytes(uri).length > 0);
@@ -123,11 +123,11 @@ contract GeneNFTTest is Test {
         vm.startPrank(user1);
         
         // Mint multiple genes
-        uint256 token1 = geneNFT.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "Dragon wings");
-        uint256 token2 = geneNFT.mint(user1, "tail", "Fire Tail", FIRE_TAIL_SVG, "Fire tail");
-        uint256 token3 = geneNFT.mint(user1, "ears", "Bunny Ears", BUNNY_EARS_SVG, "Bunny ears");
+        uint256 token1 = gene.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "Dragon wings");
+        uint256 token2 = gene.mint(user1, "tail", "Fire Tail", FIRE_TAIL_SVG, "Fire tail");
+        uint256 token3 = gene.mint(user1, "ears", "Bunny Ears", BUNNY_EARS_SVG, "Bunny ears");
         
-        assertEq(geneNFT.balanceOf(user1), 3);
+        assertEq(gene.balanceOf(user1), 3);
         assertEq(token1, 1);
         assertEq(token2, 2);
         assertEq(token3, 3);
@@ -138,22 +138,22 @@ contract GeneNFTTest is Test {
     function test_GetTokensByTraitType() public {
         // Mint various genes
         vm.prank(user1);
-        geneNFT.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "desc1");
+        gene.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "desc1");
         
         vm.prank(user2);
-        geneNFT.mint(user2, "tail", "Fire Tail", FIRE_TAIL_SVG, "desc2");
+        gene.mint(user2, "tail", "Fire Tail", FIRE_TAIL_SVG, "desc2");
         
         vm.prank(user1);
-        geneNFT.mint(user1, "back", "Angel Wings", "<path/>", "desc3");
+        gene.mint(user1, "back", "Angel Wings", "<path/>", "desc3");
         
         // Get all "back" trait tokens
-        uint256[] memory backTokens = geneNFT.getTokensByTraitType("back");
+        uint256[] memory backTokens = gene.getTokensByTraitType("back");
         assertEq(backTokens.length, 2);
         assertEq(backTokens[0], 1);
         assertEq(backTokens[1], 3);
         
         // Get all "tail" trait tokens
-        uint256[] memory tailTokens = geneNFT.getTokensByTraitType("tail");
+        uint256[] memory tailTokens = gene.getTokensByTraitType("tail");
         assertEq(tailTokens.length, 1);
         assertEq(tailTokens[0], 2);
     }
@@ -161,39 +161,39 @@ contract GeneNFTTest is Test {
     function test_GetTokensByTraitValue() public {
         // Mint various genes
         vm.prank(user1);
-        geneNFT.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "desc1");
+        gene.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "desc1");
         
         vm.prank(user2);
-        geneNFT.mint(user2, "back", "Dragon Wings", DRAGON_WINGS_SVG, "desc2");
+        gene.mint(user2, "back", "Dragon Wings", DRAGON_WINGS_SVG, "desc2");
         
         vm.prank(user1);
-        geneNFT.mint(user1, "tail", "Fire Tail", FIRE_TAIL_SVG, "desc3");
+        gene.mint(user1, "tail", "Fire Tail", FIRE_TAIL_SVG, "desc3");
         
         // Get all "Dragon Wings" tokens
-        uint256[] memory dragonWingTokens = geneNFT.getTokensByTraitValue("Dragon Wings");
+        uint256[] memory dragonWingTokens = gene.getTokensByTraitValue("Dragon Wings");
         assertEq(dragonWingTokens.length, 2);
         assertEq(dragonWingTokens[0], 1);
         assertEq(dragonWingTokens[1], 2);
     }
 
     function test_RevertWhen_MintingToZeroAddress() public {
-        vm.expectRevert(GeneNFT.InvalidParameters.selector);
-        geneNFT.mint(address(0), "back", "Wings", "<svg/>", "desc");
+        vm.expectRevert(Gene.InvalidParameters.selector);
+        gene.mint(address(0), "back", "Wings", "<svg/>", "desc");
     }
 
     function test_RevertWhen_EmptyTraitType() public {
-        vm.expectRevert(GeneNFT.InvalidParameters.selector);
-        geneNFT.mint(user1, "", "Wings", "<svg/>", "desc");
+        vm.expectRevert(Gene.InvalidParameters.selector);
+        gene.mint(user1, "", "Wings", "<svg/>", "desc");
     }
 
     function test_RevertWhen_EmptyTraitValue() public {
-        vm.expectRevert(GeneNFT.InvalidParameters.selector);
-        geneNFT.mint(user1, "back", "", "<svg/>", "desc");
+        vm.expectRevert(Gene.InvalidParameters.selector);
+        gene.mint(user1, "back", "", "<svg/>", "desc");
     }
 
     function test_RevertWhen_EmptySVG() public {
-        vm.expectRevert(GeneNFT.InvalidParameters.selector);
-        geneNFT.mint(user1, "back", "Wings", "", "desc");
+        vm.expectRevert(Gene.InvalidParameters.selector);
+        gene.mint(user1, "back", "Wings", "", "desc");
     }
 
     function testFuzz_MintMultipleGenes(uint8 count) public {
@@ -205,7 +205,7 @@ contract GeneNFTTest is Test {
             string memory traitType = string(abi.encodePacked("trait", i.toString()));
             string memory traitValue = string(abi.encodePacked("value", i.toString()));
             
-            uint256 tokenId = geneNFT.mint(
+            uint256 tokenId = gene.mint(
                 user1,
                 traitType,
                 traitValue,
@@ -216,8 +216,8 @@ contract GeneNFTTest is Test {
             assertEq(tokenId, i + 1);
         }
         
-        assertEq(geneNFT.balanceOf(user1), count);
-        assertEq(geneNFT.totalSupply(), count);
+        assertEq(gene.balanceOf(user1), count);
+        assertEq(gene.totalSupply(), count);
         
         vm.stopPrank();
     }
@@ -227,16 +227,16 @@ contract GeneNFTTest is Test {
         vm.startPrank(user1);
         
         // Mint various trait genes
-        uint256 backId = geneNFT.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "Dragon wings");
-        uint256 tailId = geneNFT.mint(user1, "tail", "Fire Tail", FIRE_TAIL_SVG, "Fire tail");
-        uint256 earsId = geneNFT.mint(user1, "ears", "Bunny Ears", BUNNY_EARS_SVG, "Bunny ears");
-        uint256 miscId = geneNFT.mint(user1, "misc", "Sparkles", SPARKLE_MISC_SVG, "Sparkles");
+        uint256 backId = gene.mint(user1, "back", "Dragon Wings", DRAGON_WINGS_SVG, "Dragon wings");
+        uint256 tailId = gene.mint(user1, "tail", "Fire Tail", FIRE_TAIL_SVG, "Fire tail");
+        uint256 earsId = gene.mint(user1, "ears", "Bunny Ears", BUNNY_EARS_SVG, "Bunny ears");
+        uint256 miscId = gene.mint(user1, "misc", "Sparkles", SPARKLE_MISC_SVG, "Sparkles");
         
         // Get raw SVG components
-        string memory backSvg = geneNFT.gene(backId);
-        string memory tailSvg = geneNFT.gene(tailId);
-        string memory earsSvg = geneNFT.gene(earsId);
-        string memory miscSvg = geneNFT.gene(miscId);
+        string memory backSvg = gene.gene(backId);
+        string memory tailSvg = gene.gene(tailId);
+        string memory earsSvg = gene.gene(earsId);
+        string memory miscSvg = gene.gene(miscId);
         
         // Compose into a full Aminal SVG using image tags
         string memory composedSvg = GeneRenderer.svg(

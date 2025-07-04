@@ -2,13 +2,13 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {GeneNFT} from "src/GeneNFT.sol";
+import {Gene} from "src/Gene.sol";
 
 /**
- * @title DeployGeneNFTExample
- * @dev Example deployment script showing how to create GeneNFT collections and mint traits
+ * @title DeployGeneExample
+ * @dev Example deployment script showing how to create Gene collections and mint traits
  */
-contract DeployGeneNFTExample is Script {
+contract DeployGeneExample is Script {
     // Example SVG components for different traits - each is a complete self-contained SVG
     // These are simplified examples - real traits would be more detailed
     
@@ -41,14 +41,14 @@ contract DeployGeneNFTExample is Script {
         
         vm.startBroadcast(deployerPrivateKey);
         
-        // Deploy a single GeneNFT collection for all traits
-        GeneNFT geneNFT = new GeneNFT(deployer, "Aminal Genes", "GENE", "");
-        console.log("GeneNFT deployed at:", address(geneNFT));
+        // Deploy a single Gene collection for all traits
+        Gene gene = new Gene(deployer, "Aminal Genes", "GENE", "");
+        console.log("Gene deployed at:", address(gene));
         
         // Mint example traits to demonstrate the system
         
         // Back traits
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "back",
             "Dragon Wings",
@@ -56,7 +56,7 @@ contract DeployGeneNFTExample is Script {
             "Majestic dragon wings that grant the power of flight"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "back",
             "Angel Wings",
@@ -64,7 +64,7 @@ contract DeployGeneNFTExample is Script {
             "Pure white angel wings that shimmer with divine light"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "back",
             "Butterfly Wings",
@@ -73,7 +73,7 @@ contract DeployGeneNFTExample is Script {
         );
         
         // Tail traits
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "tail",
             "Fire Tail",
@@ -81,7 +81,7 @@ contract DeployGeneNFTExample is Script {
             "A tail made of pure fire that leaves a trail of embers"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "tail",
             "Fluffy Tail",
@@ -89,7 +89,7 @@ contract DeployGeneNFTExample is Script {
             "A soft, fluffy tail perfect for cuddles"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "tail",
             "Lightning Tail",
@@ -98,7 +98,7 @@ contract DeployGeneNFTExample is Script {
         );
         
         // Ear traits
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "ears",
             "Bunny Ears",
@@ -106,7 +106,7 @@ contract DeployGeneNFTExample is Script {
             "Soft, fluffy bunny ears that twitch with emotion"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "ears",
             "Cat Ears",
@@ -114,7 +114,7 @@ contract DeployGeneNFTExample is Script {
             "Pointed cat ears that swivel to track sounds"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "ears",
             "Horns",
@@ -123,7 +123,7 @@ contract DeployGeneNFTExample is Script {
         );
         
         // Body patterns
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "body",
             "Star Pattern",
@@ -131,7 +131,7 @@ contract DeployGeneNFTExample is Script {
             "A glowing star pattern on the body"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "body",
             "Heart Pattern",
@@ -140,7 +140,7 @@ contract DeployGeneNFTExample is Script {
         );
         
         // Misc traits
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "misc",
             "Sparkles",
@@ -148,7 +148,7 @@ contract DeployGeneNFTExample is Script {
             "Magical sparkles that follow the Aminal wherever it goes"
         );
         
-        geneNFT.mint(
+        gene.mint(
             deployer,
             "misc",
             "Halo",
@@ -159,11 +159,11 @@ contract DeployGeneNFTExample is Script {
         console.log("Example traits minted successfully!");
         
         // Log some example token URIs
-        string memory uri1 = geneNFT.tokenURI(1);
+        string memory uri1 = gene.tokenURI(1);
         console.log("Dragon Wings token URI:", uri1);
         
         // Show how to get raw SVG for composability
-        string memory rawSvg = geneNFT.gene(1);
+        string memory rawSvg = gene.gene(1);
         console.log("Dragon Wings raw SVG:", rawSvg);
         
         vm.stopBroadcast();

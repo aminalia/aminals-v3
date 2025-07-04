@@ -4,12 +4,12 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {AminalRenderer} from "src/AminalRenderer.sol";
 import {Aminal} from "src/Aminal.sol";
-import {GeneNFT} from "src/GeneNFT.sol";
+import {Gene} from "src/Gene.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 
 contract AminalRendererTest is Test {
     AminalRenderer public renderer;
-    GeneNFT public geneNFT;
+    Gene public gene;
     address public owner = address(0x1);
     address public user = address(0x2);
     
@@ -20,7 +20,7 @@ contract AminalRendererTest is Test {
     function setUp() public {
         renderer = new AminalRenderer();
         vm.startPrank(owner);
-        geneNFT = new GeneNFT(owner, "Test Genes", "GENE", "");
+        gene = new Gene(owner, "Test Genes", "GENE", "");
         vm.stopPrank();
     }
     
@@ -28,8 +28,8 @@ contract AminalRendererTest is Test {
         vm.startPrank(user);
         
         // Mint some genes
-        uint256 wingsId = geneNFT.mint(user, "back", "Dragon Wings", DRAGON_WINGS, "Majestic dragon wings");
-        uint256 tailId = geneNFT.mint(user, "tail", "Fire Tail", FIRE_TAIL, "A blazing fire tail");
+        uint256 wingsId = gene.mint(user, "back", "Dragon Wings", DRAGON_WINGS, "Majestic dragon wings");
+        uint256 tailId = gene.mint(user, "tail", "Fire Tail", FIRE_TAIL, "A blazing fire tail");
         
         // Create an Aminal
         ITraits.Traits memory traits = ITraits.Traits({
@@ -52,8 +52,8 @@ contract AminalRendererTest is Test {
         
         // Initialize with genes
         Aminal.GeneReference[8] memory genes;
-        genes[0] = Aminal.GeneReference(address(geneNFT), wingsId);
-        genes[2] = Aminal.GeneReference(address(geneNFT), tailId);
+        genes[0] = Aminal.GeneReference(address(gene), wingsId);
+        genes[2] = Aminal.GeneReference(address(gene), tailId);
         
         aminal.initialize("", genes);
         
