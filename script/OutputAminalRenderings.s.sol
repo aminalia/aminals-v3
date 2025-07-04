@@ -340,14 +340,6 @@ contract OutputAminalRenderings is Script {
         string memory svgData,
         string memory description
     ) private pure returns (string memory) {
-        // For the gallery preview, we show the gene with background and label
-        string memory standaloneSvg = GeneRenderer.generateStandaloneGeneSVG(
-            traitType,
-            name,
-            svgData
-        );
-        string memory galleryImageURI = GeneRenderer.svgToBase64DataURI(standaloneSvg);
-        
         // For the tokenURI, we just use the raw SVG (what OpenSea will see)
         string memory tokenURIImageURI = GeneRenderer.svgToBase64DataURI(svgData);
         
@@ -361,12 +353,19 @@ contract OutputAminalRenderings is Script {
         string memory part1 = string.concat(
             '        <div class="gene-item">\n',
             '          <h3>', name, '</h3>\n',
-            '          <img src="', galleryImageURI, '" alt="', name, '">\n'
+            '          <div class="data-section">\n',
+            '            <div class="label">1. What OpenSea Displays (parsed from tokenURI):</div>\n',
+            '            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f9f9f9; width: 200px; margin: 0 auto;">\n',
+            '              <img src="', tokenURIImageURI, '" alt="', name, ' opensea" style="width: 100%; height: auto; border-radius: 4px;">\n',
+            '              <h4 style="margin: 10px 0 5px; font-size: 14px;">', name, '</h4>\n',
+            '              <p style="margin: 0; font-size: 12px; color: #666;">Type: ', traitType, '</p>\n',
+            '            </div>\n',
+            '          </div>\n'
         );
         
         string memory part2 = string.concat(
             '          <div class="data-section">\n',
-            '            <div class="label">Raw SVG Data (stored in gene[tokenId] mapping):</div>\n',
+            '            <div class="label">2. Raw SVG Data (stored in gene[tokenId] mapping):</div>\n',
             '            <div id="svg-', id, '" class="svg-data collapsed">', escapeHtml(svgData), '</div>\n',
             '            <span id="svg-', id, '-toggle" class="toggle" onclick="toggleContent(\'svg-', id, '\')">Expand</span>\n',
             '          </div>\n'
@@ -374,25 +373,14 @@ contract OutputAminalRenderings is Script {
         
         string memory part3 = string.concat(
             '          <div class="data-section">\n',
-            '            <div class="label">TokenURI Metadata JSON (OpenSea sees this):</div>\n',
+            '            <div class="label">3. TokenURI Metadata JSON (OpenSea receives this):</div>\n',
             '            <div id="meta-', id, '" class="metadata collapsed"><pre>', escapeHtml(jsonMetadata), '</pre></div>\n',
             '            <span id="meta-', id, '-toggle" class="toggle" onclick="toggleContent(\'meta-', id, '\')">Expand</span>\n',
-            '          </div>\n'
-        );
-        
-        string memory part4 = string.concat(
-            '          <div class="data-section">\n',
-            '            <div class="label">What OpenSea Displays (parsed from tokenURI):</div>\n',
-            '            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f9f9f9; width: 200px;">\n',
-            '              <img src="', tokenURIImageURI, '" alt="', name, ' opensea" style="width: 100%; height: auto; border-radius: 4px;">\n',
-            '              <h4 style="margin: 10px 0 5px; font-size: 14px;">', name, '</h4>\n',
-            '              <p style="margin: 0; font-size: 12px; color: #666;">Type: ', traitType, '</p>\n',
-            '            </div>\n',
             '          </div>\n',
             '        </div>\n'
         );
         
-        return string.concat(part1, part2, part3, part4);
+        return string.concat(part1, part2, part3);
     }
     
     function buildJsonMetadata(
