@@ -1,0 +1,80 @@
+Aminals: Raw SVG Data vs TokenURI Comparison
+=============================================
+
+This document explains the distinction between raw SVG data stored in GeneNFTs 
+and the tokenURI metadata used for OpenSea/marketplace display.
+
+1. RAW SVG DATA (stored in gene[tokenId] mapping)
+-------------------------------------------------
+Purpose: Direct composition into larger Aminal SVGs
+Access: gene[tokenId] returns the raw SVG string
+Format: Self-contained SVG with viewBox, ready for embedding
+
+Example - Dragon Wings:
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200">
+  <path d="M-50,-30 Q-80,-50 -90,-30 L-70,-10 Q-60,-20 -50,-30" fill="#8B4513"/>
+  <path d="M50,-30 Q80,-50 90,-30 L70,-10 Q60,-20 50,-30" fill="#8B4513"/>
+</svg>
+
+This raw SVG:
+- Can be directly embedded using <image> tags
+- Maintains its own coordinate system via viewBox
+- Is completely self-contained with no external dependencies
+- Used by Aminals to compose multiple traits together
+
+2. TOKENURI METADATA (returned by tokenURI() function)
+------------------------------------------------------
+Purpose: OpenSea-compatible NFT metadata
+Format: Base64-encoded JSON with embedded image
+Standard: ERC721 metadata standard
+
+Example - Dragon Wings tokenURI:
+data:application/json;base64,eyJuYW1lIjoiRHJhZ29uIFdpbmdzIiwiZGVzY3JpcHRpb24iOiJBIEdlbmVORlQgdHJhaXQgb2YgdHlwZTogYmFjayIsImltYWdlIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhacFpYZENiM2c5SWkweE1EQWdMVEV3TUNBeU1EQWdNakF3SWo0OGNHRjBhQ0JrUFNKTkxUVXdMQzB6TUNCUkxUZ3dMQzAxTUNBdE9UQXNMVE13SUV3dE56QXNMVEV3SUZFdE5qQXNMVEl3SUMwMU1Dd3RNekFpSUdacGJHdzlJaU00UWpRMU1UTWlMejQ4Y0dGMGFDQmtQU0pOTlRBc0xUTXdJRkU0TUN3dE5UQWdPVEFzTFRNd0lFdzNNQ3d0TVRBZ1VUWXdMQzB5TUNBMU1Dd3RNekFpSUdacGJHdzlJaU00UWpRMU1UTWlMejQ4TDNOMlp6ND0iLCJhdHRyaWJ1dGVzIjpbeyJ0cmFpdF90eXBlIjoiVHlwZSIsInZhbHVlIjoiYmFjayJ9XX0=
+
+When decoded, this contains:
+{
+  "name": "Dragon Wings",
+  "description": "A GeneNFT trait of type: back",
+  "image": "data:image/svg+xml;base64,[base64-encoded SVG]",
+  "attributes": [
+    {
+      "trait_type": "Type",
+      "value": "back"
+    }
+  ]
+}
+
+3. KEY DIFFERENCES
+------------------
+Raw SVG Data:
+- Direct SVG markup
+- Used for composition
+- Efficient for onchain operations
+- No metadata wrapper
+
+TokenURI:
+- JSON metadata structure
+- Contains name, description, image, attributes
+- Image is base64-encoded within JSON
+- Compatible with OpenSea and marketplaces
+- Shows the trait as a standalone NFT
+
+4. USAGE IN AMINALS
+-------------------
+When an Aminal is created with GeneNFT references:
+1. The Aminal stores references to GeneNFT contracts and token IDs
+2. During composition, it reads the raw SVG from each gene[tokenId]
+3. These SVGs are layered using <image> tags with base64 encoding
+4. The final composed SVG shows all traits combined
+
+Example composition process:
+- Body gene SVG → <image x="50" y="50" width="100" height="100" href="[base64]"/>
+- Wings gene SVG → <image x="0" y="0" width="200" height="200" href="[base64]"/>
+- Tail gene SVG → <image x="100" y="100" width="60" height="80" href="[base64]"/>
+...all wrapped in a parent SVG with viewBox="0 0 200 200"
+
+This dual-output design enables:
+- Efficient onchain composition (raw SVG)
+- Marketplace compatibility (tokenURI)
+- Perfect trait isolation (self-contained SVGs)
+- Zero coupling between traits

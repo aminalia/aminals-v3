@@ -219,43 +219,47 @@ contract OutputAminalRenderings is Script {
             '  <title>Aminal Renderings Gallery</title>\n',
             '  <style>\n',
             '    body { font-family: Arial, sans-serif; background: #f0f0f0; padding: 20px; }\n',
-            '    .container { max-width: 1200px; margin: 0 auto; }\n',
+            '    .container { max-width: 1400px; margin: 0 auto; }\n',
             '    h1, h2 { text-align: center; color: #333; }\n',
             '    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin: 40px 0; }\n',
             '    .item { background: white; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n',
             '    .item img { width: 100%; height: auto; }\n',
             '    .item h3 { margin: 10px 0 5px; font-size: 16px; }\n',
             '    .section { margin: 60px 0; }\n',
+            '    .genes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin: 40px 0; }\n',
+            '    .gene-item { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n',
+            '    .gene-item img { width: 150px; height: 150px; border: 1px solid #ddd; }\n',
+            '    .gene-item h3 { margin: 10px 0; font-size: 18px; }\n',
+            '    .svg-data { background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 11px; overflow-x: auto; text-align: left; }\n',
+            '    .metadata { background: #e8f4f8; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 11px; overflow-x: auto; text-align: left; }\n',
+            '    .label { font-weight: bold; color: #555; margin-top: 10px; text-align: left; }\n',
+            '    .data-section { margin: 15px 0; }\n',
+            '    .collapsed { max-height: 60px; overflow: hidden; position: relative; }\n',
+            '    .collapsed::after { content: "..."; position: absolute; bottom: 0; right: 10px; background: inherit; padding: 0 5px; }\n',
+            '    .toggle { color: #0066cc; cursor: pointer; text-decoration: underline; font-size: 12px; }\n',
             '  </style>\n',
+            '  <script>\n',
+            '    function toggleContent(id) {\n',
+            '      const elem = document.getElementById(id);\n',
+            '      const toggle = document.getElementById(id + "-toggle");\n',
+            '      if (elem.classList.contains("collapsed")) {\n',
+            '        elem.classList.remove("collapsed");\n',
+            '        toggle.textContent = "Collapse";\n',
+            '      } else {\n',
+            '        elem.classList.add("collapsed");\n',
+            '        toggle.textContent = "Expand";\n',
+            '      }\n',
+            '    }\n',
+            '  </script>\n',
             '</head>\n',
             '<body>\n',
             '  <div class="container">\n',
-            '    <h1>Aminal Renderings Gallery</h1>\n'
+            '    <h1>Aminal Renderings Gallery</h1>\n',
+            '    <p style="text-align: center; color: #666;">Showing both raw SVG data (for composition) and tokenURI metadata (for OpenSea)</p>\n'
         );
 
-        // Traits section
-        html = string.concat(html,
-            '    <div class="section">\n',
-            '      <h2>Individual Traits</h2>\n',
-            '      <div class="grid">\n',
-            '        <div class="item"><img src="traits/dragon_wings.svg" alt="Dragon Wings"><h3>Dragon Wings</h3></div>\n',
-            '        <div class="item"><img src="traits/angel_wings.svg" alt="Angel Wings"><h3>Angel Wings</h3></div>\n',
-            '        <div class="item"><img src="traits/bat_wings.svg" alt="Bat Wings"><h3>Bat Wings</h3></div>\n',
-            '        <div class="item"><img src="traits/fire_tail.svg" alt="Fire Tail"><h3>Fire Tail</h3></div>\n',
-            '        <div class="item"><img src="traits/lightning_tail.svg" alt="Lightning Tail"><h3>Lightning Tail</h3></div>\n',
-            '        <div class="item"><img src="traits/fluffy_tail.svg" alt="Fluffy Tail"><h3>Fluffy Tail</h3></div>\n',
-            '        <div class="item"><img src="traits/bunny_ears.svg" alt="Bunny Ears"><h3>Bunny Ears</h3></div>\n',
-            '        <div class="item"><img src="traits/cat_ears.svg" alt="Cat Ears"><h3>Cat Ears</h3></div>\n',
-            '        <div class="item"><img src="traits/devil_horns.svg" alt="Devil Horns"><h3>Devil Horns</h3></div>\n',
-            '        <div class="item"><img src="traits/cute_face.svg" alt="Cute Face"><h3>Cute Face</h3></div>\n',
-            '        <div class="item"><img src="traits/cool_face.svg" alt="Cool Face"><h3>Cool Face</h3></div>\n',
-            '        <div class="item"><img src="traits/sleepy_face.svg" alt="Sleepy Face"><h3>Sleepy Face</h3></div>\n',
-            '        <div class="item"><img src="traits/sparkles.svg" alt="Sparkles"><h3>Sparkles</h3></div>\n',
-            '        <div class="item"><img src="traits/heart_aura.svg" alt="Heart Aura"><h3>Heart Aura</h3></div>\n',
-            '        <div class="item"><img src="traits/rainbow_aura.svg" alt="Rainbow Aura"><h3>Rainbow Aura</h3></div>\n',
-            '      </div>\n',
-            '    </div>\n'
-        );
+        // Generate detailed gene examples
+        html = string.concat(html, generateGeneExamples());
 
         // Composed Aminals section
         html = string.concat(html,
@@ -283,5 +287,126 @@ contract OutputAminalRenderings is Script {
         );
 
         vm.writeFile("script/output/gallery.html", html);
+    }
+
+    function generateGeneExamples() private view returns (string memory) {
+        string memory section = string.concat(
+            '    <div class="section">\n',
+            '      <h2>GeneNFT Examples: Raw SVG vs TokenURI</h2>\n',
+            '      <p style="text-align: center; color: #666; margin-bottom: 30px;">Each GeneNFT stores raw SVG data for composition and provides tokenURI metadata for OpenSea display</p>\n',
+            '      <div class="genes-grid">\n'
+        );
+
+        // Example 1: Dragon Wings
+        section = string.concat(section, generateGeneExample(
+            "Dragon Wings",
+            "back",
+            DRAGON_WINGS,
+            "Majestic dragon wings"
+        ));
+
+        // Example 2: Fire Tail
+        section = string.concat(section, generateGeneExample(
+            "Fire Tail",
+            "tail",
+            FIRE_TAIL,
+            "A blazing fire tail"
+        ));
+
+        // Example 3: Bunny Ears
+        section = string.concat(section, generateGeneExample(
+            "Bunny Ears",
+            "ears",
+            BUNNY_EARS,
+            "Soft bunny ears"
+        ));
+
+        // Example 4: Sparkles
+        section = string.concat(section, generateGeneExample(
+            "Sparkles",
+            "misc",
+            SPARKLES,
+            "Magical sparkles effect"
+        ));
+
+        section = string.concat(section, '      </div>\n    </div>\n');
+        return section;
+    }
+
+    function generateGeneExample(
+        string memory name,
+        string memory traitType,
+        string memory svgData,
+        string memory description
+    ) private pure returns (string memory) {
+        // Generate the tokenURI metadata
+        string memory metadata = GeneRenderer.geneTokenURI(
+            name,
+            traitType,
+            svgData,
+            ""
+        );
+
+        // Generate a unique ID for this example
+        string memory id = string.concat(name, "_", traitType);
+        
+        return string.concat(
+            '        <div class="gene-item">\n',
+            '          <h3>', name, '</h3>\n',
+            '          <img src="data:image/svg+xml;base64,', Base64.encode(bytes(svgData)), '" alt="', name, '">\n',
+            '          <div class="data-section">\n',
+            '            <div class="label">Raw SVG Data (stored in gene[tokenId] mapping):</div>\n',
+            '            <div id="svg-', id, '" class="svg-data collapsed">', escapeHtml(svgData), '</div>\n',
+            '            <span id="svg-', id, '-toggle" class="toggle" onclick="toggleContent(\'svg-', id, '\')">Expand</span>\n',
+            '          </div>\n',
+            '          <div class="data-section">\n',
+            '            <div class="label">TokenURI Output (for OpenSea/marketplaces):</div>\n',
+            '            <div id="meta-', id, '" class="metadata collapsed">', escapeHtml(metadata), '</div>\n',
+            '            <span id="meta-', id, '-toggle" class="toggle" onclick="toggleContent(\'meta-', id, '\')">Expand</span>\n',
+            '          </div>\n',
+            '        </div>\n'
+        );
+    }
+
+    function escapeHtml(string memory text) private pure returns (string memory) {
+        // Basic HTML escaping for display
+        // In a real implementation, this would be more comprehensive
+        bytes memory textBytes = bytes(text);
+        uint256 extraBytes = 0;
+        
+        // Count how many extra bytes we need
+        for (uint256 i = 0; i < textBytes.length; i++) {
+            if (textBytes[i] == "<") extraBytes += 3; // &lt;
+            else if (textBytes[i] == ">") extraBytes += 3; // &gt;
+            else if (textBytes[i] == '"') extraBytes += 5; // &quot;
+        }
+        
+        bytes memory result = new bytes(textBytes.length + extraBytes);
+        uint256 j = 0;
+        
+        for (uint256 i = 0; i < textBytes.length; i++) {
+            if (textBytes[i] == "<") {
+                result[j++] = "&";
+                result[j++] = "l";
+                result[j++] = "t";
+                result[j++] = ";";
+            } else if (textBytes[i] == ">") {
+                result[j++] = "&";
+                result[j++] = "g";
+                result[j++] = "t";
+                result[j++] = ";";
+            } else if (textBytes[i] == '"') {
+                result[j++] = "&";
+                result[j++] = "q";
+                result[j++] = "u";
+                result[j++] = "o";
+                result[j++] = "t";
+                result[j++] = ";";
+            } else {
+                result[j++] = textBytes[i];
+            }
+        }
+        
+        return string(result);
     }
 }
