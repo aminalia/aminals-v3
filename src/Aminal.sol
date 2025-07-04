@@ -90,6 +90,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /// @dev Event emitted when love is consumed through squeaking
     event LoveConsumed(address indexed squeaker, uint256 amount, uint256 remainingLove);
 
+    /// @dev Event emitted when a skill is used
+    event SkillUsed(address indexed user, address indexed target, uint256 energyCost, bytes4 selector);
+
     /// @dev Error thrown when trying to mint more than one token
     error AlreadyMinted();
 
@@ -110,6 +113,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
 
     /// @dev Error thrown when trying to transfer a non-transferable NFT
     error TransferNotAllowed();
+
+    /// @dev Error thrown when skill call fails
+    error SkillCallFailed();
 
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
@@ -290,6 +296,48 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
         
         emit EnergyLost(msg.sender, amount, energy);
         emit LoveConsumed(msg.sender, amount, loveFromUser[msg.sender]);
+    }
+
+    /**
+     * @notice Use a skill by calling an external function and consuming energy/love
+     * @dev The skill function should return the energy cost as a uint256
+     * @dev Falls back to 1 energy/love if no amount is returned or if the call fails to decode
+     * @dev Consumes energy and love at a 1:1 ratio based on the returned cost
+     * @param target The contract address to call
+     * @param data The raw ABI-encoded calldata for the skill
+     */
+    function useSkill(address target, bytes calldata data) external {
+        // Extract function selector for event
+        bytes4 selector = bytes4(data);
+        
+        // Call the skill and get the energy cost
+        (bool success, bytes memory returnData) = target.call(data);
+        if (!success) revert SkillCallFailed();
+        
+        // Try to decode the return value as uint256 (energy cost)
+        uint256 energyCost = 1; // Default cost
+        if (returnData.length >= 32) {
+            // Attempt to decode as uint256
+            assembly {
+                energyCost := mload(add(returnData, 0x20))
+            }
+            // If cost is 0, use default of 1
+            if (energyCost == 0) {
+                energyCost = 1;
+            }
+        }
+        
+        // Consume energy and love using squeak mechanism
+        if (energy < energyCost) revert InsufficientEnergy();
+        if (loveFromUser[msg.sender] < energyCost) revert InsufficientLove();
+        
+        energy -= energyCost;
+        loveFromUser[msg.sender] -= energyCost;
+        totalLove -= energyCost;
+        
+        emit EnergyLost(msg.sender, energyCost, energy);
+        emit LoveConsumed(msg.sender, energyCost, loveFromUser[msg.sender]);
+        emit SkillUsed(msg.sender, target, energyCost, selector);
     }
 
     /**
