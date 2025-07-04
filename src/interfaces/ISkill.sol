@@ -13,7 +13,9 @@ interface ISkill is IERC165 {
     /**
      * @notice Get the cost for executing a skill with the given calldata
      * @dev This function should be view/pure and return the cost without side effects
-     * @dev The cost is deducted from both energy and love at a 1:1 ratio
+     * @dev The cost is deducted at a 1:1 ratio from:
+     *      - Energy: Global per Aminal (shared by all users)
+     *      - Love: Per user per Aminal (each user's individual contribution)
      * @param data The encoded function call that will be executed
      * @return cost The amount of energy and love required to execute this skill
      */

@@ -68,7 +68,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /// @notice Each user builds their own bond with the Aminal through their love contributions
     mapping(address => uint256) public loveFromUser;
 
-    /// @dev Current energy level of this Aminal (global, not per-user)
+    /// @dev Current energy level of this Aminal (global per Aminal, shared by all users)
     /// @notice Energy is shared globally as it represents the Aminal's overall vitality,
     ///         while love is per-user to maintain individual connections and prevent exploitation
     uint256 public energy;
@@ -243,8 +243,8 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /**
      * @notice Receive function to accept ETH, track love using VRGDA, and increase energy by fixed amount
      * @dev When ETH is sent to this contract:
-     *      - Energy increases by a fixed rate (10,000 energy per ETH) - shared globally
-     *      - Love received varies based on current energy level via VRGDA - tracked per user
+     *      - Energy increases by a fixed rate (10,000 energy per ETH) - global per Aminal
+     *      - Love received varies based on current energy level via VRGDA - per user per Aminal
      *      - High energy = less love per ETH, Low energy = more love per ETH
      * @dev This design ensures fair resource consumption: users can only squeak using their own love,
      *      preventing free-riding while energy remains a shared resource representing overall health
@@ -287,10 +287,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /**
      * @notice Make the Aminal squeak, consuming both love and energy
-     * @dev Energy and love both decrease by the specified amount at a 1:1 ratio
+     * @dev Both resources decrease by the specified amount at a 1:1 ratio
      * @dev Reverts if insufficient energy or if user has insufficient love
-     * @dev Energy is global (shared by all users) while love is per-user, ensuring
-     *      users can only spend their own contributions
+     * @dev Energy is global per Aminal (shared by all users) while love is per user per Aminal,
+     *      ensuring users can only spend their own contributions
      * @param amount The amount of energy and love to consume for squeaking
      */
     function squeak(uint256 amount) external {
@@ -308,7 +308,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /**
      * @notice Use a skill by calling an external function and consuming energy/love
      * @dev Only works with contracts implementing the ISkill interface
-     * @dev Consumes energy and love at a 1:1 ratio based on the cost
+     * @dev Consumes resources at a 1:1 ratio based on the cost:
+     *      - Energy: Deducted from global pool (per Aminal, shared by all users)
+     *      - Love: Deducted from caller's personal love balance (per user per Aminal)
      * @dev Protected against reentrancy attacks with nonReentrant modifier
      * @dev SECURITY: Always calls with 0 ETH value to prevent draining funds through skills
      * @param target The contract address to call
