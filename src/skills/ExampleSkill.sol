@@ -31,6 +31,9 @@ contract ExampleSkill is Skill {
     
     /**
      * @dev Calculate cost based on the action being performed
+     * @dev The returned cost is deducted from both:
+     *      - Energy (global per Aminal, shared by all users)
+     *      - Love (per user per Aminal, from the calling user's balance)
      * @param data The calldata being sent to this skill
      * @return The amount of energy and love required
      */
