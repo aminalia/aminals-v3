@@ -8,18 +8,18 @@ import {toWadUnsafe, wadDiv} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMat
  * @title AminalVRGDA
  * @notice LinearVRGDA implementation that modulates love received based on energy level
  * @dev Energy gain is fixed (10k per ETH), but love varies inversely with energy
- * @dev Thresholds prevent extreme VRGDA values: <1k energy (0.1 ETH) = 2x love, >50k (5 ETH) = 0.1x love
+ * @dev Thresholds prevent extreme VRGDA values: <10 energy (0.001 ETH) = 100x love, >10M (1000 ETH) = 0.001x love
  * @dev Between thresholds, VRGDA calculates love based on energy as proxy for time/sold
  */
 contract AminalVRGDA is LinearVRGDA {
     /// @notice Fixed rate of energy gained per ETH (not affected by VRGDA)
     uint256 public constant ENERGY_PER_ETH = 10000; // 1 ETH = 10,000 energy units
     
-    /// @notice Maximum love multiplier (2x ETH sent)
-    uint256 public constant MAX_LOVE_MULTIPLIER = 2 ether;
+    /// @notice Maximum love multiplier (100x ETH sent)
+    uint256 public constant MAX_LOVE_MULTIPLIER = 100 ether;
     
-    /// @notice Minimum love multiplier (0.1x ETH sent)
-    uint256 public constant MIN_LOVE_MULTIPLIER = 0.1 ether;
+    /// @notice Minimum love multiplier (0.001x ETH sent)
+    uint256 public constant MIN_LOVE_MULTIPLIER = 0.001 ether;
     
     /// @notice Constructor to set up the VRGDA parameters for love calculation
     /// @dev We repurpose the VRGDA to calculate love based on energy level
@@ -48,10 +48,10 @@ contract AminalVRGDA is LinearVRGDA {
         uint256 loveMultiplier;
         
         // Special cases for energy thresholds
-        if (currentEnergy < 1000) {
+        if (currentEnergy < 10) {
             // Very low energy - give maximum love
             loveMultiplier = MAX_LOVE_MULTIPLIER;
-        } else if (currentEnergy > 50000) {
+        } else if (currentEnergy > 10000000) {
             // High energy - give minimum love
             loveMultiplier = MIN_LOVE_MULTIPLIER;
         } else {
