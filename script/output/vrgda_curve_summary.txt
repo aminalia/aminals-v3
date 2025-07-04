@@ -1,0 +1,13 @@
+AMINAL VRGDA CURVE SUMMARY
+==================================================
+
+Energy Range: 0.0001 - 200 ETH
+Multiplier Range: 0.1x - 10.0x
+
+Key Points:
+- Starving (<0.005 ETH): 10x multiplier
+- Hungry (0.005-0.1 ETH): 9.5x-7.4x multiplier
+- Fed (0.1-1 ETH): 7.4x-5.5x multiplier
+- Well-Fed (1-10 ETH): 5.5x-3.5x multiplier
+- Overfed (10-100 ETH): 3.5x-0.1x multiplier
+- Beyond Threshold (>100 ETH): 0.1x multiplier
