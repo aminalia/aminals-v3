@@ -750,6 +750,7 @@ Aminals can use skills by calling external functions and consuming energy/love:
 - **Fallback Behavior**: Defaults to 1 energy/love if no cost returned or zero cost
 - **Safety**: Reverts if skill call fails or insufficient resources
 - **Per-User Love**: Only the caller's love can be consumed, maintaining individual relationships
+- **Reentrancy Protection**: Uses OpenZeppelin's ReentrancyGuard to prevent exploitation
 
 Implementation:
 - `useSkill(address target, bytes calldata data)`: Execute skill with raw calldata
