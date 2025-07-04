@@ -49,8 +49,8 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     /**
      * @dev Constructor sets the collection details
      * @param owner The address that will own the contract
-     * @param name The name of this GeneNFT collection
-     * @param symbol The symbol for this GeneNFT collection
+     * @param name The name of this Gene collection
+     * @param symbol The symbol for this Gene collection
      * @param baseURI The base URI for token metadata
      */
     constructor(
@@ -64,8 +64,8 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     }
 
     /**
-     * @notice Mint a GeneNFT with onchain SVG data
-     * @dev Anyone can mint GeneNFTs. Traits are permanent and cannot be modified after minting.
+     * @notice Mint a Gene with onchain SVG data
+     * @dev Anyone can mint Genes. Traits are permanent and cannot be modified after minting.
      * @param to The address that will receive the NFT
      * @param traitType The trait type this NFT represents (e.g., "back", "arm")
      * @param traitValue The specific trait value (e.g., "Dragon Wings", "Fire Tail")
