@@ -14,8 +14,8 @@ contract VRGDACurveDataScript is Script {
             10e18             // Time scale
         );
         
-        // Create CSV header
-        vm.writeLine("vrgda_curve_data.csv", "eth_amount,energy,love_multiplier,love_per_eth");
+        // Create CSV header (overwrite existing file)
+        vm.writeFile("vrgda_curve_data.csv", "eth_amount,energy,love_multiplier,love_per_eth\n");
         
         // Test points from 0.0001 ETH to 200 ETH
         uint256[] memory ethAmounts = new uint256[](50);
