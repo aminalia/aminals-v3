@@ -15,7 +15,7 @@ contract VRGDACurveDataScript is Script {
         );
         
         // Create CSV header (overwrite existing file)
-        vm.writeFile("vrgda_curve_data.csv", "eth_amount,energy,love_multiplier,love_per_eth\n");
+        vm.writeFile("script/vrgda_curve_data.csv", "eth_amount,energy,love_multiplier,love_per_eth\n");
         
         // Test points from 0.0001 ETH to 200 ETH
         uint256[] memory ethAmounts = new uint256[](50);
@@ -110,14 +110,14 @@ contract VRGDACurveDataScript is Script {
                 formatEther(lovePerEth)
             ));
             
-            vm.writeLine("vrgda_curve_data.csv", line);
+            vm.writeLine("script/vrgda_curve_data.csv", line);
             
             // Also log to console for visibility
             console.log(string(abi.encodePacked("ETH: ", formatEther(ethAmount), " Energy: ", vm.toString(energy), " Multiplier: ", formatEther(loveMultiplier))));
         }
         
         console.log("");
-        console.log("Data written to vrgda_curve_data.csv");
+        console.log("Data written to script/vrgda_curve_data.csv");
         console.log("Columns: eth_amount, energy, love_multiplier, love_per_eth");
     }
     
