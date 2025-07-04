@@ -40,8 +40,8 @@ contract AminalComposer {
     ) external view returns (string memory) {
         GeneNFT genes = GeneNFT(geneContract);
         
-        // Base body shape (circle for simplicity, but could be more complex)
-        string memory bodyBase = '<circle cx="0" cy="0" r="40" fill="#FFE4B5" stroke="#000" stroke-width="2"/>';
+        // Base body shape as a complete SVG
+        string memory bodyBase = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100"><circle cx="0" cy="0" r="40" fill="#FFE4B5" stroke="#000" stroke-width="2"/></svg>';
         
         // Get each gene SVG if token ID is provided
         string memory backSvg = backTokenId > 0 ? genes.gene(backTokenId) : "";

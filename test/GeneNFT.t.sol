@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {GeneNFT} from "src/GeneNFT.sol";
+import {GeneRenderer} from "src/GeneRenderer.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract GeneNFTTest is Test {
@@ -13,11 +14,11 @@ contract GeneNFTTest is Test {
     address public user1 = address(0x2);
     address public user2 = address(0x3);
 
-    // Example SVG components for different trait types
-    string constant DRAGON_WINGS_SVG = '<path d="M-50,-30 Q-80,-50 -90,-30 L-70,-10 Q-60,-20 -50,-30" fill="#8B4513" stroke="#000" stroke-width="2"/><path d="M50,-30 Q80,-50 90,-30 L70,-10 Q60,-20 50,-30" fill="#8B4513" stroke="#000" stroke-width="2"/>';
-    string constant FIRE_TAIL_SVG = '<path d="M0,30 Q-10,50 0,70 Q10,50 0,30" fill="#FF4500" stroke="#FF0000" stroke-width="2"/><path d="M0,40 Q-5,50 0,60 Q5,50 0,40" fill="#FFA500" stroke="#FF4500" stroke-width="1"/>';
-    string constant BUNNY_EARS_SVG = '<ellipse cx="-20" cy="-60" rx="10" ry="30" fill="#FFC0CB" stroke="#000" stroke-width="2"/><ellipse cx="20" cy="-60" rx="10" ry="30" fill="#FFC0CB" stroke="#000" stroke-width="2"/>';
-    string constant SPARKLE_MISC_SVG = '<circle cx="-30" cy="-30" r="3" fill="#FFD700"><animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/></circle><circle cx="30" cy="-30" r="3" fill="#FFD700"><animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/></circle>';
+    // Example SVG components for different trait types - complete self-contained SVGs
+    string constant DRAGON_WINGS_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200"><path d="M-50,-30 Q-80,-50 -90,-30 L-70,-10 Q-60,-20 -50,-30" fill="#8B4513" stroke="#000" stroke-width="2"/><path d="M50,-30 Q80,-50 90,-30 L70,-10 Q60,-20 50,-30" fill="#8B4513" stroke="#000" stroke-width="2"/></svg>';
+    string constant FIRE_TAIL_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 0 100 100"><path d="M0,30 Q-10,50 0,70 Q10,50 0,30" fill="#FF4500" stroke="#FF0000" stroke-width="2"/><path d="M0,40 Q-5,50 0,60 Q5,50 0,40" fill="#FFA500" stroke="#FF4500" stroke-width="1"/></svg>';
+    string constant BUNNY_EARS_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -100 100 100"><ellipse cx="-20" cy="-60" rx="10" ry="30" fill="#FFC0CB" stroke="#000" stroke-width="2"/><ellipse cx="20" cy="-60" rx="10" ry="30" fill="#FFC0CB" stroke="#000" stroke-width="2"/></svg>';
+    string constant SPARKLE_MISC_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100"><circle cx="-30" cy="-30" r="3" fill="#FFD700"><animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/></circle><circle cx="30" cy="-30" r="3" fill="#FFD700"><animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/></circle></svg>';
 
     function setUp() public {
         vm.startPrank(owner);
@@ -237,16 +238,22 @@ contract GeneNFTTest is Test {
         string memory earsSvg = geneNFT.gene(earsId);
         string memory miscSvg = geneNFT.gene(miscId);
         
-        // Compose into a full Aminal SVG (this would be done by the Aminal contract)
-        string memory composedSvg = string(abi.encodePacked(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200">',
-            '<circle cx="0" cy="0" r="40" fill="#FFE4B5" stroke="#000" stroke-width="2"/>', // Body
-            backSvg,
-            tailSvg,
-            earsSvg,
-            miscSvg,
-            '</svg>'
-        ));
+        // Compose into a full Aminal SVG using image tags
+        string memory composedSvg = GeneRenderer.svg(
+            "0 0 200 200",
+            string.concat(
+                // Body
+                GeneRenderer.svgImage(50, 50, 100, 100, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100"><circle cx="0" cy="0" r="40" fill="#FFE4B5" stroke="#000" stroke-width="2"/></svg>'),
+                // Back
+                GeneRenderer.svgImage(0, 0, 200, 200, backSvg),
+                // Tail
+                GeneRenderer.svgImage(100, 100, 50, 50, tailSvg),
+                // Ears
+                GeneRenderer.svgImage(50, 0, 100, 50, earsSvg),
+                // Misc
+                GeneRenderer.svgImage(0, 0, 200, 200, miscSvg)
+            )
+        );
         
         // Log the composed SVG
         console.log("Composed Aminal SVG:");

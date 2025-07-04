@@ -181,7 +181,35 @@ library GeneRenderer {
     }
 
     /**
-     * @dev Compose multiple gene SVGs into a single Aminal
+     * @dev Create an SVG image element with base64-encoded SVG content
+     */
+    function svgImage(
+        int256 x,
+        int256 y,
+        uint256 width,
+        uint256 height,
+        string memory svgContent
+    ) internal pure returns (string memory) {
+        // Ensure the SVG content is a complete SVG with its own viewBox
+        string memory dataUri = svgToBase64DataURI(svgContent);
+        
+        return string.concat(
+            '<image x="',
+            x < 0 ? string.concat("-", uint256(-x).toString()) : uint256(x).toString(),
+            '" y="',
+            y < 0 ? string.concat("-", uint256(-y).toString()) : uint256(y).toString(),
+            '" width="',
+            width.toString(),
+            '" height="',
+            height.toString(),
+            '" href="',
+            dataUri,
+            '"/>'
+        );
+    }
+
+    /**
+     * @dev Compose multiple gene SVGs into a single Aminal using image tags
      */
     function composeAminal(
         string memory bodyBaseSvg,
@@ -193,19 +221,49 @@ library GeneRenderer {
         string memory armSvg,
         string memory miscSvg
     ) internal pure returns (string memory) {
-        return svg(
-            "-100 -100 200 200",
-            string.concat(
-                bodyBaseSvg,  // Base body shape
-                backSvg,      // Back features (wings, etc)
-                tailSvg,      // Tail
-                earsSvg,      // Ears
-                faceSvg,      // Face features
-                mouthSvg,     // Mouth
-                armSvg,       // Arms
-                miscSvg       // Special effects
-            )
-        );
+        string memory composition = "";
+        
+        // Base body (centered)
+        if (bytes(bodyBaseSvg).length > 0) {
+            composition = string.concat(composition, svgImage(0, 0, 200, 200, bodyBaseSvg));
+        }
+        
+        // Back features (behind body)
+        if (bytes(backSvg).length > 0) {
+            composition = string.concat(composition, svgImage(-50, -50, 300, 300, backSvg));
+        }
+        
+        // Tail (offset to back)
+        if (bytes(tailSvg).length > 0) {
+            composition = string.concat(composition, svgImage(50, 100, 100, 100, tailSvg));
+        }
+        
+        // Ears (on top)
+        if (bytes(earsSvg).length > 0) {
+            composition = string.concat(composition, svgImage(0, -100, 200, 150, earsSvg));
+        }
+        
+        // Face features (centered on face area)
+        if (bytes(faceSvg).length > 0) {
+            composition = string.concat(composition, svgImage(50, 25, 100, 100, faceSvg));
+        }
+        
+        // Mouth (lower face)
+        if (bytes(mouthSvg).length > 0) {
+            composition = string.concat(composition, svgImage(50, 75, 100, 50, mouthSvg));
+        }
+        
+        // Arms (sides)
+        if (bytes(armSvg).length > 0) {
+            composition = string.concat(composition, svgImage(-25, 50, 250, 100, armSvg));
+        }
+        
+        // Misc effects (overlay)
+        if (bytes(miscSvg).length > 0) {
+            composition = string.concat(composition, svgImage(-50, -50, 300, 300, miscSvg));
+        }
+        
+        return svg("0 0 200 200", composition);
     }
 
     /**
