@@ -19,6 +19,7 @@
     .gene-item h3 { margin: 10px 0; font-size: 18px; }
     .svg-data { background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 11px; overflow-x: auto; text-align: left; }
     .metadata { background: #e8f4f8; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 11px; overflow-x: auto; text-align: left; }
+    .metadata pre { margin: 0; font-family: monospace; white-space: pre-wrap; }
     .label { font-weight: bold; color: #555; margin-top: 10px; text-align: left; }
     .data-section { margin: 15px 0; }
     .collapsed { max-height: 60px; overflow: hidden; position: relative; }
@@ -56,9 +57,23 @@
             <span id="svg-Dragon Wings_back-toggle" class="toggle" onclick="toggleContent('svg-Dragon Wings_back')">Expand</span>
           </div>
           <div class="data-section">
-            <div class="label">TokenURI Output (for OpenSea/marketplaces):</div>
-            <div id="meta-Dragon Wings_back" class="metadata collapsed">data:application/json;base64,eyJuYW1lIjoiRHJhZ29uIFdpbmdzIiwiZGVzY3JpcHRpb24iOiJBIEdlbmVORlQgdHJhaXQgb2YgdHlwZTogYmFjayIsImltYWdlIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhacFpYZENiM2c5SWkweE1EQWdMVEV3TUNBeU1EQWdNakF3SWo0OGNHRjBhQ0JrUFNKTkxUVXdMQzB6TUNCUkxUZ3dMQzAxTUNBdE9UQXNMVE13SUV3dE56QXNMVEV3SUZFdE5qQXNMVEl3SUMwMU1Dd3RNekFpSUdacGJHdzlJaU00UWpRMU1UTWlMejQ4Y0dGMGFDQmtQU0pOTlRBc0xUTXdJRkU0TUN3dE5UQWdPVEFzTFRNd0lFdzNNQ3d0TVRBZ1VUWXdMQzB5TUNBMU1Dd3RNekFpSUdacGJHdzlJaU00UWpRMU1UTWlMejQ4TDNOMlp6ND0iLCJhdHRyaWJ1dGVzIjpbeyJ0cmFpdF90eXBlIjoiVHlwZSIsInZhbHVlIjoiYmFjayJ9XX0=</div>
+            <div class="label">TokenURI Metadata JSON (OpenSea sees this):</div>
+            <div id="meta-Dragon Wings_back" class="metadata collapsed"><pre>{
+  &quot;name&quot;: &quot;Dragon Wings&quot;,
+  &quot;description&quot;: &quot;A GeneNFT trait of type: back&quot;,
+  &quot;image&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIH...&quot;,
+  &quot;attributes&quot;: [
+    {
+      &quot;trait_type&quot;: &quot;Type&quot;,
+      &quot;value&quot;: &quot;back&quot;
+    }
+  ]
+}</pre></div>
             <span id="meta-Dragon Wings_back-toggle" class="toggle" onclick="toggleContent('meta-Dragon Wings_back')">Expand</span>
+          </div>
+          <div class="data-section">
+            <div class="label">Standalone Display (from tokenURI image):</div>
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgNTAwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjI1MCIgeT0iNTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzMzMyI+YmFjazogRHJhZ29uIFdpbmdzPC90ZXh0PjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDI1MCwgMjUwKSI+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xMDAgLTEwMCAyMDAgMjAwIj48cGF0aCBkPSJNLTUwLC0zMCBRLTgwLC01MCAtOTAsLTMwIEwtNzAsLTEwIFEtNjAsLTIwIC01MCwtMzAiIGZpbGw9IiM4QjQ1MTMiLz48cGF0aCBkPSJNNTAsLTMwIFE4MCwtNTAgOTAsLTMwIEw3MCwtMTAgUTYwLC0yMCA1MCwtMzAiIGZpbGw9IiM4QjQ1MTMiLz48L3N2Zz48L2c+PC9zdmc+" alt="Dragon Wings standalone" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">
           </div>
         </div>
         <div class="gene-item">
@@ -70,9 +85,23 @@
             <span id="svg-Fire Tail_tail-toggle" class="toggle" onclick="toggleContent('svg-Fire Tail_tail')">Expand</span>
           </div>
           <div class="data-section">
-            <div class="label">TokenURI Output (for OpenSea/marketplaces):</div>
-            <div id="meta-Fire Tail_tail" class="metadata collapsed">data:application/json;base64,eyJuYW1lIjoiRmlyZSBUYWlsIiwiZGVzY3JpcHRpb24iOiJBIEdlbmVORlQgdHJhaXQgb2YgdHlwZTogdGFpbCIsImltYWdlIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhacFpYZENiM2c5SWkwMU1DQXdJREV3TUNBeE1EQWlQanh3WVhSb0lHUTlJazB3TERNd0lGRXRNVEFzTlRBZ01DdzNNQ0JSTVRBc05UQWdNQ3d6TUNJZ1ptbHNiRDBpSTBaR05EVXdNQ0l2UGp4d1lYUm9JR1E5SWswd0xEUXdJRkV0TlN3MU1DQXdMRFl3SUZFMUxEVXdJREFzTkRBaUlHWnBiR3c5SWlOR1JrUTNNREFpTHo0OEwzTjJaejQ9IiwiYXR0cmlidXRlcyI6W3sidHJhaXRfdHlwZSI6IlR5cGUiLCJ2YWx1ZSI6InRhaWwifV19</div>
+            <div class="label">TokenURI Metadata JSON (OpenSea sees this):</div>
+            <div id="meta-Fire Tail_tail" class="metadata collapsed"><pre>{
+  &quot;name&quot;: &quot;Fire Tail&quot;,
+  &quot;description&quot;: &quot;A GeneNFT trait of type: tail&quot;,
+  &quot;image&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIH...&quot;,
+  &quot;attributes&quot;: [
+    {
+      &quot;trait_type&quot;: &quot;Type&quot;,
+      &quot;value&quot;: &quot;tail&quot;
+    }
+  ]
+}</pre></div>
             <span id="meta-Fire Tail_tail-toggle" class="toggle" onclick="toggleContent('meta-Fire Tail_tail')">Expand</span>
+          </div>
+          <div class="data-section">
+            <div class="label">Standalone Display (from tokenURI image):</div>
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgNTAwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjI1MCIgeT0iNTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzMzMyI+dGFpbDogRmlyZSBUYWlsPC90ZXh0PjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDI1MCwgMjUwKSI+PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii01MCAwIDEwMCAxMDAiPjxwYXRoIGQ9Ik0wLDMwIFEtMTAsNTAgMCw3MCBRMTAsNTAgMCwzMCIgZmlsbD0iI0ZGNDUwMCIvPjxwYXRoIGQ9Ik0wLDQwIFEtNSw1MCAwLDYwIFE1LDUwIDAsNDAiIGZpbGw9IiNGRkQ3MDAiLz48L3N2Zz48L2c+PC9zdmc+" alt="Fire Tail standalone" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">
           </div>
         </div>
         <div class="gene-item">
@@ -84,9 +113,23 @@
             <span id="svg-Bunny Ears_ears-toggle" class="toggle" onclick="toggleContent('svg-Bunny Ears_ears')">Expand</span>
           </div>
           <div class="data-section">
-            <div class="label">TokenURI Output (for OpenSea/marketplaces):</div>
-            <div id="meta-Bunny Ears_ears" class="metadata collapsed">data:application/json;base64,eyJuYW1lIjoiQnVubnkgRWFycyIsImRlc2NyaXB0aW9uIjoiQSBHZW5lTkZUIHRyYWl0IG9mIHR5cGU6IGVhcnMiLCJpbWFnZSI6ImRhdGE6aW1hZ2Uvc3ZnK3htbDtiYXNlNjQsUEhOMlp5QjRiV3h1Y3owaWFIUjBjRG92TDNkM2R5NTNNeTV2Y21jdk1qQXdNQzl6ZG1jaUlIWnBaWGRDYjNnOUlpMDFNQ0F0TVRBd0lERXdNQ0F4TURBaVBqeGxiR3hwY0hObElHTjRQU0l0TWpBaUlHTjVQU0l0TmpBaUlISjRQU0l4TUNJZ2NuazlJak13SWlCbWFXeHNQU0lqUmtaRE1FTkNJaTgrUEdWc2JHbHdjMlVnWTNnOUlqSXdJaUJqZVQwaUxUWXdJaUJ5ZUQwaU1UQWlJSEo1UFNJek1DSWdabWxzYkQwaUkwWkdRekJEUWlJdlBqd3ZjM1puUGc9PSIsImF0dHJpYnV0ZXMiOlt7InRyYWl0X3R5cGUiOiJUeXBlIiwidmFsdWUiOiJlYXJzIn1dfQ==</div>
+            <div class="label">TokenURI Metadata JSON (OpenSea sees this):</div>
+            <div id="meta-Bunny Ears_ears" class="metadata collapsed"><pre>{
+  &quot;name&quot;: &quot;Bunny Ears&quot;,
+  &quot;description&quot;: &quot;A GeneNFT trait of type: ears&quot;,
+  &quot;image&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIH...&quot;,
+  &quot;attributes&quot;: [
+    {
+      &quot;trait_type&quot;: &quot;Type&quot;,
+      &quot;value&quot;: &quot;ears&quot;
+    }
+  ]
+}</pre></div>
             <span id="meta-Bunny Ears_ears-toggle" class="toggle" onclick="toggleContent('meta-Bunny Ears_ears')">Expand</span>
+          </div>
+          <div class="data-section">
+            <div class="label">Standalone Display (from tokenURI image):</div>
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgNTAwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjI1MCIgeT0iNTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzMzMyI+ZWFyczogQnVubnkgRWFyczwvdGV4dD48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNTAsIDI1MCkiPjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSItNTAgLTEwMCAxMDAgMTAwIj48ZWxsaXBzZSBjeD0iLTIwIiBjeT0iLTYwIiByeD0iMTAiIHJ5PSIzMCIgZmlsbD0iI0ZGQzBDQiIvPjxlbGxpcHNlIGN4PSIyMCIgY3k9Ii02MCIgcng9IjEwIiByeT0iMzAiIGZpbGw9IiNGRkMwQ0IiLz48L3N2Zz48L2c+PC9zdmc+" alt="Bunny Ears standalone" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">
           </div>
         </div>
         <div class="gene-item">
@@ -98,9 +141,23 @@
             <span id="svg-Sparkles_misc-toggle" class="toggle" onclick="toggleContent('svg-Sparkles_misc')">Expand</span>
           </div>
           <div class="data-section">
-            <div class="label">TokenURI Output (for OpenSea/marketplaces):</div>
-            <div id="meta-Sparkles_misc" class="metadata collapsed">data:application/json;base64,eyJuYW1lIjoiU3BhcmtsZXMiLCJkZXNjcmlwdGlvbiI6IkEgR2VuZU5GVCB0cmFpdCBvZiB0eXBlOiBtaXNjIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSFpwWlhkQ2IzZzlJaTAxTUNBdE5UQWdNVEF3SURFd01DSStQR05wY21Oc1pTQmplRDBpTFRNd0lpQmplVDBpTFRNd0lpQnlQU0l6SWlCbWFXeHNQU0lqUmtaRU56QXdJajQ4WVc1cGJXRjBaU0JoZEhSeWFXSjFkR1ZPWVcxbFBTSnZjR0ZqYVhSNUlpQjJZV3gxWlhNOUlqRTdNQzR6T3pFaUlHUjFjajBpTW5NaUlISmxjR1ZoZEVOdmRXNTBQU0pwYm1SbFptbHVhWFJsSWk4K1BDOWphWEpqYkdVK1BHTnBjbU5zWlNCamVEMGlNekFpSUdONVBTSXRNekFpSUhJOUlqTWlJR1pwYkd3OUlpTkdSa1EzTURBaVBqeGhibWx0WVhSbElHRjBkSEpwWW5WMFpVNWhiV1U5SW05d1lXTnBkSGtpSUhaaGJIVmxjejBpTUM0ek96RTdNQzR6SWlCa2RYSTlJakp6SWlCeVpYQmxZWFJEYjNWdWREMGlhVzVrWldacGJtbDBaU0l2UGp3dlkybHlZMnhsUGp4amFYSmpiR1VnWTNnOUlqQWlJR041UFNJek1DSWdjajBpTXlJZ1ptbHNiRDBpSTBaR1JEY3dNQ0krUEdGdWFXMWhkR1VnWVhSMGNtbGlkWFJsVG1GdFpUMGliM0JoWTJsMGVTSWdkbUZzZFdWelBTSXhPekF1TXpzeElpQmtkWEk5SWpFdU5YTWlJSEpsY0dWaGRFTnZkVzUwUFNKcGJtUmxabWx1YVhSbElpOCtQQzlqYVhKamJHVStQQzl6ZG1jKyIsImF0dHJpYnV0ZXMiOlt7InRyYWl0X3R5cGUiOiJUeXBlIiwidmFsdWUiOiJtaXNjIn1dfQ==</div>
+            <div class="label">TokenURI Metadata JSON (OpenSea sees this):</div>
+            <div id="meta-Sparkles_misc" class="metadata collapsed"><pre>{
+  &quot;name&quot;: &quot;Sparkles&quot;,
+  &quot;description&quot;: &quot;A GeneNFT trait of type: misc&quot;,
+  &quot;image&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIH...&quot;,
+  &quot;attributes&quot;: [
+    {
+      &quot;trait_type&quot;: &quot;Type&quot;,
+      &quot;value&quot;: &quot;misc&quot;
+    }
+  ]
+}</pre></div>
             <span id="meta-Sparkles_misc-toggle" class="toggle" onclick="toggleContent('meta-Sparkles_misc')">Expand</span>
+          </div>
+          <div class="data-section">
+            <div class="label">Standalone Display (from tokenURI image):</div>
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgNTAwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjI1MCIgeT0iNTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzMzMyI+bWlzYzogU3BhcmtsZXM8L3RleHQ+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjUwLCAyNTApIj48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iLTUwIC01MCAxMDAgMTAwIj48Y2lyY2xlIGN4PSItMzAiIGN5PSItMzAiIHI9IjMiIGZpbGw9IiNGRkQ3MDAiPjxhbmltYXRlIGF0dHJpYnV0ZU5hbWU9Im9wYWNpdHkiIHZhbHVlcz0iMTswLjM7MSIgZHVyPSIycyIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiLz48L2NpcmNsZT48Y2lyY2xlIGN4PSIzMCIgY3k9Ii0zMCIgcj0iMyIgZmlsbD0iI0ZGRDcwMCI+PGFuaW1hdGUgYXR0cmlidXRlTmFtZT0ib3BhY2l0eSIgdmFsdWVzPSIwLjM7MTswLjMiIGR1cj0iMnMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIi8+PC9jaXJjbGU+PGNpcmNsZSBjeD0iMCIgY3k9IjMwIiByPSIzIiBmaWxsPSIjRkZENzAwIj48YW5pbWF0ZSBhdHRyaWJ1dGVOYW1lPSJvcGFjaXR5IiB2YWx1ZXM9IjE7MC4zOzEiIGR1cj0iMS41cyIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiLz48L2NpcmNsZT48L3N2Zz48L2c+PC9zdmc+" alt="Sparkles standalone" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">
           </div>
         </div>
       </div>

@@ -232,6 +232,7 @@ contract OutputAminalRenderings is Script {
             '    .gene-item h3 { margin: 10px 0; font-size: 18px; }\n',
             '    .svg-data { background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 11px; overflow-x: auto; text-align: left; }\n',
             '    .metadata { background: #e8f4f8; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 11px; overflow-x: auto; text-align: left; }\n',
+            '    .metadata pre { margin: 0; font-family: monospace; white-space: pre-wrap; }\n',
             '    .label { font-weight: bold; color: #555; margin-top: 10px; text-align: left; }\n',
             '    .data-section { margin: 15px 0; }\n',
             '    .collapsed { max-height: 60px; overflow: hidden; position: relative; }\n',
@@ -339,32 +340,78 @@ contract OutputAminalRenderings is Script {
         string memory svgData,
         string memory description
     ) private pure returns (string memory) {
-        // Generate the tokenURI metadata
-        string memory metadata = GeneRenderer.geneTokenURI(
-            name,
+        // Generate the standalone SVG for display
+        string memory standaloneSvg = GeneRenderer.generateStandaloneGeneSVG(
             traitType,
-            svgData,
-            ""
+            name,
+            svgData
         );
+        
+        // Generate the image data URI
+        string memory imageDataURI = GeneRenderer.svgToBase64DataURI(standaloneSvg);
+        
+        // Create the JSON metadata
+        string memory jsonMetadata = buildJsonMetadata(name, traitType, imageDataURI);
 
         // Generate a unique ID for this example
         string memory id = string.concat(name, "_", traitType);
         
-        return string.concat(
+        // Build HTML in parts to avoid stack too deep
+        string memory part1 = string.concat(
             '        <div class="gene-item">\n',
             '          <h3>', name, '</h3>\n',
-            '          <img src="data:image/svg+xml;base64,', Base64.encode(bytes(svgData)), '" alt="', name, '">\n',
+            '          <img src="data:image/svg+xml;base64,', Base64.encode(bytes(svgData)), '" alt="', name, '">\n'
+        );
+        
+        string memory part2 = string.concat(
             '          <div class="data-section">\n',
             '            <div class="label">Raw SVG Data (stored in gene[tokenId] mapping):</div>\n',
             '            <div id="svg-', id, '" class="svg-data collapsed">', escapeHtml(svgData), '</div>\n',
             '            <span id="svg-', id, '-toggle" class="toggle" onclick="toggleContent(\'svg-', id, '\')">Expand</span>\n',
-            '          </div>\n',
+            '          </div>\n'
+        );
+        
+        string memory part3 = string.concat(
             '          <div class="data-section">\n',
-            '            <div class="label">TokenURI Output (for OpenSea/marketplaces):</div>\n',
-            '            <div id="meta-', id, '" class="metadata collapsed">', escapeHtml(metadata), '</div>\n',
+            '            <div class="label">TokenURI Metadata JSON (OpenSea sees this):</div>\n',
+            '            <div id="meta-', id, '" class="metadata collapsed"><pre>', escapeHtml(jsonMetadata), '</pre></div>\n',
             '            <span id="meta-', id, '-toggle" class="toggle" onclick="toggleContent(\'meta-', id, '\')">Expand</span>\n',
+            '          </div>\n'
+        );
+        
+        string memory part4 = string.concat(
+            '          <div class="data-section">\n',
+            '            <div class="label">Standalone Display (from tokenURI image):</div>\n',
+            '            <img src="', imageDataURI, '" alt="', name, ' standalone" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">\n',
             '          </div>\n',
             '        </div>\n'
+        );
+        
+        return string.concat(part1, part2, part3, part4);
+    }
+    
+    function buildJsonMetadata(
+        string memory name,
+        string memory traitType,
+        string memory imageDataURI
+    ) private pure returns (string memory) {
+        // Truncate the image URI for display
+        string memory truncatedImageURI = bytes(imageDataURI).length > 80 
+            ? string.concat(substring(imageDataURI, 0, 80), "...")
+            : imageDataURI;
+            
+        return string.concat(
+            '{\n',
+            '  "name": "', name, '",\n',
+            '  "description": "A GeneNFT trait of type: ', traitType, '",\n',
+            '  "image": "', truncatedImageURI, '",\n',
+            '  "attributes": [\n',
+            '    {\n',
+            '      "trait_type": "Type",\n',
+            '      "value": "', traitType, '"\n',
+            '    }\n',
+            '  ]\n',
+            '}'
         );
     }
 
@@ -407,6 +454,18 @@ contract OutputAminalRenderings is Script {
             }
         }
         
+        return string(result);
+    }
+    
+    function substring(string memory str, uint256 start, uint256 end) private pure returns (string memory) {
+        bytes memory strBytes = bytes(str);
+        require(end <= strBytes.length, "End index out of bounds");
+        require(start < end, "Invalid range");
+        
+        bytes memory result = new bytes(end - start);
+        for (uint256 i = 0; i < end - start; i++) {
+            result[i] = strBytes[start + i];
+        }
         return string(result);
     }
 }
