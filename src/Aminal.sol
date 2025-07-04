@@ -95,7 +95,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     event LoveConsumed(address indexed squeaker, uint256 amount, uint256 remainingLove);
 
     /// @dev Event emitted when a skill is used
-    event SkillUsed(address indexed user, address indexed target, uint256 energyCost, bytes4 selector);
+    event SkillUsed(address indexed user, uint256 energyCost, address indexed target, bytes4 indexed selector);
 
     /// @dev Error thrown when trying to mint more than one token
     error AlreadyMinted();
@@ -358,7 +358,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         
         emit EnergyLost(msg.sender, energyCost, energy);
         emit LoveConsumed(msg.sender, energyCost, loveFromUser[msg.sender]);
-        emit SkillUsed(msg.sender, target, energyCost, selector);
+        emit SkillUsed(msg.sender, energyCost, target, selector);
     }
 
     /**

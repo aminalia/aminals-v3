@@ -62,7 +62,7 @@ contract AminalSkillsTest is Test {
     
     address public user1 = makeAddr("user1");
     
-    event SkillUsed(address indexed user, address indexed target, uint256 energyCost, bytes4 selector);
+    event SkillUsed(address indexed user, uint256 energyCost, address indexed target, bytes4 indexed selector);
     
     function setUp() public {
         // Create test traits
@@ -103,7 +103,7 @@ contract AminalSkillsTest is Test {
         
         vm.prank(user1);
         vm.expectEmit(true, true, false, true);
-        emit SkillUsed(user1, address(validSkill), 50, ValidSkill.action1.selector);
+        emit SkillUsed(user1, 50, address(validSkill), ValidSkill.action1.selector);
         
         aminal.useSkill(address(validSkill), skillData);
         
