@@ -56,14 +56,17 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     ///      as the contract has no functions to modify them
     ITraits.Traits public traits;
 
-    /// @dev Total love received by this Aminal (in wei)
+    /// @dev Total love received by this Aminal (in energy units)
+    /// @notice Love is tracked per-user to create individual relationships
     uint256 public totalLove;
 
-    /// @dev Mapping from user address to amount of love they've given (in wei)
+    /// @dev Mapping from user address to amount of love they've given (in energy units)
+    /// @notice Each user builds their own bond with the Aminal through their love contributions
     mapping(address => uint256) public loveFromUser;
 
-    /// @dev Current energy level of this Aminal
-    /// @notice Energy increases when fed (receiving ETH) and decreases when squeaking
+    /// @dev Current energy level of this Aminal (global, not per-user)
+    /// @notice Energy is shared globally as it represents the Aminal's overall vitality,
+    ///         while love is per-user to maintain individual connections and prevent exploitation
     uint256 public energy;
 
     /// @dev VRGDA contract for calculating feeding costs
@@ -227,9 +230,11 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /**
      * @notice Receive function to accept ETH, track love using VRGDA, and increase energy by fixed amount
      * @dev When ETH is sent to this contract:
-     *      - Energy increases by a fixed rate (10,000 energy per ETH)
-     *      - Love received varies based on current energy level via VRGDA
+     *      - Energy increases by a fixed rate (10,000 energy per ETH) - shared globally
+     *      - Love received varies based on current energy level via VRGDA - tracked per user
      *      - High energy = less love per ETH, Low energy = more love per ETH
+     * @dev This design ensures fair resource consumption: users can only squeak using their own love,
+     *      preventing free-riding while energy remains a shared resource representing overall health
      */
     receive() external payable {
         if (msg.value > 0) {
@@ -271,6 +276,8 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
      * @notice Make the Aminal squeak, consuming both love and energy
      * @dev Energy and love both decrease by the specified amount at a 1:1 ratio
      * @dev Reverts if insufficient energy or if user has insufficient love
+     * @dev Energy is global (shared by all users) while love is per-user, ensuring
+     *      users can only spend their own contributions
      * @param amount The amount of energy and love to consume for squeaking
      */
     function squeak(uint256 amount) external {
