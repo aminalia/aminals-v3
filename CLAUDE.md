@@ -663,11 +663,14 @@ Deploys individual Aminal contracts:
 
 ### GeneNFT System
 
-Regular ERC721 NFTs representing genetic traits:
-- **Trait Storage**: Mappings for trait type and value
-- **Public Minting**: Anyone can mint
+Fully onchain ERC721 NFTs representing genetic traits with SVG rendering:
+- **Onchain SVG Storage**: Each gene stores complete self-contained SVG with viewBox
+- **Dual Output**: 
+  - `gene[tokenId]` public mapping returns raw SVG for composability
+  - `tokenURI()` returns OpenSea-compatible metadata with base64 SVG
+- **Public Minting**: Anyone can mint genes with SVG data
 - **Query Functions**: Filter by trait type or value
-- **Integration**: Future Aminals will reference GeneNFTs for dynamic traits
+- **Solady Integration**: Uses LibString and Base64 for efficient onchain rendering
 
 ### Key Design Principles
 
