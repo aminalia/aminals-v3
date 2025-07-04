@@ -15,6 +15,12 @@ contract AminalVRGDA is LinearVRGDA {
     /// @notice Fixed rate of energy gained per ETH (not affected by VRGDA)
     uint256 public constant ENERGY_PER_ETH = 10000; // 1 ETH = 10,000 energy units
     
+    /// @notice Maximum love multiplier (2x ETH sent)
+    uint256 public constant MAX_LOVE_MULTIPLIER = 2 ether;
+    
+    /// @notice Minimum love multiplier (0.1x ETH sent)
+    uint256 public constant MIN_LOVE_MULTIPLIER = 0.1 ether;
+    
     /// @notice Constructor to set up the VRGDA parameters for love calculation
     /// @dev We repurpose the VRGDA to calculate love based on energy level
     /// @param _targetPrice The base ETH amount for pricing (in wei)
@@ -39,19 +45,36 @@ contract AminalVRGDA is LinearVRGDA {
     ) public view returns (uint256 loveGained) {
         if (ethAmount == 0) return 0;
         
-        // For VRGDA to work properly, we need to pass consistent values
-        // We'll use currentEnergy as both time and sold amount
-        // This creates the effect where more energy = higher price = less love
-        uint256 currentPrice = getVRGDAPrice(toWadUnsafe(currentEnergy), currentEnergy);
+        uint256 loveMultiplier;
         
-        // Simple formula: love = ethAmount * basePrice / currentPrice
-        // When currentPrice is low (low energy), more love per ETH
-        // When currentPrice is high (high energy), less love per ETH
-        // Ensure currentPrice is never 0 to avoid division by zero
-        if (currentPrice == 0) {
-            currentPrice = 1; // Minimum price of 1 wei
+        // Special cases for energy thresholds
+        if (currentEnergy < 1000) {
+            // Very low energy - give maximum love
+            loveMultiplier = MAX_LOVE_MULTIPLIER;
+        } else if (currentEnergy > 50000) {
+            // High energy - give minimum love
+            loveMultiplier = MIN_LOVE_MULTIPLIER;
+        } else {
+            // Use VRGDA for normal energy levels
+            uint256 currentPrice = getVRGDAPrice(toWadUnsafe(currentEnergy), currentEnergy);
+            
+            if (currentPrice == 0) {
+                // If price is 0, use maximum multiplier
+                loveMultiplier = MAX_LOVE_MULTIPLIER;
+            } else {
+                loveMultiplier = (uint256(targetPrice) * 1 ether) / currentPrice;
+            }
+            
+            // Apply bounds to keep multiplier reasonable
+            if (loveMultiplier > MAX_LOVE_MULTIPLIER) {
+                loveMultiplier = MAX_LOVE_MULTIPLIER;
+            } else if (loveMultiplier < MIN_LOVE_MULTIPLIER) {
+                loveMultiplier = MIN_LOVE_MULTIPLIER;
+            }
         }
-        loveGained = (ethAmount * uint256(targetPrice)) / currentPrice;
+        
+        // Calculate love gained
+        loveGained = (ethAmount * loveMultiplier) / 1 ether;
     }
 
     /**

@@ -122,14 +122,14 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
         traits = _traits;
         
         // Initialize VRGDA with parameters for love calculation:
-        // - Target price: 0.5 ETH (baseline price for VRGDA calculation)
-        // - Price decay: 50% when energy is below target
-        // - Per time unit: 10000 (1 ETH worth of energy per "time unit")
-        // This creates a curve where love varies significantly with energy
+        // - Target price: 1 ETH (baseline price for VRGDA calculation)
+        // - Price decay: 90% when energy is below target (steep curve)
+        // - Per time unit: 100 (much smaller, makes price increase faster)
+        // This creates a steep curve where love varies dramatically with energy
         vrgda = new AminalVRGDA(
-            int256(0.5 ether), // Base price for VRGDA
-            0.5e18,            // 50% decay when below target
-            10000e18           // 10000 energy units per "time unit"
+            int256(1 ether),  // Base price for VRGDA
+            0.9e18,           // 90% decay when below target
+            100e18            // 100 energy units per "time unit"
         );
     }
 
