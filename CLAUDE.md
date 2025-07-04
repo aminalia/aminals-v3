@@ -698,7 +698,11 @@ Regular ERC721 NFTs representing genetic traits:
   - <10 energy (0.001 ETH): 10x love multiplier
   - 10-1,000,000 energy: Logistic VRGDA curve
   - >1,000,000 energy (100 ETH): 0.1x love multiplier
-- **Implementation**: Energy acts as both time and units sold in VRGDA formula
+- **Implementation Details**:
+  - Energy replaces time in VRGDA formula (no time dependency)
+  - Multi-tier energy scaling for gradual curve: sqrt-like from 0-1k, linear from 1k-100k
+  - VRGDA price decreases with energy; inverted to create decreasing love multipliers
+  - Parameters: 1% decay, 30 asymptote, 30 time scale for extremely smooth transitions
 - **squeak()**: Reduces energy to improve love multiplier
 
 ### Incentive Design & Economic Dynamics
@@ -726,6 +730,13 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 - Overfeeding (10 ETH energy): 1 ETH → 3.5 love (3.5x return)  
 - Whale overfeeding (50 ETH): 10 ETH → 23.4 love (2.34x return per ETH)
 
+### Key Implementation Learnings
+- **VRGDA Price Behavior**: LogisticVRGDA price decreases as "units sold" increase (opposite of intuition)
+- **Curve Smoothing**: Required multi-tier scaling to avoid flat regions and steep drops
+- **Parameter Tuning**: Lower decay (1%), asymptote (30), and higher time scale (30) create gradual transitions
+- **Thresholds**: Hard boundaries at 0.001 and 100 ETH prevent VRGDA calculation edge cases
+- **Energy Scaling**: Non-linear scaling (varying divisors by range) spreads curve evenly across 0.001-100 ETH
+
 ### Testing Approach
 - Unit tests for all functionality
 - Fuzz testing for edge cases
@@ -733,6 +744,7 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 - Transfer prevention testing
 - Energy/love system validation
 - VRGDA mechanics testing
+- CSV data generation scripts for curve visualization
 </aminals_project>
 
 <user_prompt>
