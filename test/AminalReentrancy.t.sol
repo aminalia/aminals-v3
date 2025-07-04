@@ -31,7 +31,7 @@ contract ReentrantSkill is Skill {
         }
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 10;
     }
 }
@@ -44,7 +44,7 @@ contract SafeSkill is Skill {
         callCount++;
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 5;
     }
 }
@@ -165,7 +165,7 @@ contract ChainedReentrantSkill is Skill {
         aminal.useSkill(otherSkill, data);
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 15;
     }
 }

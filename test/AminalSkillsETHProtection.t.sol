@@ -19,7 +19,7 @@ contract GreedySkill is Skill {
         return "Normal action";
     }
     
-    function skillEnergyCost(bytes calldata data) external pure returns (uint256) {
+    function skillCost(bytes calldata data) external pure returns (uint256) {
         bytes4 selector = bytes4(data);
         if (selector == this.payableAction.selector) {
             return 50;
@@ -48,7 +48,7 @@ contract MaliciousSkill is Skill {
         selfdestruct(attacker);
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 5; // Low cost to encourage usage
     }
 }

@@ -155,7 +155,7 @@ contract RestrictedSkill is Skill {
         require(allowedAminals[msg.sender], "Aminal not allowed");
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 25;
     }
 }
@@ -184,7 +184,7 @@ contract UserDataSkill is Skill {
         // or other proof that the user authorized this call
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 30;
     }
 }

@@ -11,10 +11,11 @@ import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/
  */
 interface ISkill is IERC165 {
     /**
-     * @notice Get the energy cost for executing a skill with the given calldata
+     * @notice Get the cost for executing a skill with the given calldata
      * @dev This function should be view/pure and return the cost without side effects
+     * @dev The cost is deducted from both energy and love at a 1:1 ratio
      * @param data The encoded function call that will be executed
-     * @return energyCost The amount of energy/love required to execute this skill
+     * @return cost The amount of energy and love required to execute this skill
      */
-    function skillEnergyCost(bytes calldata data) external view returns (uint256 energyCost);
+    function skillCost(bytes calldata data) external view returns (uint256 cost);
 }

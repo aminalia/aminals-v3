@@ -21,7 +21,7 @@ contract ValidSkill is Skill {
         value = value;
     }
     
-    function skillEnergyCost(bytes calldata data) external pure returns (uint256) {
+    function skillCost(bytes calldata data) external pure returns (uint256) {
         bytes4 selector = bytes4(data);
         
         if (selector == this.action1.selector) {
@@ -49,7 +49,7 @@ contract FaultySkill is Skill {
         return true;
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         revert("Cost calculation failed");
     }
 }
@@ -229,7 +229,7 @@ contract ExcessiveCostSkill is Skill {
         return true;
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 999999;
     }
 }
@@ -239,7 +239,7 @@ contract ZeroCostSkill is Skill {
         return "Free!";
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 0;
     }
 }
@@ -249,7 +249,7 @@ contract RevertingSkill is Skill {
         revert("Action failed!");
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 10;
     }
 }

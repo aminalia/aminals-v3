@@ -238,7 +238,7 @@ contract SkillWithState is Skill {
         counter++;
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 10;
     }
 }
@@ -257,7 +257,7 @@ contract SkillThatCallsAminal is Skill {
     
     function dummy() external {}
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 5;
     }
 }
@@ -274,7 +274,7 @@ contract SkillWithMultipleUsers is Skill {
         }
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 20;
     }
 }
@@ -288,7 +288,7 @@ contract HighCostSkill is Skill {
     
     function expensiveAction() external {}
     
-    function skillEnergyCost(bytes calldata) external view returns (uint256) {
+    function skillCost(bytes calldata) external view returns (uint256) {
         return cost;
     }
 }
@@ -300,7 +300,7 @@ contract EmptyCalldataSkill is Skill {
         emit EmptyCall();
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 1; // Default cost for empty calldata
     }
 }
@@ -312,7 +312,7 @@ contract CalldataManipulationSkill is Skill {
         lastProcessed = data;
     }
     
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 15;
     }
 }
@@ -324,7 +324,7 @@ contract LargeDataSkill is Skill {
         emit DataProcessed(data.length);
     }
     
-    function skillEnergyCost(bytes calldata data) external pure returns (uint256) {
+    function skillCost(bytes calldata data) external pure returns (uint256) {
         // Cost based on data size
         return 1 + (data.length / 100); // 1 + 1 per 100 bytes
     }
@@ -335,7 +335,7 @@ contract FuzzSelectorSkill is Skill {
     
     fallback() external {}
     
-    function skillEnergyCost(bytes calldata data) external pure returns (uint256) {
+    function skillCost(bytes calldata data) external pure returns (uint256) {
         bytes4 selector = bytes4(data);
         if (selector == this.knownFunction.selector) {
             return 50;

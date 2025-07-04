@@ -323,9 +323,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         // Extract function selector for event
         bytes4 selector = bytes4(data);
         
-        // Get the energy cost from the skill contract
+        // Get the cost from the skill contract
         uint256 energyCost;
-        try ISkill(target).skillEnergyCost(data) returns (uint256 cost) {
+        try ISkill(target).skillCost(data) returns (uint256 cost) {
             energyCost = cost;
         } catch {
             // If cost query fails, default to 1

@@ -30,11 +30,11 @@ contract ExampleSkill is Skill {
     }
     
     /**
-     * @dev Calculate energy cost based on the action being performed
+     * @dev Calculate cost based on the action being performed
      * @param data The calldata being sent to this skill
-     * @return energyCost The amount of energy required
+     * @return The amount of energy and love required
      */
-    function skillEnergyCost(bytes calldata data) external pure override returns (uint256) {
+    function skillCost(bytes calldata data) external pure override returns (uint256) {
         bytes4 selector = bytes4(data);
         
         if (selector == this.greet.selector) {

@@ -56,7 +56,7 @@ contract ERC165CheckerDemo is Test {
 
 // Proper implementation
 contract SkillWithProperEIP165 is Skill {
-    function skillEnergyCost(bytes calldata) external pure returns (uint256) {
+    function skillCost(bytes calldata) external pure returns (uint256) {
         return 50;
     }
 }
@@ -144,7 +144,7 @@ contract ProperSkillWithERC165Checker is Skill {
         return "Action performed!";
     }
     
-    function skillEnergyCost(bytes calldata data) external pure returns (uint256) {
+    function skillCost(bytes calldata data) external pure returns (uint256) {
         bytes4 selector = bytes4(data);
         if (selector == this.performAction.selector) {
             return 75;
