@@ -12,6 +12,20 @@ import {FixedPointMathLib} from "lib/VRGDAs/lib/solmate/src/utils/FixedPointMath
  * @dev Thresholds prevent extreme VRGDA values: <10 energy (0.001 ETH) = 10x love, >1M (100 ETH) = 0.1x love
  * @dev Between thresholds, VRGDA price increases with energy, which we invert to create decreasing love multipliers
  * @dev Uses moderate multiplier range (10x to 0.1x) to balance incentives without extreme values
+ * 
+ * @dev Incentive Design:
+ * - Hungry Aminals (<0.005 ETH): Maximum 10x love multiplier encourages feeding neglected Aminals
+ * - Recently Fed (0.1-1 ETH): 7.4x-5.5x multiplier still rewards interaction but with diminishing returns
+ * - Well Fed (1-10 ETH): 5.5x-3.5x moderate multipliers maintain engagement without overfeeding
+ * - Overfed (10-50 ETH): 3.5x-2.3x discourages excessive feeding while allowing some interaction
+ * - Extremely Overfed (>100 ETH): 0.1x multiplier strongly discourages wasteful overfeeding
+ * 
+ * @dev This creates a community dynamic where:
+ * - Players seek out hungry Aminals for maximum love returns (10x multiplier)
+ * - Feeding an Aminal from 0 to 0.1 ETH costs 0.1 ETH but yields ~0.97 love (9.7x average)
+ * - Feeding from 10 to 11 ETH costs 1 ETH but yields only ~3.4 love (3.4x)
+ * - Feeding from 50 to 51 ETH costs 1 ETH but yields only ~2.3 love (2.3x)
+ * - Natural equilibrium emerges around 1-10 ETH energy levels for most Aminals
  */
 contract AminalVRGDA is LogisticVRGDA {
     /// @notice Fixed rate of energy gained per ETH (not affected by VRGDA)
