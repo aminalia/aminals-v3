@@ -7,6 +7,7 @@ import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/
  * @title ISkill
  * @notice Interface for Aminal skills that can be executed with energy/love costs
  * @dev Implements EIP-165 for standard interface detection
+ * @dev To implement this interface with proper ERC165 support, extend the abstract Skill contract
  */
 interface ISkill is IERC165 {
     /**
