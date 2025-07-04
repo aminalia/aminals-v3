@@ -167,7 +167,8 @@ library GeneRenderer {
             string.concat(
                 rect(0, 0, 500, 500, "#f0f0f0"),
                 text(250, 50, string.concat(traitType, ": ", traitValue), "middle", "20", "#333"),
-                group("translate(250, 250)", geneSvg)
+                // Use svgImage to properly center the gene SVG
+                svgImage(150, 150, 200, 200, geneSvg)
             )
         );
     }
