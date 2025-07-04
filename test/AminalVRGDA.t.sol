@@ -5,15 +5,20 @@ import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {SqueakSkill} from "src/skills/SqueakSkill.sol";
 
 contract AminalVRGDATest is Test {
     Aminal public aminal;
     AminalVRGDA public vrgda;
+    SqueakSkill public squeakSkill;
     
     address public user1 = makeAddr("user1");
     address public user2 = makeAddr("user2");
     
     function setUp() public {
+        // Deploy SqueakSkill
+        squeakSkill = new SqueakSkill();
+        
         // Create test traits
         ITraits.Traits memory traits = ITraits.Traits({
             back: "wings",
@@ -136,7 +141,7 @@ contract AminalVRGDATest is Test {
         // Squeak to reduce energy (need to use user1 who has love)
         uint256 squeakAmount = aminal.energy() / 2;
         vm.prank(user1);
-        aminal.squeak(squeakAmount);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
         
         // Love multiplier should improve (increase) when energy is lower
         uint256 multiplierWithLowEnergy = aminal.getCurrentLoveMultiplier();
@@ -253,7 +258,7 @@ contract AminalVRGDATest is Test {
         uint256 squeakAmount = currentEnergy < userLove ? currentEnergy : userLove;
         
         vm.prank(user1);
-        aminal.squeak(squeakAmount);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
         assertEq(aminal.energy(), 0);
         
         // Multiplier should be back to maximum

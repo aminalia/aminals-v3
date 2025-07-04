@@ -88,10 +88,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /// @dev Event emitted when the Aminal is fed (receives ETH) and gains energy
     event EnergyGained(address indexed from, uint256 amount, uint256 newEnergy);
 
-    /// @dev Event emitted when the Aminal squeaks and loses energy
+    /// @dev Event emitted when the Aminal loses energy through skill usage
     event EnergyLost(address indexed squeaker, uint256 amount, uint256 newEnergy);
 
-    /// @dev Event emitted when love is consumed through squeaking
+    /// @dev Event emitted when love is consumed through skill usage
     event LoveConsumed(address indexed squeaker, uint256 amount, uint256 remainingLove);
 
     /// @dev Event emitted when a skill is used
@@ -285,25 +285,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         return totalLove;
     }
 
-    /**
-     * @notice Make the Aminal squeak, consuming both love and energy
-     * @dev Both resources decrease by the specified amount equally
-     * @dev Reverts if insufficient energy or if user has insufficient love
-     * @dev Energy is global per Aminal (shared by all users) while love is per user per Aminal,
-     *      ensuring users can only spend their own contributions
-     * @param amount The amount of energy and love to consume for squeaking
-     */
-    function squeak(uint256 amount) external {
-        if (energy < amount) revert InsufficientEnergy();
-        if (loveFromUser[msg.sender] < amount) revert InsufficientLove();
-        
-        energy -= amount;
-        loveFromUser[msg.sender] -= amount;
-        totalLove -= amount;
-        
-        emit EnergyLost(msg.sender, amount, energy);
-        emit LoveConsumed(msg.sender, amount, loveFromUser[msg.sender]);
-    }
 
     /**
      * @notice Use a skill by calling an external function and consuming energy/love

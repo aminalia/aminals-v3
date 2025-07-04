@@ -4,9 +4,11 @@ pragma solidity ^0.8.20;
 import {Test, console} from "lib/forge-std/src/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {SqueakSkill} from "src/skills/SqueakSkill.sol";
 
 contract AminalTest is Test {
     Aminal public aminal;
+    SqueakSkill public squeakSkill;
     address public user1;
     address public user2;
     string public constant BASE_URI = "https://api.aminals.com/metadata/";
@@ -19,10 +21,14 @@ contract AminalTest is Test {
     event EnergyGained(address indexed from, uint256 amount, uint256 newEnergy);
     event EnergyLost(address indexed squeaker, uint256 amount, uint256 newEnergy);
     event LoveConsumed(address indexed squeaker, uint256 amount, uint256 remainingLove);
+    event SkillUsed(address indexed user, address indexed target, uint256 cost, bytes4 selector);
 
     function setUp() external {
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
+        
+        // Deploy SqueakSkill
+        squeakSkill = new SqueakSkill();
         
         // Create sample traits
         ITraits.Traits memory traits = ITraits.Traits({
@@ -448,7 +454,7 @@ contract AminalTest is Test {
         emit EnergyLost(user1, squeakAmount, expectedEnergy - squeakAmount);
         vm.expectEmit(true, false, false, true);
         emit LoveConsumed(user1, squeakAmount, expectedLove - squeakAmount);
-        aminal.squeak(squeakAmount);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
         
         // Verify energy and love decreased
         assertEq(aminal.energy(), expectedEnergy - squeakAmount);
@@ -458,11 +464,11 @@ contract AminalTest is Test {
     }
 
     function test_RevertWhen_InsufficientEnergy() external {
-        uint256 feedAmount = 1 ether;
-        uint256 energy = 10000; // 10,000 energy per ETH
-        uint256 squeakAmount = 20000; // More than available energy
+        uint256 feedAmount = 0.0005 ether;
+        uint256 energy = 5; // 5 energy (0.0005 ETH * 10,000)
+        uint256 squeakAmount = 10; // More than available energy
         
-        // Feed the Aminal
+        // Feed the Aminal with very small amount
         vm.deal(user1, feedAmount);
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: feedAmount}("");
@@ -471,7 +477,7 @@ contract AminalTest is Test {
         // Try to squeak more than available energy
         vm.prank(user1);
         vm.expectRevert(Aminal.InsufficientEnergy.selector);
-        aminal.squeak(squeakAmount);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
         
         // Energy should remain unchanged
         assertEq(aminal.energy(), energy);
@@ -481,7 +487,7 @@ contract AminalTest is Test {
         // Try to squeak with no energy
         vm.prank(user1);
         vm.expectRevert(Aminal.InsufficientEnergy.selector);
-        aminal.squeak(1);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, 1));
         
         assertEq(aminal.energy(), 0);
     }
@@ -503,7 +509,7 @@ contract AminalTest is Test {
         emit EnergyLost(user1, expectedEnergy, 0);
         vm.expectEmit(true, false, false, true);
         emit LoveConsumed(user1, expectedEnergy, expectedLove - expectedEnergy);
-        aminal.squeak(expectedEnergy);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, expectedEnergy));
         
         // Energy should be zero, love should be reduced by energy amount
         assertEq(aminal.energy(), 0);
@@ -556,12 +562,15 @@ contract AminalTest is Test {
         vm.assume(squeakAmount <= energy && squeakAmount <= love);
         
         if (squeakAmount > 0) {
+            // Cap squeakAmount at 10000 due to safety cap in Aminal contract
+            uint256 actualSqueakAmount = squeakAmount > 10000 ? 10000 : squeakAmount;
+            
             // Squeak
             vm.prank(user1);
-            aminal.squeak(squeakAmount);
+            aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
             
-            assertEq(aminal.energy(), energy - squeakAmount);
-            assertEq(aminal.loveFromUser(user1), love - squeakAmount);
+            assertEq(aminal.energy(), energy - actualSqueakAmount);
+            assertEq(aminal.loveFromUser(user1), love - actualSqueakAmount);
         }
     }
 
@@ -580,7 +589,7 @@ contract AminalTest is Test {
         // user2 has no love, so they can't squeak
         vm.prank(user2);
         vm.expectRevert(Aminal.InsufficientLove.selector);
-        aminal.squeak(squeakAmount);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
         
         // Energy and love should remain unchanged
         assertEq(aminal.energy(), expectedEnergy);
@@ -620,11 +629,11 @@ contract AminalTest is Test {
         // Try to squeak more than they have
         vm.prank(user1);
         vm.expectRevert(Aminal.InsufficientLove.selector);
-        aminal.squeak(user1Love + 1);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, user1Love + 1));
         
         // Step 4: User1 can squeak exactly their love amount
         vm.prank(user1);
-        aminal.squeak(user1Love);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, user1Love));
         
         // Verify user1 has no love left
         assertEq(aminal.loveFromUser(user1), 0);
@@ -632,7 +641,7 @@ contract AminalTest is Test {
         // Step 5: User1 can't squeak anymore (no love)
         vm.prank(user1);
         vm.expectRevert(Aminal.InsufficientLove.selector);
-        aminal.squeak(1);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, 1));
     }
 
     function test_MultipleSqueaksFromDifferentUsers() external {
@@ -661,10 +670,10 @@ contract AminalTest is Test {
         
         // Both users squeak
         vm.prank(user1);
-        aminal.squeak(squeakAmount);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
         
         vm.prank(user2);
-        aminal.squeak(squeakAmount);
+        aminal.useSkill(address(squeakSkill), abi.encodeWithSelector(SqueakSkill.squeak.selector, squeakAmount));
         
         // Verify final state
         assertEq(aminal.energy(), totalEnergy - 2 * squeakAmount);
