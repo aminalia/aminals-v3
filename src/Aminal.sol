@@ -10,6 +10,7 @@ import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
 import {AminalSkillParser} from "src/AminalSkillParser.sol";
+import {ISkill} from "src/interfaces/ISkill.sol";
 
 /**
  * @title Aminal
@@ -303,9 +304,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /**
      * @notice Use a skill by calling an external function and consuming energy/love
-     * @dev The skill function should return the energy cost as a uint256
-     * @dev Falls back to 1 energy/love if no amount is returned or if the call fails to decode
-     * @dev Consumes energy and love at a 1:1 ratio based on the returned cost
+     * @dev Supports two modes:
+     *      1. ISkill interface: Contracts implementing ISkill can specify exact costs
+     *      2. Legacy mode: Falls back to parsing return data for backwards compatibility
+     * @dev Consumes energy and love at a 1:1 ratio based on the cost
      * @dev Protected against reentrancy attacks with nonReentrant modifier
      * @dev SECURITY: Always calls with 0 ETH value to prevent draining funds through skills
      * @param target The contract address to call
@@ -315,13 +317,31 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         // Extract function selector for event
         bytes4 selector = bytes4(data);
         
-        // Call the skill and get the energy cost
-        // CRITICAL: Use call with 0 value to prevent spending ETH
-        (bool success, bytes memory returnData) = target.call{value: 0}(data);
-        if (!success) revert SkillCallFailed();
+        uint256 energyCost;
         
-        // Parse the return data intelligently to get energy cost
-        uint256 energyCost = returnData.parseEnergyCost();
+        // Skip interface check for zero address or empty code
+        if (target == address(0) || target.code.length == 0) {
+            energyCost = _useSkillLegacy(target, data);
+        } else {
+            // Check if the target implements ISkill interface
+            try ISkill(target).isValidSkill() returns (bytes4 interfaceId) {
+            // If it implements ISkill, get the cost from the interface
+            if (interfaceId == type(ISkill).interfaceId) {
+                try ISkill(target).skillEnergyCost(data) returns (uint256 cost) {
+                    energyCost = cost;
+                } catch {
+                    // If cost query fails, default to 1
+                    energyCost = 1;
+                }
+            } else {
+                // Interface not properly implemented, use legacy parsing
+                energyCost = _useSkillLegacy(target, data);
+            }
+            } catch {
+                // Contract doesn't implement ISkill, use legacy parsing
+                energyCost = _useSkillLegacy(target, data);
+            }
+        }
         
         // Cap at a reasonable maximum to prevent accidental huge costs
         // But ensure we always require at least 1 energy
@@ -334,7 +354,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
             energyCost = 1;
         }
         
-        // Consume energy and love using squeak mechanism
+        // Consume energy and love
         if (energy < energyCost) revert InsufficientEnergy();
         if (loveFromUser[msg.sender] < energyCost) revert InsufficientLove();
         
@@ -345,6 +365,22 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         emit EnergyLost(msg.sender, energyCost, energy);
         emit LoveConsumed(msg.sender, energyCost, loveFromUser[msg.sender]);
         emit SkillUsed(msg.sender, target, energyCost, selector);
+    }
+    
+    /**
+     * @dev Legacy skill execution that parses return data to determine cost
+     * @param target The contract address to call
+     * @param data The calldata to send
+     * @return energyCost The parsed energy cost
+     */
+    function _useSkillLegacy(address target, bytes calldata data) private returns (uint256 energyCost) {
+        // Call the skill
+        // CRITICAL: Use call with 0 value to prevent spending ETH
+        (bool success, bytes memory returnData) = target.call{value: 0}(data);
+        if (!success) revert SkillCallFailed();
+        
+        // Parse the return data intelligently to get energy cost
+        energyCost = returnData.parseEnergyCost();
     }
 
     /**
