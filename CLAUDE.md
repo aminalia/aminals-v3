@@ -675,6 +675,7 @@ Regular ERC721 NFTs representing genetic traits:
 3. **Permissionless**: Anyone can initialize or interact
 4. **Transparent**: All variables public
 5. **Economic**: Love/energy creates community value
+6. **Individual Relationships**: Love is tracked per-user to maintain personal bonds with each Aminal, while energy is global to represent overall vitality. This prevents free-riding since users can only squeak using their own love contributions.
 
 ## Technical Details
 
@@ -691,8 +692,9 @@ Regular ERC721 NFTs representing genetic traits:
 
 ### VRGDA Feeding Mechanics
 - **Logistic VRGDA**: Smooth S-curve for love distribution based on energy level
-- **Fixed Energy**: 10,000 energy per 1 ETH (constant rate)
-- **Variable Love**: Inversely proportional to energy via VRGDA price inversion
+- **Fixed Energy**: 10,000 energy per 1 ETH (constant rate) - global resource
+- **Variable Love**: Inversely proportional to energy via VRGDA price inversion - per-user tracking
+- **Unified Units**: Both love and energy use same scale (10,000 units = 1 ETH)
 - **Moderate Multipliers**: 10x to 0.1x range (100x total variation)
 - **Energy Thresholds**: 
   - <10 energy (0.001 ETH): 10x love multiplier
@@ -703,7 +705,7 @@ Regular ERC721 NFTs representing genetic traits:
   - Multi-tier energy scaling for gradual curve: sqrt-like from 0-1k, linear from 1k-100k
   - VRGDA price decreases with energy; inverted to create decreasing love multipliers
   - Parameters: 1% decay, 30 asymptote, 30 time scale for extremely smooth transitions
-- **squeak()**: Reduces energy to improve love multiplier
+- **squeak()**: Consumes both energy (global) and love (from caller) at 1:1 ratio
 
 ### Incentive Design & Economic Dynamics
 
