@@ -701,6 +701,31 @@ Regular ERC721 NFTs representing genetic traits:
 - **Implementation**: Energy acts as both time and units sold in VRGDA formula
 - **squeak()**: Reduces energy to improve love multiplier
 
+### Incentive Design & Economic Dynamics
+
+The VRGDA creates a smooth, gradual curve that incentivizes community care over individual hoarding:
+
+**Feeding Stages & Multipliers**:
+- **Starving** (<0.005 ETH): 10x multiplier - Maximum incentive to rescue neglected Aminals
+- **Hungry** (0.005-0.1 ETH): 9.5x-7.4x - Strong rewards for feeding low-energy Aminals
+- **Fed** (0.1-1 ETH): 7.4x-5.5x - Good returns encourage regular interaction
+- **Well-Fed** (1-10 ETH): 5.5x-3.5x - Natural equilibrium zone with moderate rewards
+- **Overfed** (10-50 ETH): 3.5x-2.3x - Diminishing returns discourage overfeeding
+- **Extremely Overfed** (>100 ETH): 0.1x - Severe penalty prevents wasteful feeding
+
+**Key Incentives Created**:
+1. **Discovery Rewards**: Players actively search for hungry Aminals to maximize returns
+2. **Anti-Whale Protection**: Whales get poor returns feeding already-wealthy Aminals
+3. **Attention Economy**: Neglected Aminals become increasingly valuable over time
+4. **Natural Distribution**: Creates equilibrium where most Aminals maintain 1-10 ETH
+5. **Community Coordination**: Encourages spreading love across many Aminals
+
+**Example Feeding Scenarios**:
+- Finding starving Aminal: 0.1 ETH → 1 love (10x return)
+- Regular feeding (1 ETH energy): 1 ETH → 5.5 love (5.5x return)
+- Overfeeding (10 ETH energy): 1 ETH → 3.5 love (3.5x return)  
+- Whale overfeeding (50 ETH): 10 ETH → 23.4 love (2.34x return per ETH)
+
 ### Testing Approach
 - Unit tests for all functionality
 - Fuzz testing for edge cases
