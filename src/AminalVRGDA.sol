@@ -9,7 +9,8 @@ import {toWadUnsafe, wadDiv} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMat
  * @notice Logistic VRGDA implementation that modulates love received based on energy level
  * @dev Energy gain is fixed (10k per ETH), but love varies inversely with energy using a smooth S-curve
  * @dev Thresholds prevent extreme VRGDA values: <10 energy (0.001 ETH) = 10x love, >1M (100 ETH) = 0.1x love
- * @dev Between thresholds, Logistic VRGDA provides smooth diminishing returns as energy increases
+ * @dev Between thresholds, VRGDA price increases with energy, which we invert to create decreasing love multipliers
+ * @dev Uses moderate multiplier range (10x to 0.1x) to balance incentives without extreme values
  */
 contract AminalVRGDA is LogisticVRGDA {
     /// @notice Fixed rate of energy gained per ETH (not affected by VRGDA)
@@ -22,11 +23,11 @@ contract AminalVRGDA is LogisticVRGDA {
     uint256 public constant MIN_LOVE_MULTIPLIER = 0.1 ether;
     
     /// @notice Constructor to set up the VRGDA parameters for love calculation
-    /// @dev We repurpose the Logistic VRGDA to calculate love based on energy level
-    /// @param _targetPrice The base ETH amount for pricing (in wei)
-    /// @param _priceDecayPercent How much the price decays when below target (scaled by 1e18)
-    /// @param _logisticAsymptote The asymptotic maximum energy level (scaled by 1e18)
-    /// @param _timeScale Controls how quickly the curve transitions (scaled by 1e18)
+    /// @dev Repurposes Logistic VRGDA where energy acts as both time and units sold
+    /// @param _targetPrice The base ETH amount for pricing (in wei) - typically 1 ETH
+    /// @param _priceDecayPercent Price decay when below target (scaled by 1e18) - affects curve steepness
+    /// @param _logisticAsymptote Maximum units for S-curve (scaled by 1e18) - controls curve shape
+    /// @param _timeScale Controls S-curve transition speed (scaled by 1e18) - affects smoothness
     constructor(
         int256 _targetPrice,
         int256 _priceDecayPercent,
@@ -65,9 +66,9 @@ contract AminalVRGDA is LogisticVRGDA {
             // For Logistic VRGDA: price starts low and increases with "time" (energy)
             uint256 vrgdaPrice = getVRGDAPrice(toWadUnsafe(scaledEnergy), scaledEnergy);
             
-            // We want love multiplier to decrease as energy increases
-            // VRGDA price increases with energy, so we can use it directly
-            // Map VRGDA price range to our multiplier range
+            // Map VRGDA price to love multiplier with inverse relationship
+            // As VRGDA price increases (energy increases), love multiplier decreases
+            // This creates the desired diminishing returns for well-fed Aminals
             if (vrgdaPrice <= uint256(targetPrice)) {
                 // Below target price = low energy = high multiplier
                 loveMultiplier = MAX_LOVE_MULTIPLIER;
