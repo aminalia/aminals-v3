@@ -65,8 +65,8 @@ contract AminalVRGDATest is Test {
         (bool success1,) = address(aminal).call{value: feedAmount1}("");
         assertTrue(success1);
         
-        // At 0 energy, love should be 100x ETH sent (maximum multiplier)
-        assertEq(aminal.totalLove(), feedAmount1 * 100);
+        // At 0 energy, love should be 10x ETH sent (maximum multiplier)
+        assertEq(aminal.totalLove(), feedAmount1 * 10);
         assertEq(aminal.totalLove(), expectedLove1);
         
         // Feed more to increase energy significantly  
@@ -90,7 +90,7 @@ contract AminalVRGDATest is Test {
         // Love gained should be less than or equal to the first feeding for same ETH amount
         assertLe(loveGained, expectedLove1);
         assertEq(loveGained, expectedLove2);
-        assertLt(loveGained, feedAmount2 * 100); // Should be less than 100x
+        assertLe(loveGained, feedAmount2 * 10); // Should be less than or equal to 10x
         
         // But energy gain should be the same
         uint256 energyGained = aminal.energy() - energyBefore;
@@ -101,8 +101,8 @@ contract AminalVRGDATest is Test {
         // Check initial love multiplier at 0 energy
         uint256 initialMultiplier = aminal.getCurrentLoveMultiplier();
         
-        // At 0 energy, love multiplier should be at maximum (100x)
-        assertEq(initialMultiplier, 100 ether);
+        // At 0 energy, love multiplier should be at maximum (10x)
+        assertEq(initialMultiplier, 10 ether);
         
         // Feed small amount first to get just above threshold
         vm.prank(user1);
@@ -112,16 +112,16 @@ contract AminalVRGDATest is Test {
         // Love multiplier should decrease from 100x to something lower
         uint256 newMultiplier = aminal.getCurrentLoveMultiplier();
         assertLt(newMultiplier, initialMultiplier);
-        assertLt(newMultiplier, 100 ether);
+        assertLt(newMultiplier, 10 ether);
         
         // Feed much more to reach high energy threshold
         vm.prank(user2);
         (bool success2,) = address(aminal).call{value: 1001 ether}("");
         assertTrue(success2);
         
-        // At >10M energy, multiplier should be at minimum (0.001x)
+        // At >1M energy, multiplier should be at minimum (0.1x)
         uint256 highEnergyMultiplier = aminal.getCurrentLoveMultiplier();
-        assertEq(highEnergyMultiplier, 0.001 ether);
+        assertEq(highEnergyMultiplier, 0.1 ether);
     }
     
     function test_SqueakingImprovesLoveMultiplier() public {

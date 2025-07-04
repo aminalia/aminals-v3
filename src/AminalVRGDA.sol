@@ -8,18 +8,18 @@ import {toWadUnsafe, wadDiv} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMat
  * @title AminalVRGDA
  * @notice Logistic VRGDA implementation that modulates love received based on energy level
  * @dev Energy gain is fixed (10k per ETH), but love varies inversely with energy using a smooth S-curve
- * @dev Thresholds prevent extreme VRGDA values: <10 energy (0.001 ETH) = 100x love, >10M (1000 ETH) = 0.001x love
+ * @dev Thresholds prevent extreme VRGDA values: <10 energy (0.001 ETH) = 10x love, >1M (100 ETH) = 0.1x love
  * @dev Between thresholds, Logistic VRGDA provides smooth diminishing returns as energy increases
  */
 contract AminalVRGDA is LogisticVRGDA {
     /// @notice Fixed rate of energy gained per ETH (not affected by VRGDA)
     uint256 public constant ENERGY_PER_ETH = 10000; // 1 ETH = 10,000 energy units
     
-    /// @notice Maximum love multiplier (100x ETH sent)
-    uint256 public constant MAX_LOVE_MULTIPLIER = 100 ether;
+    /// @notice Maximum love multiplier (10x ETH sent)
+    uint256 public constant MAX_LOVE_MULTIPLIER = 10 ether;
     
-    /// @notice Minimum love multiplier (0.001x ETH sent)
-    uint256 public constant MIN_LOVE_MULTIPLIER = 0.001 ether;
+    /// @notice Minimum love multiplier (0.1x ETH sent)
+    uint256 public constant MIN_LOVE_MULTIPLIER = 0.1 ether;
     
     /// @notice Constructor to set up the VRGDA parameters for love calculation
     /// @dev We repurpose the Logistic VRGDA to calculate love based on energy level
@@ -53,30 +53,36 @@ contract AminalVRGDA is LogisticVRGDA {
         if (currentEnergy < 10) {
             // Very low energy - give maximum love
             loveMultiplier = MAX_LOVE_MULTIPLIER;
-        } else if (currentEnergy > 10000000) {
+        } else if (currentEnergy > 1000000) {
             // High energy - give minimum love
             loveMultiplier = MIN_LOVE_MULTIPLIER;
         } else {
             // Use VRGDA for normal energy levels
-            // Scale energy down to prevent overflow
-            // Divide by 1000 to work with smaller numbers (1 = 0.001 ETH worth of energy)
-            uint256 scaledEnergy = currentEnergy / 1000;
+            // Scale energy to work well with VRGDA
+            uint256 scaledEnergy = currentEnergy / 10000; // 1 ETH = 1 unit
             
-            // Ensure we have at least 1 unit to avoid issues with 0
-            if (scaledEnergy == 0) scaledEnergy = 1;
+            // Get VRGDA price for current energy level
+            // For Logistic VRGDA: price starts low and increases with "time" (energy)
+            uint256 vrgdaPrice = getVRGDAPrice(toWadUnsafe(scaledEnergy), scaledEnergy);
             
-            // For love calculation, we want the inverse relationship:
-            // High energy should give low price (less love), low energy should give high price (more love)
-            // So we use a large number minus the current energy to invert the curve
-            uint256 invertedEnergy = 10000 > scaledEnergy ? 10000 - scaledEnergy : 1;
-            
-            uint256 currentPrice = getVRGDAPrice(toWadUnsafe(invertedEnergy), invertedEnergy);
-            
-            if (currentPrice == 0) {
-                // If price is 0, use minimum multiplier
-                loveMultiplier = MIN_LOVE_MULTIPLIER;
+            // We want love multiplier to decrease as energy increases
+            // VRGDA price increases with energy, so we can use it directly
+            // Map VRGDA price range to our multiplier range
+            if (vrgdaPrice <= uint256(targetPrice)) {
+                // Below target price = low energy = high multiplier
+                loveMultiplier = MAX_LOVE_MULTIPLIER;
             } else {
-                loveMultiplier = (uint256(targetPrice) * 1 ether) / currentPrice;
+                // Above target price = higher energy = lower multiplier
+                // As price goes from 1 ETH to 10 ETH, multiplier goes from 10x to 0.1x
+                uint256 priceRatio = (vrgdaPrice * 1 ether) / uint256(targetPrice);
+                
+                // Invert and scale: high price ratio = low love multiplier
+                if (priceRatio >= 100 ether) {
+                    loveMultiplier = MIN_LOVE_MULTIPLIER;
+                } else {
+                    // Interpolate: at price ratio 1x, love = 10x; at ratio 100x, love = 0.1x
+                    loveMultiplier = (10 ether * 1 ether) / priceRatio;
+                }
             }
             
             // Apply bounds to keep multiplier reasonable
