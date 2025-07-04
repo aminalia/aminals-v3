@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aminal VRGDA Love Curve</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chart-container {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .summary {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Aminal VRGDA Love Curve</h1>
+    
+    <div class="chart-container">
+        <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="600" fill="white"/>
+  
+  <!-- Title -->
+  <text x="400.0" y="30" text-anchor="middle" font-size="24" font-weight="bold">Aminal VRGDA Love Curve</text>
+  
+  <!-- Chart area -->
+  <rect x="60" y="60" width="680" height="480" 
+        fill="none" stroke="black" stroke-width="2"/>
+  <rect x="60.0" y="60" width="107.91886413299704" height="480" 
+        fill="#FFE5E5" opacity="0.2"/>
+  <rect x="167.91886413299704" y="60" width="215.83772826599403" height="480" 
+        fill="#FFF0E5" opacity="0.2"/>
+  <rect x="383.7565923989911" y="60" width="107.91886413299704" height="480" 
+        fill="#E5F5E5" opacity="0.2"/>
+  <rect x="491.6754565319881" y="60" width="107.91886413299704" height="480" 
+        fill="#E5E5FF" opacity="0.2"/>
+  <rect x="599.5943206649852" y="60" width="107.91886413299699" height="480" 
+        fill="#F0E5FF" opacity="0.2"/>
+  <rect x="707.5131847979821" y="60" width="32.48681520201785" height="480" 
+        fill="#FFE5E5" opacity="0.2"/>
+  <line x1="60" y1="60.0" x2="740" y2="60.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="65.0" text-anchor="end" font-size="12">10x</text>
+  <line x1="60" y1="108.0" x2="740" y2="108.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="113.0" text-anchor="end" font-size="12">9x</text>
+  <line x1="60" y1="156.0" x2="740" y2="156.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="161.0" text-anchor="end" font-size="12">8x</text>
+  <line x1="60" y1="204.0" x2="740" y2="204.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="209.0" text-anchor="end" font-size="12">7x</text>
+  <line x1="60" y1="252.0" x2="740" y2="252.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="257.0" text-anchor="end" font-size="12">6x</text>
+  <line x1="60" y1="300.0" x2="740" y2="300.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="305.0" text-anchor="end" font-size="12">5x</text>
+  <line x1="60" y1="348.0" x2="740" y2="348.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="353.0" text-anchor="end" font-size="12">4x</text>
+  <line x1="60" y1="396.0" x2="740" y2="396.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="401.0" text-anchor="end" font-size="12">3x</text>
+  <line x1="60" y1="444.0" x2="740" y2="444.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="449.0" text-anchor="end" font-size="12">2x</text>
+  <line x1="60" y1="492.0" x2="740" y2="492.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="497.0" text-anchor="end" font-size="12">1x</text>
+  <line x1="60" y1="540.0" x2="740" y2="540.0" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="50" y="545.0" text-anchor="end" font-size="12">0x</text>
+  <line x1="60.0" y1="60" x2="60.0" y2="540" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="60.0" y="560" text-anchor="middle" font-size="12">0.0001</text>
+  <line x1="167.91886413299704" y1="60" x2="167.91886413299704" y2="540" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="167.91886413299704" y="560" text-anchor="middle" font-size="12">0.001</text>
+  <line x1="275.8377282659941" y1="60" x2="275.8377282659941" y2="540" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="275.8377282659941" y="560" text-anchor="middle" font-size="12">0.01</text>
+  <line x1="383.7565923989911" y1="60" x2="383.7565923989911" y2="540" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="383.7565923989911" y="560" text-anchor="middle" font-size="12">0.1</text>
+  <line x1="491.6754565319881" y1="60" x2="491.6754565319881" y2="540" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="491.6754565319881" y="560" text-anchor="middle" font-size="12">1</text>
+  <line x1="599.5943206649852" y1="60" x2="599.5943206649852" y2="540" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="599.5943206649852" y="560" text-anchor="middle" font-size="12">10</text>
+  <line x1="707.5131847979821" y1="60" x2="707.5131847979821" y2="540" stroke="#ddd" stroke-dasharray="2,2"/>
+  <text x="707.5131847979821" y="560" text-anchor="middle" font-size="12">100</text>
+  <polyline points="60.0,60.0 92.48681520201788,60.0 135.43204893097914,60.0 157.4604456060536,60.0 162.98076772611262,60.0 167.91886413299704,60.0 172.38591569868743,60.0 176.46401426709204,60.0 200.4056793350149,60.0 219.40924799605335,60.0 232.89249453703277,60.0 243.35091306397615,83.6688 251.89606319807123,83.6688 259.12088469235766,83.6688 265.37930973905065,83.6688 270.8996318591096,83.6688 275.8377282659941,83.6688 308.32454346801194,83.6688 327.32811212905034,106.2048 340.8113586700298,106.2048 351.2697771969732,127.6128 359.81492733106825,127.6128 367.0397488253547,147.9504 373.29817387204764,147.9504 378.81849599210665,167.27519999999998 383.7565923989911,185.64 416.243407601009,185.64 435.2469762620474,203.0832 448.73022280302683,219.6576 459.18864132997015,219.6576 467.73379146406523,235.4016 474.9586129583517,250.36320000000003 481.2170380050447,250.36320000000003 491.6754565319881,278.0832 524.162271734006,290.9136 567.1075054629673,325.6896 599.5943206649852,372.9984 632.081135867003,388.78080000000006 675.0263695959643,427.49760000000003 697.0547662710387,455.976 702.5750883910978,463.6848 705.1091415837762,467.25120000000004 707.0421399567881,467.25120000000004 707.5131847979821,535.2 707.9795425480991,535.2 709.7999098853842,535.2 711.9802363636726,535.2 716.0583349320772,535.2 726.5167534590206,535.2 740.0,535.2" fill="none" stroke="#FF6B6B" stroke-width="3"/>
+  <circle cx="60.0" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="92.48681520201788" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="135.43204893097914" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="157.4604456060536" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="162.98076772611262" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="167.91886413299704" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="172.38591569868743" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="176.46401426709204" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="200.4056793350149" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="219.40924799605335" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="232.89249453703277" cy="60.0" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="243.35091306397615" cy="83.6688" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="251.89606319807123" cy="83.6688" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="259.12088469235766" cy="83.6688" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="265.37930973905065" cy="83.6688" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="270.8996318591096" cy="83.6688" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="275.8377282659941" cy="83.6688" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="308.32454346801194" cy="83.6688" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="327.32811212905034" cy="106.2048" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="340.8113586700298" cy="106.2048" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="351.2697771969732" cy="127.6128" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="359.81492733106825" cy="127.6128" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="367.0397488253547" cy="147.9504" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="373.29817387204764" cy="147.9504" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="378.81849599210665" cy="167.27519999999998" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="383.7565923989911" cy="185.64" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="416.243407601009" cy="185.64" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="435.2469762620474" cy="203.0832" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="448.73022280302683" cy="219.6576" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="459.18864132997015" cy="219.6576" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="467.73379146406523" cy="235.4016" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="474.9586129583517" cy="250.36320000000003" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="481.2170380050447" cy="250.36320000000003" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="491.6754565319881" cy="278.0832" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="524.162271734006" cy="290.9136" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="567.1075054629673" cy="325.6896" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="599.5943206649852" cy="372.9984" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="632.081135867003" cy="388.78080000000006" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="675.0263695959643" cy="427.49760000000003" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="697.0547662710387" cy="455.976" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="702.5750883910978" cy="463.6848" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="705.1091415837762" cy="467.25120000000004" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="707.0421399567881" cy="467.25120000000004" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="707.5131847979821" cy="535.2" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="707.9795425480991" cy="535.2" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="709.7999098853842" cy="535.2" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="711.9802363636726" cy="535.2" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="716.0583349320772" cy="535.2" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="726.5167534590206" cy="535.2" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+  <circle cx="740.0" cy="535.2" r="3" fill="#FF6B6B" stroke="darkred" stroke-width="1"/>
+
+  <!-- Threshold lines -->
+  <line x1="60" y1="60" x2="740" y2="60" 
+        stroke="green" stroke-dasharray="5,5" opacity="0.5"/>
+  <text x="750" y="65" font-size="12" fill="green">Max (10x)</text>
+  
+  <line x1="60" y1="276.0" x2="740" y2="276.0" 
+        stroke="orange" stroke-dasharray="5,5" opacity="0.5"/>
+  <text x="750" y="281.0" font-size="12" fill="orange">Equilibrium (~5.5x)</text>
+  
+  <line x1="60" y1="535.2" x2="740" y2="535.2" 
+        stroke="red" stroke-dasharray="5,5" opacity="0.5"/>
+  <text x="750" y="540.2" font-size="12" fill="red">Min (0.1x)</text>
+
+  <!-- Axis labels -->
+  <text x="400.0" y="590" text-anchor="middle" font-size="14" font-weight="bold">Energy Level (ETH)</text>
+  <text x="20" y="300.0" text-anchor="middle" font-size="14" font-weight="bold" transform="rotate(-90 20 300.0)">Love Multiplier</text>
+  <text x="113.95943206649852" y="50" text-anchor="middle" font-size="12" font-weight="bold">Starving</text>
+  <text x="275.8377282659941" y="50" text-anchor="middle" font-size="12" font-weight="bold">Hungry</text>
+  <text x="437.7160244654896" y="50" text-anchor="middle" font-size="12" font-weight="bold">Fed</text>
+  <text x="545.6348885984867" y="50" text-anchor="middle" font-size="12" font-weight="bold">Well-Fed</text>
+  <text x="653.5537527314837" y="50" text-anchor="middle" font-size="12" font-weight="bold">Overfed</text>
+  <text x="723.7565923989911" y="50" text-anchor="middle" font-size="12" font-weight="bold">Extreme</text>
+</svg>
+    </div>
+    
+    <div class="summary">
+        <h2>Summary</h2>
+        <p>The VRGDA (Variable Rate Gradual Dutch Auction) creates a smooth curve that incentivizes feeding hungry Aminals while discouraging overfeeding.</p>
+        
+        <table>
+            <tr>
+                <th>Energy Level</th>
+                <th>Love Multiplier</th>
+                <th>Zone</th>
+                <th>Incentive</th>
+            </tr>
+            <tr>
+                <td>&lt;0.005 ETH</td>
+                <td>10x</td>
+                <td>Starving</td>
+                <td>Maximum reward for rescuing neglected Aminals</td>
+            </tr>
+            <tr>
+                <td>0.005-0.1 ETH</td>
+                <td>9.5x-7.4x</td>
+                <td>Hungry</td>
+                <td>Strong incentive to feed low-energy Aminals</td>
+            </tr>
+            <tr>
+                <td>0.1-1 ETH</td>
+                <td>7.4x-5.5x</td>
+                <td>Fed</td>
+                <td>Good returns encourage regular interaction</td>
+            </tr>
+            <tr>
+                <td>1-10 ETH</td>
+                <td>5.5x-3.5x</td>
+                <td>Well-Fed</td>
+                <td>Natural equilibrium zone</td>
+            </tr>
+            <tr>
+                <td>10-100 ETH</td>
+                <td>3.5x-0.1x</td>
+                <td>Overfed</td>
+                <td>Diminishing returns discourage overfeeding</td>
+            </tr>
+            <tr>
+                <td>&gt;100 ETH</td>
+                <td>0.1x</td>
+                <td>Extreme</td>
+                <td>Severe penalty prevents wasteful feeding</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

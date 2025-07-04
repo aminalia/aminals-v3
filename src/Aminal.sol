@@ -7,6 +7,7 @@ import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721
 import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {AminalVRGDA} from "src/AminalVRGDA.sol";
 
 /**
  * @title Aminal
@@ -65,6 +66,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /// @notice Energy increases when fed (receiving ETH) and decreases when squeaking
     uint256 public energy;
 
+    /// @dev VRGDA contract for calculating feeding costs
+    AminalVRGDA public immutable vrgda;
+
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
 
@@ -116,6 +120,19 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
         
         // Set the traits struct
         traits = _traits;
+        
+        // Initialize Logistic VRGDA with parameters for love calculation:
+        // - Target price: 1 ETH (baseline price for VRGDA calculation)
+        // - Price decay: 1% for very gradual changes
+        // - Logistic asymptote: 30 for very early curve start
+        // - Time scale: 30 for extremely smooth transition
+        // This creates an extremely gradual S-curve where love diminishes very smoothly
+        vrgda = new AminalVRGDA(
+            int256(1 ether),  // Base price for VRGDA
+            0.01e18,          // 1% decay for very gradual changes
+            30e18,            // Low asymptote for very early curve activation
+            30e18             // Large time scale for very smooth transition
+        );
     }
 
     /**
@@ -202,18 +219,28 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     }
 
     /**
-     * @notice Receive function to accept ETH, track love, and increase energy
-     * @dev When ETH is sent to this contract, it's recorded as "love" and "energy" from the sender
-     *      Energy increases by the amount of ETH sent (feeding the Aminal)
+     * @notice Receive function to accept ETH, track love using VRGDA, and increase energy by fixed amount
+     * @dev When ETH is sent to this contract:
+     *      - Energy increases by a fixed rate (10,000 energy per ETH)
+     *      - Love received varies based on current energy level via VRGDA
+     *      - High energy = less love per ETH, Low energy = more love per ETH
      */
     receive() external payable {
         if (msg.value > 0) {
-            totalLove += msg.value;
-            loveFromUser[msg.sender] += msg.value;
-            energy += msg.value;
+            // Calculate love gained using VRGDA based on current energy
+            // More energy = less love per ETH
+            uint256 loveGained = vrgda.getLoveForETH(energy, msg.value);
             
-            emit LoveReceived(msg.sender, msg.value, totalLove);
-            emit EnergyGained(msg.sender, msg.value, energy);
+            // Track love
+            totalLove += loveGained;
+            loveFromUser[msg.sender] += loveGained;
+            
+            // Energy increases by fixed amount (10,000 per ETH)
+            uint256 energyGained = (msg.value * vrgda.ENERGY_PER_ETH()) / 1 ether;
+            energy += energyGained;
+            
+            emit LoveReceived(msg.sender, loveGained, totalLove);
+            emit EnergyGained(msg.sender, energyGained, energy);
         }
     }
 
@@ -252,6 +279,24 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
      */
     function getEnergy() external view returns (uint256) {
         return energy;
+    }
+
+    /**
+     * @notice Get the current love multiplier based on energy level
+     * @dev Returns how much love is gained per 1 ETH
+     * @return The love amount gained per 1 ETH (in wei)
+     */
+    function getCurrentLoveMultiplier() external view returns (uint256) {
+        return vrgda.getLoveMultiplier(energy);
+    }
+
+    /**
+     * @notice Calculate how much love would be gained for a given ETH amount
+     * @param ethAmount The amount of ETH to calculate love for
+     * @return The amount of love that would be gained
+     */
+    function calculateLoveForETH(uint256 ethAmount) external view returns (uint256) {
+        return vrgda.getLoveForETH(energy, ethAmount);
     }
 
     /**
