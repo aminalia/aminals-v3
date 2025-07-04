@@ -5,7 +5,6 @@ import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
-import {toWadUnsafe} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMath.sol";
 
 contract AminalVRGDATest is Test {
     Aminal public aminal;
@@ -37,189 +36,216 @@ contract AminalVRGDATest is Test {
         vrgda = aminal.vrgda();
         
         // Fund test users
-        deal(user1, 10 ether);
-        deal(user2, 10 ether);
+        deal(user1, 20 ether);
+        deal(user2, 20 ether);
     }
     
-    function test_InitialEnergyIsZero() public {
+    function test_InitialEnergyIsZero() public view {
         assertEq(aminal.energy(), 0);
     }
     
-    function test_FirstFeedingGivesFullEnergy() public {
-        uint256 feedAmount = 0.01 ether;
+    function test_FixedEnergyGainPerETH() public {
+        uint256 feedAmount = 0.5 ether;
+        uint256 expectedEnergy = (feedAmount * vrgda.ENERGY_PER_ETH()) / 1 ether; // Should be 5000
         
-        // Calculate expected energy before feeding
-        uint256 expectedEnergy = aminal.calculateEnergyForETH(feedAmount);
-        
-        // First feeding should give approximately 93-100 energy for 0.01 ETH
-        // depending on VRGDA parameters
-        assertApproxEqAbs(expectedEnergy, 100, 10); // Allow some variance
-        
-        // Feed the Aminal
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: feedAmount}("");
         assertTrue(success);
         
-        // Check energy gained
         assertEq(aminal.energy(), expectedEnergy);
+        assertEq(aminal.energy(), 5000); // 0.5 ETH * 10000 = 5000 energy
     }
     
-    function test_DiminishingReturnsOnSubsequentFeeding() public {
-        // First feeding
-        vm.startPrank(user1);
-        uint256 firstFeedAmount = 0.1 ether;
-        (bool success1,) = address(aminal).call{value: firstFeedAmount}("");
+    function test_LoveVariesBasedOnEnergy() public {
+        // At 0 energy, should get bonus love (more than ETH sent)
+        uint256 feedAmount1 = 0.1 ether;
+        uint256 expectedLove1 = aminal.calculateLoveForETH(feedAmount1);
+        
+        vm.prank(user1);
+        (bool success1,) = address(aminal).call{value: feedAmount1}("");
         assertTrue(success1);
-        uint256 energyAfterFirst = aminal.energy();
         
-        // Second feeding with same amount should give less energy
-        uint256 secondFeedAmount = 0.1 ether;
-        (bool success2,) = address(aminal).call{value: secondFeedAmount}("");
+        // Love should be slightly less than ETH sent due to VRGDA pricing
+        assertLt(aminal.totalLove(), feedAmount1);
+        assertEq(aminal.totalLove(), expectedLove1);
+        
+        // Feed more to increase energy significantly  
+        vm.prank(user1);
+        (bool success2,) = address(aminal).call{value: 5 ether}("");
         assertTrue(success2);
-        uint256 energyGainedSecond = aminal.energy() - energyAfterFirst;
         
-        // Third feeding should give even less
-        uint256 thirdFeedAmount = 0.1 ether;
-        uint256 energyBeforeThird = aminal.energy();
-        (bool success3,) = address(aminal).call{value: thirdFeedAmount}("");
+        uint256 totalLoveBefore = aminal.totalLove();
+        uint256 energyBefore = aminal.energy();
+        
+        // Now with higher energy, love per ETH should be less
+        uint256 feedAmount2 = 0.1 ether;
+        uint256 expectedLove2 = aminal.calculateLoveForETH(feedAmount2);
+        
+        vm.prank(user2);
+        (bool success3,) = address(aminal).call{value: feedAmount2}("");
         assertTrue(success3);
-        uint256 energyGainedThird = aminal.energy() - energyBeforeThird;
         
-        vm.stopPrank();
+        uint256 loveGained = aminal.totalLove() - totalLoveBefore;
         
-        // Each subsequent feeding should give less energy (or equal due to rounding)
-        assertGe(energyAfterFirst, energyGainedSecond);
-        assertGe(energyGainedSecond, energyGainedThird);
+        // Love gained should be less than the first feeding for same ETH amount
+        assertLt(loveGained, expectedLove1);
+        assertEq(loveGained, expectedLove2);
         
-        console.log("First feeding energy:", energyAfterFirst);
-        console.log("Second feeding energy gained:", energyGainedSecond);
-        console.log("Third feeding energy gained:", energyGainedThird);
+        // But energy gain should be the same
+        uint256 energyGained = aminal.energy() - energyBefore;
+        assertEq(energyGained, 1000); // 0.1 ETH * 10000 = 1000 energy
     }
     
-    function test_EnergyConversionRateIncreases() public {
-        // Check initial conversion rate at 0 energy
-        uint256 initialRate = aminal.getCurrentEnergyConversionRate();
+    function test_LoveMultiplierDecreasesWithEnergy() public {
+        // Check initial love multiplier at 0 energy
+        uint256 initialMultiplier = aminal.getCurrentLoveMultiplier();
         
-        // Feed the Aminal
+        // At 0 energy, the multiplier is slightly below 1 ETH due to VRGDA formula
+        assertLt(initialMultiplier, 1 ether);
+        
+        // Feed to increase energy significantly
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 1 ether}("");
+        (bool success,) = address(aminal).call{value: 10 ether}("");
         assertTrue(success);
         
-        // Conversion rate should increase (more ETH needed per energy)
-        // or stay the same if we're still in the same price bracket
-        uint256 newRate = aminal.getCurrentEnergyConversionRate();
-        assertGe(newRate, initialRate);
+        // Love multiplier should decrease noticeably
+        uint256 newMultiplier = aminal.getCurrentLoveMultiplier();
+        assertLt(newMultiplier, initialMultiplier);
+        
+        // Feed more to increase energy significantly
+        vm.prank(user2);
+        (bool success2,) = address(aminal).call{value: 5 ether}("");
+        assertTrue(success2);
+        
+        // With 10 ETH worth of energy (100k), multiplier should be much lower
+        uint256 highEnergyMultiplier = aminal.getCurrentLoveMultiplier();
+        assertLt(highEnergyMultiplier, newMultiplier);
     }
     
-    function test_SqueakingReducesConversionRate() public {
-        // Initial feeding to gain energy
+    function test_SqueakingImprovesLoveMultiplier() public {
+        // Feed to gain energy
         vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 1 ether}("");
+        (bool success,) = address(aminal).call{value: 2 ether}("");
         assertTrue(success);
         
-        uint256 rateWithHighEnergy = aminal.getCurrentEnergyConversionRate();
+        uint256 multiplierWithHighEnergy = aminal.getCurrentLoveMultiplier();
         
         // Squeak to reduce energy
         uint256 squeakAmount = aminal.energy() / 2;
         aminal.squeak(squeakAmount);
         
-        // Rate should decrease when energy is lower
-        uint256 rateWithLowEnergy = aminal.getCurrentEnergyConversionRate();
-        assertLe(rateWithLowEnergy, rateWithHighEnergy);
+        // Love multiplier should improve (increase) when energy is lower
+        uint256 multiplierWithLowEnergy = aminal.getCurrentLoveMultiplier();
+        assertGe(multiplierWithLowEnergy, multiplierWithHighEnergy);
     }
     
-    function test_SqueakingAffectsConversionRate() public {
-        // Feed to gain energy
-        vm.prank(user1);
-        (bool success,) = address(aminal).call{value: 0.5 ether}("");
-        assertTrue(success);
+    function testFuzz_FixedEnergyGain(uint96 ethAmount) public {
+        vm.assume(ethAmount > 0.00001 ether && ethAmount < 10 ether);
         
-        uint256 energyBefore = aminal.energy();
-        uint256 rateBefore = aminal.getCurrentEnergyConversionRate();
+        uint256 expectedEnergy = (ethAmount * vrgda.ENERGY_PER_ETH()) / 1 ether;
         
-        // Squeak to lose energy
-        uint256 squeakAmount = energyBefore / 2;
-        aminal.squeak(squeakAmount);
-        
-        // Energy should decrease and conversion rate should decrease
-        // (because VRGDA now uses current energy level)
-        assertEq(aminal.energy(), energyBefore - squeakAmount);
-        assertLe(aminal.getCurrentEnergyConversionRate(), rateBefore);
-    }
-    
-    function testFuzz_EnergyCalculation(uint96 ethAmount) public {
-        vm.assume(ethAmount > 0.00001 ether && ethAmount < 10 ether); // User only has 10 ETH
-        
-        // Calculate expected energy
-        uint256 expectedEnergy = aminal.calculateEnergyForETH(ethAmount);
-        
-        // Feed the Aminal
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: ethAmount}("");
         assertTrue(success);
         
-        // Actual energy should match expected
         assertEq(aminal.energy(), expectedEnergy);
     }
     
-    function testFuzz_DiminishingReturns(uint96 firstAmount, uint96 secondAmount) public {
-        vm.assume(firstAmount > 0.01 ether && firstAmount < 5 ether);
-        vm.assume(secondAmount > 0.01 ether && secondAmount < 5 ether);
+    function testFuzz_LoveDiminishingReturns(uint96 firstAmount, uint96 secondAmount) public {
+        vm.assume(firstAmount > 0.01 ether && firstAmount < 10 ether);
+        vm.assume(secondAmount > 0.01 ether && secondAmount < 10 ether);
         
-        // First feeding
+        // First feeding at low energy
         vm.prank(user1);
         (bool success1,) = address(aminal).call{value: firstAmount}("");
         assertTrue(success1);
-        uint256 energyPerEthFirst = (aminal.energy() * 1e18) / firstAmount;
+        uint256 lovePerEthFirst = (aminal.totalLove() * 1e18) / firstAmount;
         
-        // Second feeding
+        // Second feeding at higher energy
         vm.prank(user2);
-        uint256 energyBefore = aminal.energy();
+        uint256 loveBefore = aminal.totalLove();
         (bool success2,) = address(aminal).call{value: secondAmount}("");
         assertTrue(success2);
-        uint256 energyGained = aminal.energy() - energyBefore;
-        uint256 energyPerEthSecond = (energyGained * 1e18) / secondAmount;
+        uint256 loveGained = aminal.totalLove() - loveBefore;
+        uint256 lovePerEthSecond = (loveGained * 1e18) / secondAmount;
         
-        // Energy per ETH should decrease, allowing for small rounding errors
-        // We allow up to 1% increase due to integer division rounding
-        uint256 allowedIncrease = energyPerEthFirst / 100; // 1%
-        assertLe(energyPerEthSecond, energyPerEthFirst + allowedIncrease);
+        // Love per ETH should decrease with higher energy
+        // Allow 1% tolerance for rounding
+        uint256 allowedIncrease = lovePerEthFirst / 100;
+        assertLe(lovePerEthSecond, lovePerEthFirst + allowedIncrease);
     }
     
-    function test_LoveTrackingWithVRGDA() public {
+    function test_LoveTrackingPerUser() public {
         uint256 feedAmount1 = 0.1 ether;
         uint256 feedAmount2 = 0.2 ether;
+        
+        // Calculate expected love for each feeding
+        uint256 expectedLove1 = aminal.calculateLoveForETH(feedAmount1);
         
         // First user feeds
         vm.prank(user1);
         (bool success1,) = address(aminal).call{value: feedAmount1}("");
         assertTrue(success1);
         
+        // Calculate expected love for second feeding (at higher energy)
+        uint256 expectedLove2 = aminal.calculateLoveForETH(feedAmount2);
+        
         // Second user feeds
         vm.prank(user2);
         (bool success2,) = address(aminal).call{value: feedAmount2}("");
         assertTrue(success2);
         
-        // Love tracking should still work normally (tracks ETH sent, not energy gained)
-        assertEq(aminal.totalLove(), feedAmount1 + feedAmount2);
-        assertEq(aminal.loveFromUser(user1), feedAmount1);
-        assertEq(aminal.loveFromUser(user2), feedAmount2);
+        // Check individual love tracking
+        assertEq(aminal.loveFromUser(user1), expectedLove1);
+        assertEq(aminal.loveFromUser(user2), expectedLove2);
+        assertEq(aminal.totalLove(), expectedLove1 + expectedLove2);
+        
+        // Energy should be fixed based on ETH sent
+        uint256 expectedTotalEnergy = ((feedAmount1 + feedAmount2) * vrgda.ENERGY_PER_ETH()) / 1 ether;
+        assertEq(aminal.energy(), expectedTotalEnergy);
     }
     
-    function test_MinimumEnergyGain() public {
-        // Feed a large amount to drive up the price
+    function test_MinimumLoveGain() public {
+        // Feed a large amount to get high energy
         vm.prank(user1);
-        (bool success1,) = address(aminal).call{value: 5 ether}("");
+        (bool success1,) = address(aminal).call{value: 9 ether}("");
         assertTrue(success1);
         
+        uint256 loveBefore = aminal.totalLove();
         uint256 energyBefore = aminal.energy();
         
-        // Even with high energy, sending ETH should give at least 1 energy
+        // Even with high energy, sending ETH should give some love
         vm.prank(user2);
-        (bool success2,) = address(aminal).call{value: 1 wei}("");
+        (bool success2,) = address(aminal).call{value: 0.001 ether}("");
         assertTrue(success2);
         
-        // Should gain at least 1 energy unit
-        assertGe(aminal.energy() - energyBefore, 1);
+        // Should gain some love
+        assertGt(aminal.totalLove(), loveBefore);
+        
+        // Energy gain should be fixed
+        uint256 energyGained = aminal.energy() - energyBefore;
+        assertEq(energyGained, 10); // 0.001 ETH * 10000 = 10 energy
+    }
+    
+    function test_ZeroEnergyMaximumLove() public {
+        // At 0 energy, love multiplier should be at maximum
+        uint256 multiplierAtZero = aminal.getCurrentLoveMultiplier();
+        
+        // Feed a small amount
+        vm.prank(user1);
+        (bool success,) = address(aminal).call{value: 0.01 ether}("");
+        assertTrue(success);
+        
+        // Multiplier should decrease or stay roughly the same
+        uint256 multiplierAfterFeeding = aminal.getCurrentLoveMultiplier();
+        assertLe(multiplierAfterFeeding, multiplierAtZero);
+        
+        // Squeak all energy back to 0
+        aminal.squeak(aminal.energy());
+        assertEq(aminal.energy(), 0);
+        
+        // Multiplier should be back to maximum (allowing small rounding difference)
+        uint256 multiplierBackAtZero = aminal.getCurrentLoveMultiplier();
+        assertApproxEqAbs(multiplierBackAtZero, multiplierAtZero, 1e15);
     }
 }
