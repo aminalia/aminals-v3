@@ -382,8 +382,12 @@ contract OutputAminalRenderings is Script {
         
         string memory part4 = string.concat(
             '          <div class="data-section">\n',
-            '            <div class="label">OpenSea Display (from tokenURI image):</div>\n',
-            '            <img src="', tokenURIImageURI, '" alt="', name, ' opensea" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">\n',
+            '            <div class="label">What OpenSea Displays (parsed from tokenURI):</div>\n',
+            '            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f9f9f9; width: 200px;">\n',
+            '              <img src="', tokenURIImageURI, '" alt="', name, ' opensea" style="width: 100%; height: auto; border-radius: 4px;">\n',
+            '              <h4 style="margin: 10px 0 5px; font-size: 14px;">', name, '</h4>\n',
+            '              <p style="margin: 0; font-size: 12px; color: #666;">Type: ', traitType, '</p>\n',
+            '            </div>\n',
             '          </div>\n',
             '        </div>\n'
         );
