@@ -20,11 +20,12 @@ try:
 except ImportError:
     HAS_PIL = False
 
-# Read the CSV data
+# Read the CSV data from parent directory
 eth_amounts = []
 love_multipliers = []
 
-with open('vrgda_curve_data.csv', 'r') as f:
+csv_path = os.path.join(os.path.dirname(script_dir), 'vrgda_curve_data.csv')
+with open(csv_path, 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
         eth_amounts.append(float(row['eth_amount']))
@@ -143,9 +144,12 @@ if HAS_PIL:
             draw.text((x_center, margin - 10), label, 
                       font=small_font, anchor="mm", fill='black')
     
-    # Save the image
-    img.save('vrgda_curve_chart.png', 'PNG', dpi=(300, 300))
-    print("PNG chart saved to: vrgda_curve_chart.png")
+    # Save the image to output directory
+    output_dir = os.path.join(os.path.dirname(script_dir), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    png_path = os.path.join(output_dir, 'vrgda_curve_chart.png')
+    img.save(png_path, 'PNG', dpi=(300, 300))
+    print(f"PNG chart saved to: {png_path}")
     
 else:
     # Fallback: Generate a simple PPM file and convert to PNG
@@ -221,15 +225,18 @@ else:
         
         prev_x, prev_y = x, y
     
-    # Save as PPM (simple format)
-    with open('vrgda_curve_chart.ppm', 'w') as f:
+    # Save as PPM (simple format) to output directory
+    output_dir = os.path.join(os.path.dirname(script_dir), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    ppm_path = os.path.join(output_dir, 'vrgda_curve_chart.ppm')
+    with open(ppm_path, 'w') as f:
         f.write(f"P3\n{width} {height}\n255\n")
         for row in pixels:
             for r, g, b in row:
                 f.write(f"{r} {g} {b} ")
             f.write("\n")
     
-    print("PPM file saved to: vrgda_curve_chart.ppm")
+    print(f"PPM file saved to: {ppm_path}")
     
     # Try to convert PPM to PNG using available tools
     import subprocess
@@ -240,32 +247,35 @@ else:
     # Try ImageMagick convert/magick
     if shutil.which('magick'):
         try:
-            subprocess.run(['magick', 'vrgda_curve_chart.ppm', 'vrgda_curve_chart.png'], check=True)
+            png_path = os.path.join(output_dir, 'vrgda_curve_chart.png')
+            subprocess.run(['magick', ppm_path, png_path], check=True)
             converted = True
-            print("PNG chart saved to: vrgda_curve_chart.png (converted using ImageMagick)")
+            print(f"PNG chart saved to: {png_path} (converted using ImageMagick)")
         except:
             pass
     elif shutil.which('convert'):
         try:
-            subprocess.run(['convert', 'vrgda_curve_chart.ppm', 'vrgda_curve_chart.png'], check=True)
+            png_path = os.path.join(output_dir, 'vrgda_curve_chart.png')
+            subprocess.run(['convert', ppm_path, png_path], check=True)
             converted = True
-            print("PNG chart saved to: vrgda_curve_chart.png (converted using ImageMagick)")
+            print(f"PNG chart saved to: {png_path} (converted using ImageMagick)")
         except:
             pass
     
     # Try macOS sips
     if not converted and shutil.which('sips'):
         try:
-            subprocess.run(['sips', '-s', 'format', 'png', 'vrgda_curve_chart.ppm', '--out', 'vrgda_curve_chart.png'], check=True)
+            png_path = os.path.join(output_dir, 'vrgda_curve_chart.png')
+            subprocess.run(['sips', '-s', 'format', 'png', ppm_path, '--out', png_path], check=True)
             converted = True
-            print("PNG chart saved to: vrgda_curve_chart.png (converted using sips)")
+            print(f"PNG chart saved to: {png_path} (converted using sips)")
         except:
             pass
     
     if converted:
         # Remove the PPM file
         try:
-            os.remove('vrgda_curve_chart.ppm')
+            os.remove(ppm_path)
         except:
             pass
     else:

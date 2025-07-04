@@ -10,13 +10,15 @@ import math
 
 # Set the script directory as working directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
+if script_dir:
+    os.chdir(script_dir)
 
-# Read the CSV data
+# Read the CSV data from parent directory
 eth_amounts = []
 love_multipliers = []
 
-with open('vrgda_curve_data.csv', 'r') as f:
+csv_path = os.path.join(os.path.dirname(script_dir), 'vrgda_curve_data.csv')
+with open(csv_path, 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
         eth_amounts.append(float(row['eth_amount']))
@@ -107,8 +109,11 @@ for eth_target, zone in zones:
 
 print("-" * 40)
 
-# Save a simple summary file
-with open('vrgda_curve_summary.txt', 'w') as f:
+# Save a simple summary file to output directory
+output_dir = os.path.join(os.path.dirname(script_dir), 'output')
+os.makedirs(output_dir, exist_ok=True)
+summary_path = os.path.join(output_dir, 'vrgda_curve_summary.txt')
+with open(summary_path, 'w') as f:
     f.write("AMINAL VRGDA CURVE SUMMARY\n")
     f.write("=" * 50 + "\n\n")
     f.write(f"Energy Range: {min(eth_amounts):.4f} - {max(eth_amounts):.0f} ETH\n")
@@ -121,4 +126,4 @@ with open('vrgda_curve_summary.txt', 'w') as f:
     f.write("- Overfed (10-100 ETH): 3.5x-0.1x multiplier\n")
     f.write("- Beyond Threshold (>100 ETH): 0.1x multiplier\n")
 
-print("\nSummary saved to: vrgda_curve_summary.txt")
+print(f"\nSummary saved to: {summary_path}")

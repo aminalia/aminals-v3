@@ -122,11 +122,14 @@ for start, end, color, label in zones:
 
 svg += '</svg>'
 
-# Save the SVG file
-with open('vrgda_curve_chart.svg', 'w') as f:
+# Save the SVG file to output directory
+output_dir = os.path.join(os.path.dirname(script_dir), 'output')
+os.makedirs(output_dir, exist_ok=True)
+svg_path = os.path.join(output_dir, 'vrgda_curve_chart.svg')
+with open(svg_path, 'w') as f:
     f.write(svg)
 
-print("SVG chart saved to: vrgda_curve_chart.svg")
+print(f"SVG chart saved to: {svg_path}")
 
 # Also create an HTML file to view it
 html = f'''<!DOCTYPE html>
@@ -225,8 +228,9 @@ html = f'''<!DOCTYPE html>
 </body>
 </html>'''
 
-with open('vrgda_curve_chart.html', 'w') as f:
+html_path = os.path.join(output_dir, 'vrgda_curve_chart.html')
+with open(html_path, 'w') as f:
     f.write(html)
 
-print("HTML chart saved to: vrgda_curve_chart.html")
+print(f"HTML chart saved to: {html_path}")
 print("\nYou can open the HTML file in a web browser to view the interactive chart.")
