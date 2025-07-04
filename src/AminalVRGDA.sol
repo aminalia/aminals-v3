@@ -8,7 +8,7 @@ import {toWadUnsafe, wadDiv} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMat
  * @title AminalVRGDA
  * @notice LinearVRGDA implementation that modulates love received based on energy level
  * @dev Energy gain is fixed (10k per ETH), but love varies inversely with energy
- * @dev Thresholds prevent extreme VRGDA values: <1k energy = 2x love, >50k = 0.1x love
+ * @dev Thresholds prevent extreme VRGDA values: <1k energy (0.1 ETH) = 2x love, >50k (5 ETH) = 0.1x love
  * @dev Between thresholds, VRGDA calculates love based on energy as proxy for time/sold
  */
 contract AminalVRGDA is LinearVRGDA {
