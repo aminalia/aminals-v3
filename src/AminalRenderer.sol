@@ -49,23 +49,27 @@ contract AminalRenderer {
     using LibString for string;
     
     /// @dev Structure to store positioning data for a trait
+    /// @notice This is a temporary structure used only during rendering calculations
+    /// @notice No Position data is ever stored in contract storage - it's calculated on-demand
     struct Position {
-        int256 x;
-        int256 y;
-        uint256 width;
-        uint256 height;
+        int256 x;        // X coordinate (can be negative for off-canvas positioning)
+        int256 y;        // Y coordinate (can be negative for off-canvas positioning)
+        uint256 width;   // Width of the trait image
+        uint256 height;  // Height of the trait image
     }
     
     /// @dev Structure to store all trait positions
+    /// @notice This is a temporary structure created in memory during each render
+    /// @notice Positions are calculated based on the Aminal's traits, used for SVG composition, then discarded
     struct TraitPositions {
-        Position back;
-        Position body;
-        Position tail;
-        Position arm;
-        Position ears;
-        Position face;
-        Position mouth;
-        Position misc;
+        Position back;   // Background elements (wings, auras, etc.)
+        Position body;   // Main body shape
+        Position tail;   // Tail positioning
+        Position arm;    // Arms/limbs
+        Position ears;   // Ear positioning (adjusted for body height)
+        Position face;   // Facial features
+        Position mouth;  // Mouth/expression
+        Position misc;   // Overlay effects (sparkles, accessories)
     }
 
     /**
@@ -274,6 +278,23 @@ contract AminalRenderer {
     /**
      * @dev Calculate trait positions based on this Aminal's characteristics
      * @notice Different body types affect how other traits are positioned
+     * 
+     * @notice POSITIONING DATA FLOW:
+     * 1. INITIALIZATION: No positioning data is stored anywhere - it's calculated on-demand
+     * 2. TRAIT SOURCE: Traits are stored in Aminal contract (set once in constructor, immutable)
+     * 3. CALCULATION: When rendering is needed:
+     *    - Fetch traits from Aminal via aminal.getTraits()
+     *    - Analyze trait strings (e.g., "Tall", "Chubby", "Dragon")
+     *    - Start with base positions (hardcoded defaults)
+     *    - Apply modifications based on trait characteristics
+     * 4. USAGE: Positions are used immediately for SVG composition, then discarded
+     * 
+     * @dev This approach means:
+     *      - No storage cost for positions (gas efficient)
+     *      - Positions can be updated by deploying new renderer
+     *      - Each render calculates fresh positions
+     *      - Positions are deterministic based on traits
+     * 
      * @return positions The calculated positions for all traits
      */
     function _getTraitPositions(Aminal aminal) private view returns (TraitPositions memory positions) {
