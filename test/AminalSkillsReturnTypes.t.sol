@@ -126,13 +126,12 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // String return will have offset pointer as first 32 bytes
-        // This will be interpreted as a large number
+        // String return will be detected as dynamic type and default to 1
         uint256 consumed = energyBefore - aminal.energy();
         console.log("String return consumed:", consumed);
         
-        // Should consume some amount based on the offset
-        assertGt(consumed, 0);
+        // Should consume default of 1
+        assertEq(consumed, 1);
         assertEq(aminal.loveFromUser(user1), loveBefore - consumed);
     }
     
@@ -150,10 +149,10 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // Should consume based on offset pointer
+        // Should consume default of 1 (detected as dynamic type)
         uint256 consumed = energyBefore - aminal.energy();
         console.log("Long string return consumed:", consumed);
-        assertGt(consumed, 0);
+        assertEq(consumed, 1);
     }
     
     function test_ArrayReturn() public {
@@ -170,10 +169,10 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // Array return will have offset pointer as first 32 bytes
+        // Array return will be detected as dynamic type and default to 1
         uint256 consumed = energyBefore - aminal.energy();
         console.log("Array return consumed:", consumed);
-        assertGt(consumed, 0);
+        assertEq(consumed, 1);
     }
     
     function test_StructReturn() public {
@@ -190,10 +189,10 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // Struct return will have offset pointer as first 32 bytes
+        // Struct return will be detected as dynamic type and default to 1
         uint256 consumed = energyBefore - aminal.energy();
         console.log("Struct return consumed:", consumed);
-        assertGt(consumed, 0);
+        assertEq(consumed, 1);
     }
     
     function test_MultipleReturn() public {
@@ -210,8 +209,8 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // First value is uint256(42)
-        assertEq(aminal.energy(), energyBefore - 42);
+        // Multiple returns detected, defaults to 1
+        assertEq(aminal.energy(), energyBefore - 1);
     }
     
     function test_BytesReturn() public {
@@ -228,10 +227,10 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // Bytes return will have offset pointer
+        // Bytes return will be detected as dynamic type and default to 1
         uint256 consumed = energyBefore - aminal.energy();
         console.log("Bytes return consumed:", consumed);
-        assertGt(consumed, 0);
+        assertEq(consumed, 1);
     }
     
     function test_Bytes32Return() public {
@@ -267,13 +266,13 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // Address will be interpreted as uint256 but capped at 10000
+        // Address will be detected as non-uint256 and default to 1
         uint256 consumed = energyBefore - aminal.energy();
         console.log("Address return consumed:", consumed);
         console.log("Address as uint256:", uint256(uint160(address(weirdSkills))));
         
-        // Should be capped at max reasonable cost (10000)
-        assertEq(consumed, 10000);
+        // Should consume default of 1
+        assertEq(consumed, 1);
         assertEq(aminal.loveFromUser(user1), loveBefore - consumed);
     }
     
@@ -310,13 +309,13 @@ contract AminalSkillsReturnTypesTest is Test {
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // -100 as uint256 will be a huge number but capped at 10000
+        // -100 as uint256 will be detected as unreasonably large and default to 1
         uint256 consumed = energyBefore - aminal.energy();
         console.log("Negative int consumed:", consumed);
         console.log("Negative int as uint256:", uint256(int256(-100)));
         
-        // Should be capped at max reasonable cost (10000)
-        assertEq(consumed, 10000);
+        // Should consume default of 1
+        assertEq(consumed, 1);
         assertEq(aminal.loveFromUser(user1), loveBefore - consumed);
     }
     
@@ -332,13 +331,13 @@ contract AminalSkillsReturnTypesTest is Test {
         uint256 energyBefore = aminal.energy();
         uint256 loveBefore = aminal.loveFromUser(user1);
         
-        // Should be capped at max reasonable cost
+        // Should be detected as unreasonably large and default to 1
         vm.prank(user1);
         aminal.useSkill(address(weirdSkills), skillData);
         
-        // Should be capped at 10000
-        assertEq(aminal.energy(), energyBefore - 10000);
-        assertEq(aminal.loveFromUser(user1), loveBefore - 10000);
+        // Should consume default of 1
+        assertEq(aminal.energy(), energyBefore - 1);
+        assertEq(aminal.loveFromUser(user1), loveBefore - 1);
     }
     
     function test_EmptyReturn() public {

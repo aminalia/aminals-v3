@@ -9,6 +9,7 @@ import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/Reentr
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
+import {AminalSkillParser} from "src/AminalSkillParser.sol";
 
 /**
  * @title Aminal
@@ -37,6 +38,7 @@ import {AminalVRGDA} from "src/AminalVRGDA.sol";
  */
 contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     using Strings for uint256;
+    using AminalSkillParser for bytes;
 
     /// @dev The fixed token ID for this Aminal (always 1)
     uint256 public constant TOKEN_ID = 1;
@@ -318,23 +320,18 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         (bool success, bytes memory returnData) = target.call{value: 0}(data);
         if (!success) revert SkillCallFailed();
         
-        // Try to decode the return value as uint256 (energy cost)
-        uint256 energyCost = 1; // Default cost
-        if (returnData.length >= 32) {
-            // Attempt to decode as uint256
-            assembly {
-                energyCost := mload(add(returnData, 0x20))
-            }
-            // If cost is 0, use default of 1
-            if (energyCost == 0) {
-                energyCost = 1;
-            }
-            // Cap at a reasonable maximum to prevent accidental huge costs
-            // This prevents issues with addresses, negative numbers, or string offsets
-            uint256 maxReasonableCost = energy > 10000 ? 10000 : energy;
-            if (energyCost > maxReasonableCost) {
-                energyCost = maxReasonableCost;
-            }
+        // Parse the return data intelligently to get energy cost
+        uint256 energyCost = returnData.parseEnergyCost();
+        
+        // Cap at a reasonable maximum to prevent accidental huge costs
+        // But ensure we always require at least 1 energy
+        if (energyCost > 10000) {
+            energyCost = energy > 10000 ? 10000 : energy;
+        }
+        
+        // Ensure minimum cost of 1
+        if (energyCost == 0) {
+            energyCost = 1;
         }
         
         // Consume energy and love using squeak mechanism

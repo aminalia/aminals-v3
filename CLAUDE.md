@@ -755,11 +755,17 @@ Aminals can use skills by calling external functions and consuming energy/love:
 
 Implementation:
 - `useSkill(address target, bytes calldata data)`: Execute skill with raw calldata
-- Skill contracts should return energy cost as first 32 bytes
-- Complex return types (structs) will use first 32 bytes as cost
+- Skill contracts should return energy cost as uint256
+- **Intelligent Parsing**: AminalSkillParser detects return types and defaults non-uint256 to 1:
+  - Dynamic types (strings, arrays, bytes): Default to 1
+  - Addresses and negative numbers: Default to 1
+  - Multiple return values: Default to 1 (safety)
+  - Booleans: 0→1, 1→1
+  - Reasonable uint256 (1-1,000,000): Used as cost
 - Events track skill usage: `SkillUsed(user, target, cost, selector)`
 - **CRITICAL SECURITY**: All skill calls use `{value: 0}` to prevent ETH drainage
 - **Safety Cap**: Energy costs are capped at min(10000, available energy) to prevent accidents
+- **Minimum Cost**: Always requires at least 1 energy/love to prevent free execution
 - Exception: Breeding skills will have a separate, controlled mechanism (future feature)
 
 ### Testing Approach
