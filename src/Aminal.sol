@@ -40,6 +40,12 @@ import {Base64} from "solady/utils/Base64.sol";
  * - DECENTRALIZED: No single point of control over all Aminals
  * - COMPOSABLE: Each Aminal can interact independently with other protocols
  * - AUTONOMOUS: Operates as a truly independent digital entity
+ *
+ * @notice RENDERING ARCHITECTURE:
+ * - Each Aminal deploys its own AminalRenderer for visual composition
+ * - Rendering logic is separated from core NFT functionality
+ * - Data flows from Aminal → AminalRenderer when tokenURI is called
+ * - See AminalRenderer contract for detailed data flow documentation
  */
 contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     using Strings for uint256;
@@ -152,6 +158,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
      * @dev This contract is self-sovereign - it owns itself and cannot be controlled by external parties
+     * @notice DATA FLOW - Renderer Initialization:
+     *         1. Deploys a new AminalRenderer instance specifically for this Aminal
+     *         2. Stores the renderer address as an immutable variable
+     *         3. The renderer will later access this contract's public data for composition
      * @param name The name of this specific Aminal
      * @param symbol The symbol for this specific Aminal
      * @param baseURI The base URI for token metadata
@@ -258,6 +268,12 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /**
      * @dev Compose the Aminal's appearance from its GeneNFTs
+     * @notice DATA FLOW: This is a convenience function that delegates to the renderer
+     *         1. Passes the entire Aminal contract instance (`this`) to renderer.composeAminal()
+     *         2. The renderer accesses gene references and traits from this contract
+     *         3. Returns the fully composed SVG string
+     * @dev This separation allows the Aminal contract to remain focused on core NFT logic
+     *      while the renderer handles all visual composition complexity
      * @return The composed SVG as a string
      */
     function composeAminal() public view returns (string memory) {
@@ -469,6 +485,14 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /**
      * @dev Override tokenURI to use the renderer for metadata generation
+     * @notice DATA FLOW: When tokenURI is called (e.g., by OpenSea or wallets):
+     *         1. This function passes the entire Aminal contract instance (`this`) to the renderer
+     *         2. The renderer can then access all public state variables and functions:
+     *            - name(), energy(), totalLove() for metadata description
+     *            - getTraits() to determine positioning logic
+     *            - Gene references (backGene, armGene, etc.) to fetch SVGs from GeneNFT contracts
+     *         3. The renderer composes the SVG and generates OpenSea-compatible metadata
+     *         4. Returns a base64-encoded data URI containing the complete metadata JSON
      * @param tokenId The token ID (always 1 for Aminals)
      * @return The complete data URI with metadata
      */

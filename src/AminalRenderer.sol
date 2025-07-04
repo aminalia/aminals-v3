@@ -12,6 +12,37 @@ import {Base64} from "solady/utils/Base64.sol";
  * @title AminalRenderer
  * @dev Handles rendering of Aminal NFT metadata and composed SVGs
  * @notice Separates rendering logic from the main Aminal contract
+ * 
+ * @notice DATA FLOW ARCHITECTURE:
+ * 
+ * 1. INITIALIZATION (happens in Aminal constructor):
+ *    - Aminal deploys its own AminalRenderer instance
+ *    - Stores renderer address as immutable variable
+ * 
+ * 2. RENDERING REQUEST (e.g., from OpenSea):
+ *    - External caller → Aminal.tokenURI(1)
+ *    - Aminal.tokenURI() → renderer.tokenURI(this, 1)
+ *    - Renderer receives entire Aminal contract instance
+ * 
+ * 3. DATA ACCESS (renderer reading from Aminal):
+ *    - Public state variables: name, energy, totalLove, traits
+ *    - Gene references: backGene, armGene, tailGene, etc. (returns tuples)
+ *    - Each gene reference points to: (GeneNFT address, tokenId)
+ * 
+ * 4. SVG COMPOSITION:
+ *    - Renderer → aminal.getTraits() to determine positioning
+ *    - Renderer → GeneNFT.gene(tokenId) for each trait's SVG
+ *    - Positions and layers SVGs based on trait characteristics
+ * 
+ * 5. METADATA GENERATION:
+ *    - Combines composed SVG with Aminal stats
+ *    - Returns OpenSea-compatible JSON as base64 data URI
+ * 
+ * @dev This architecture allows:
+ *      - Clean separation of concerns
+ *      - Aminal focuses on NFT logic, energy/love mechanics
+ *      - Renderer handles all visual complexity
+ *      - Easy upgrades to rendering logic without touching core contract
  */
 contract AminalRenderer {
     using LibString for uint256;
@@ -39,6 +70,15 @@ contract AminalRenderer {
 
     /**
      * @dev Generate complete tokenURI for an Aminal
+     * @notice DATA FLOW - How AminalRenderer accesses Aminal data:
+     *         1. Receives the Aminal contract instance as a parameter
+     *         2. Calls aminal.composeAminal() to get the composed SVG
+     *            - This creates a circular call: Aminal.composeAminal() -> AminalRenderer.composeAminal() -> back to this renderer
+     *         3. Accesses Aminal's public state variables:
+     *            - aminal.name() for the NFT name
+     *            - aminal.energy() and aminal.totalLove() for the description
+     *         4. Uses GeneRenderer library to encode the SVG and create metadata JSON
+     *         5. Returns OpenSea-compatible metadata as a base64 data URI
      * @param aminal The Aminal contract to render
      * @param tokenId The token ID (always 1 for Aminals)
      * @return The complete data URI with metadata
@@ -69,6 +109,23 @@ contract AminalRenderer {
     
     /**
      * @dev Compose the Aminal's appearance from its GeneNFTs
+     * @notice DATA FLOW - Complete rendering process:
+     *         1. INPUT: Receives Aminal contract instance containing all state
+     *         2. TRAIT ANALYSIS: Calls aminal.getTraits() to determine positioning
+     *            - Analyzes body type (Tall, Short, Wide, Chubby) to adjust layout
+     *            - Special handling for Long ears, Dragon tails, etc.
+     *         3. GENE FETCHING: Accesses gene references via public getters
+     *            - aminal.backGene() returns (address geneContract, uint256 tokenId)
+     *            - Must destructure tuples since Solidity public getters don't return structs
+     *         4. SVG RETRIEVAL: For each gene reference:
+     *            - Calls GeneNFT(geneContract).gene(tokenId) to get raw SVG
+     *            - Wraps in image tags with calculated positions
+     *         5. COMPOSITION: Layers genes in specific order (back->body->tail->arms->ears->face->mouth->misc)
+     *         6. OUTPUT: Returns complete SVG with 200x200 viewBox
+     * @dev The Aminal contract must have public getters for all required data:
+     *      - Gene references (8 slots)
+     *      - Traits struct
+     *      - Name, energy, totalLove for metadata
      * @param aminal The Aminal contract to compose
      * @return The composed SVG as a string
      */
