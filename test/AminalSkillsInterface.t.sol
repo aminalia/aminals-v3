@@ -5,8 +5,9 @@ import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
+import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
-// Skill that properly implements ISkill interface
+// Skill that properly implements ISkill interface with EIP-165
 contract ProperSkill is ISkill {
     uint256 public constant SIMPLE_ACTION_COST = 50;
     uint256 public constant COMPLEX_ACTION_COST = 200;
@@ -52,12 +53,14 @@ contract ProperSkill is ISkill {
         }
     }
     
-    function isValidSkill() external pure returns (bytes4) {
-        return type(ISkill).interfaceId;
+    // EIP-165 implementation
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(ISkill).interfaceId || 
+               interfaceId == type(IERC165).interfaceId;
     }
 }
 
-// Skill that returns wrong interface ID
+// Skill that returns wrong interface support
 contract BadInterfaceSkill is ISkill {
     function doSomething() external pure returns (uint256) {
         return 75;
@@ -67,8 +70,9 @@ contract BadInterfaceSkill is ISkill {
         return 100;
     }
     
-    function isValidSkill() external pure returns (bytes4) {
-        return 0xdeadbeef; // Wrong interface ID
+    // EIP-165 implementation that lies about interface support
+    function supportsInterface(bytes4) external pure returns (bool) {
+        return false; // Claims not to support ISkill even though it does
     }
 }
 
@@ -82,8 +86,10 @@ contract RevertingCostSkill is ISkill {
         revert("Cost calculation failed");
     }
     
-    function isValidSkill() external pure returns (bytes4) {
-        return type(ISkill).interfaceId;
+    // EIP-165 implementation
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(ISkill).interfaceId || 
+               interfaceId == type(IERC165).interfaceId;
     }
 }
 
@@ -190,7 +196,7 @@ contract AminalSkillsInterfaceTest is Test {
         assertEq(aminal.energy(), energyBefore - 200);
     }
     
-    function test_BadInterfaceIdFallsBackToLegacy() public {
+    function test_BadInterfaceSupportFallsBackToLegacy() public {
         // Feed the Aminal
         vm.prank(user1);
         (bool success,) = address(aminal).call{value: 1 ether}("");
@@ -198,7 +204,7 @@ contract AminalSkillsInterfaceTest is Test {
         
         uint256 energyBefore = aminal.energy();
         
-        // Use skill with bad interface ID
+        // Use skill that claims not to support ISkill
         bytes memory skillData = abi.encodeWithSelector(BadInterfaceSkill.doSomething.selector);
         
         vm.prank(user1);

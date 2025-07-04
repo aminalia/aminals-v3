@@ -323,22 +323,22 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         if (target == address(0) || target.code.length == 0) {
             energyCost = _useSkillLegacy(target, data);
         } else {
-            // Check if the target implements ISkill interface
-            try ISkill(target).isValidSkill() returns (bytes4 interfaceId) {
-            // If it implements ISkill, get the cost from the interface
-            if (interfaceId == type(ISkill).interfaceId) {
-                try ISkill(target).skillEnergyCost(data) returns (uint256 cost) {
-                    energyCost = cost;
-                } catch {
-                    // If cost query fails, default to 1
-                    energyCost = 1;
+            // Check if the target implements ISkill interface using EIP-165
+            try ISkill(target).supportsInterface(type(ISkill).interfaceId) returns (bool supported) {
+                if (supported) {
+                    // Target implements ISkill, get the cost from the interface
+                    try ISkill(target).skillEnergyCost(data) returns (uint256 cost) {
+                        energyCost = cost;
+                    } catch {
+                        // If cost query fails, default to 1
+                        energyCost = 1;
+                    }
+                } else {
+                    // Doesn't support ISkill interface, use legacy parsing
+                    energyCost = _useSkillLegacy(target, data);
                 }
-            } else {
-                // Interface not properly implemented, use legacy parsing
-                energyCost = _useSkillLegacy(target, data);
-            }
             } catch {
-                // Contract doesn't implement ISkill, use legacy parsing
+                // Contract doesn't implement EIP-165, use legacy parsing
                 energyCost = _useSkillLegacy(target, data);
             }
         }

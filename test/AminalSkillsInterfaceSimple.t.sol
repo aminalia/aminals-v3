@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
+import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
 /**
  * @title SimpleSkillWithInterface
@@ -54,8 +55,10 @@ contract SimpleSkillWithInterface is ISkill {
         return cost == 0 ? 1 : cost;
     }
     
-    function isValidSkill() external pure returns (bytes4) {
-        return type(ISkill).interfaceId;
+    // EIP-165 implementation
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(ISkill).interfaceId || 
+               interfaceId == type(IERC165).interfaceId;
     }
 }
 
@@ -190,7 +193,9 @@ contract MaliciousSkill is ISkill {
         return type(uint256).max; // Try to drain everything!
     }
     
-    function isValidSkill() external pure returns (bytes4) {
-        return type(ISkill).interfaceId;
+    // EIP-165 implementation
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(ISkill).interfaceId || 
+               interfaceId == type(IERC165).interfaceId;
     }
 }

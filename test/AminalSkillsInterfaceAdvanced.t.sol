@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
+import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
 /**
  * @title AdvancedSkill
@@ -72,8 +73,10 @@ contract AdvancedSkill is ISkill {
         return _calculateCost(user, selector);
     }
     
-    function isValidSkill() external pure returns (bytes4) {
-        return type(ISkill).interfaceId;
+    // EIP-165 implementation
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(ISkill).interfaceId || 
+               interfaceId == type(IERC165).interfaceId;
     }
     
     // Internal cost calculation with discounts and usage-based pricing
@@ -142,8 +145,10 @@ contract ConditionalSkill is ISkill {
         return 1;
     }
     
-    function isValidSkill() external pure returns (bytes4) {
-        return type(ISkill).interfaceId;
+    // EIP-165 implementation
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(ISkill).interfaceId || 
+               interfaceId == type(IERC165).interfaceId;
     }
 }
 
