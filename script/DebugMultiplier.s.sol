@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
+import {toWadUnsafe} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMath.sol";
 
 contract DebugMultiplier is Script {
     function run() public {
@@ -22,7 +23,7 @@ contract DebugMultiplier is Script {
         
         for (uint i = 0; i < energies.length; i++) {
             uint256 energy = energies[i];
-            uint256 price = vrgda.getVRGDAPrice(vrgda.toWadUnsafe(energy), energy);
+            uint256 price = vrgda.getVRGDAPrice(toWadUnsafe(energy), energy);
             uint256 multiplier = vrgda.getLoveMultiplier(energy);
             console.log("Energy:", energy);
             console.log("  VRGDA price:", price);
