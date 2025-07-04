@@ -5,9 +5,10 @@ import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.s
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ERC721Enumerable} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import {Base64} from "lib/openzeppelin-contracts/contracts/utils/Base64.sol";
-import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import {LibString} from "solady/utils/LibString.sol";
+import {Base64} from "solady/utils/Base64.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {GeneRenderer} from "src/GeneRenderer.sol";
 
 /**
  * @title GeneNFT
@@ -16,7 +17,8 @@ import {ITraits} from "src/interfaces/ITraits.sol";
  * @notice Features dual output: raw SVG for composability and OpenSea-compatible metadata
  */
 contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
-    using Strings for uint256;
+    using LibString for uint256;
+    using LibString for string;
     /// @dev Base URI for token metadata
     string public baseTokenURI;
 
@@ -184,18 +186,12 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     function generateStandaloneSVG(uint256 tokenId) public view returns (string memory) {
         if (!_exists(tokenId)) revert InvalidParameters();
         
-        // Create a standalone SVG with background and proper viewport
-        return string(abi.encodePacked(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">',
-            '<rect width="500" height="500" fill="#f0f0f0"/>',
-            '<text x="250" y="50" text-anchor="middle" font-family="Arial" font-size="20" fill="#333">',
-            tokenTraitType[tokenId], ': ', tokenTraitValue[tokenId],
-            '</text>',
-            '<g transform="translate(250, 250)">',
-            gene[tokenId],
-            '</g>',
-            '</svg>'
-        ));
+        // Use GeneRenderer for efficient SVG generation
+        return GeneRenderer.generateStandaloneGeneSVG(
+            tokenTraitType[tokenId],
+            tokenTraitValue[tokenId],
+            gene[tokenId]
+        );
     }
 
     /**
@@ -267,32 +263,21 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         
         // Generate the standalone SVG image
         string memory svgImage = generateStandaloneSVG(tokenId);
-        string memory svgBase64 = Base64.encode(bytes(svgImage));
         
-        // Create the JSON metadata
-        string memory json = string(abi.encodePacked(
-            '{',
-            '"name": "', tokenTraitType[tokenId], ': ', tokenTraitValue[tokenId], '",',
-            '"description": "', tokenDescription[tokenId], '",',
-            '"image": "data:image/svg+xml;base64,', svgBase64, '",',
-            '"attributes": [',
-                '{',
-                    '"trait_type": "Type",',
-                    '"value": "', tokenTraitType[tokenId], '"',
-                '},',
-                '{',
-                    '"trait_type": "Value",',
-                    '"value": "', tokenTraitValue[tokenId], '"',
-                '}',
-            ']',
-            '}'
-        ));
+        // Create the metadata using GeneRenderer
+        string memory name = string.concat(tokenTraitType[tokenId], ': ', tokenTraitValue[tokenId]);
+        string memory imageDataURI = GeneRenderer.svgToBase64DataURI(svgImage);
+        
+        string memory json = GeneRenderer.generateMetadata(
+            name,
+            tokenDescription[tokenId],
+            imageDataURI,
+            tokenTraitType[tokenId],
+            tokenTraitValue[tokenId]
+        );
         
         // Return as base64-encoded data URI
-        return string(abi.encodePacked(
-            'data:application/json;base64,',
-            Base64.encode(bytes(json))
-        ));
+        return GeneRenderer.jsonToBase64DataURI(json);
     }
 
     /**

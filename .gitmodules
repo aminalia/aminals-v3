@@ -7,3 +7,6 @@
 [submodule "lib/VRGDAs"]
 	path = lib/VRGDAs
 	url = https://github.com/transmissions11/VRGDAs
+[submodule "lib/solady"]
+	path = lib/solady
+	url = https://github.com/vectorized/solady
