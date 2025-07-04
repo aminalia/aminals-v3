@@ -690,12 +690,12 @@ Regular ERC721 NFTs representing genetic traits:
 - Future: Query from GeneNFT contracts for dynamic traits
 
 ### VRGDA Feeding Mechanics
-- **Linear VRGDA**: Modulates love received based on energy level
+- **Logistic VRGDA**: Modulates love received based on energy level using smooth S-curve
 - **Fixed Energy**: 10,000 energy per 1 ETH (constant rate)
 - **Variable Love**: Love varies inversely with energy via VRGDA
 - **Energy Thresholds**: 
   - <10 energy (0.001 ETH): 100x love multiplier (hungry Aminals get massive bonus love)
-  - 10-10,000,000 energy: VRGDA calculates diminishing returns
+  - 10-10,000,000 energy: Logistic VRGDA calculates smooth diminishing returns
   - >10,000,000 energy (1000 ETH): 0.001x love multiplier (well-fed Aminals get minimal love)
 - **No Time Dependency**: Energy replaces time in VRGDA formula
 - **squeak()**: Only way to reduce energy and improve love multiplier

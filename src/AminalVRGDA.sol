@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {LinearVRGDA} from "lib/VRGDAs/src/LinearVRGDA.sol";
+import {LogisticVRGDA} from "lib/VRGDAs/src/LogisticVRGDA.sol";
 import {toWadUnsafe, wadDiv} from "lib/VRGDAs/lib/solmate/src/utils/SignedWadMath.sol";
 
 /**
  * @title AminalVRGDA
- * @notice LinearVRGDA implementation that modulates love received based on energy level
- * @dev Energy gain is fixed (10k per ETH), but love varies inversely with energy
+ * @notice Logistic VRGDA implementation that modulates love received based on energy level
+ * @dev Energy gain is fixed (10k per ETH), but love varies inversely with energy using a smooth S-curve
  * @dev Thresholds prevent extreme VRGDA values: <10 energy (0.001 ETH) = 100x love, >10M (1000 ETH) = 0.001x love
- * @dev Between thresholds, VRGDA calculates love based on energy as proxy for time/sold
+ * @dev Between thresholds, Logistic VRGDA provides smooth diminishing returns as energy increases
  */
-contract AminalVRGDA is LinearVRGDA {
+contract AminalVRGDA is LogisticVRGDA {
     /// @notice Fixed rate of energy gained per ETH (not affected by VRGDA)
     uint256 public constant ENERGY_PER_ETH = 10000; // 1 ETH = 10,000 energy units
     
@@ -22,15 +22,17 @@ contract AminalVRGDA is LinearVRGDA {
     uint256 public constant MIN_LOVE_MULTIPLIER = 0.001 ether;
     
     /// @notice Constructor to set up the VRGDA parameters for love calculation
-    /// @dev We repurpose the VRGDA to calculate love based on energy level
+    /// @dev We repurpose the Logistic VRGDA to calculate love based on energy level
     /// @param _targetPrice The base ETH amount for pricing (in wei)
     /// @param _priceDecayPercent How much the price decays when below target (scaled by 1e18)
-    /// @param _perTimeUnit Energy units per "time unit" - controls curve steepness (scaled by 1e18)
+    /// @param _logisticAsymptote The asymptotic maximum energy level (scaled by 1e18)
+    /// @param _timeScale Controls how quickly the curve transitions (scaled by 1e18)
     constructor(
         int256 _targetPrice,
         int256 _priceDecayPercent,
-        int256 _perTimeUnit
-    ) LinearVRGDA(_targetPrice, _priceDecayPercent, _perTimeUnit) {}
+        int256 _logisticAsymptote,
+        int256 _timeScale
+    ) LogisticVRGDA(_targetPrice, _priceDecayPercent, _logisticAsymptote, _timeScale) {}
 
     /**
      * @notice Calculate how much love is gained for a given ETH amount
@@ -56,11 +58,23 @@ contract AminalVRGDA is LinearVRGDA {
             loveMultiplier = MIN_LOVE_MULTIPLIER;
         } else {
             // Use VRGDA for normal energy levels
-            uint256 currentPrice = getVRGDAPrice(toWadUnsafe(currentEnergy), currentEnergy);
+            // Scale energy down to prevent overflow
+            // Divide by 1000 to work with smaller numbers (1 = 0.001 ETH worth of energy)
+            uint256 scaledEnergy = currentEnergy / 1000;
+            
+            // Ensure we have at least 1 unit to avoid issues with 0
+            if (scaledEnergy == 0) scaledEnergy = 1;
+            
+            // For love calculation, we want the inverse relationship:
+            // High energy should give low price (less love), low energy should give high price (more love)
+            // So we use a large number minus the current energy to invert the curve
+            uint256 invertedEnergy = 10000 > scaledEnergy ? 10000 - scaledEnergy : 1;
+            
+            uint256 currentPrice = getVRGDAPrice(toWadUnsafe(invertedEnergy), invertedEnergy);
             
             if (currentPrice == 0) {
-                // If price is 0, use maximum multiplier
-                loveMultiplier = MAX_LOVE_MULTIPLIER;
+                // If price is 0, use minimum multiplier
+                loveMultiplier = MIN_LOVE_MULTIPLIER;
             } else {
                 loveMultiplier = (uint256(targetPrice) * 1 ether) / currentPrice;
             }
