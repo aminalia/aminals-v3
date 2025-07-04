@@ -53,9 +53,10 @@ contract AminalVRGDA is LogisticVRGDA {
     /**
      * @notice Calculate how much love is gained for a given ETH amount
      * @dev As current energy increases, the love gained per ETH decreases
+     * @dev Returns love in the same units as energy (10,000 per ETH)
      * @param currentEnergy Current energy level of the Aminal
      * @param ethAmount Amount of ETH being sent (in wei)
-     * @return loveGained Amount of love that will be gained
+     * @return loveGained Amount of love that will be gained (in energy units)
      */
     function getLoveForETH(
         uint256 currentEnergy,
@@ -131,15 +132,17 @@ contract AminalVRGDA is LogisticVRGDA {
             }
         }
         
-        // Calculate love gained
-        loveGained = (ethAmount * loveMultiplier) / 1 ether;
+        // Calculate love gained in same units as energy (10,000 per ETH)
+        // First convert ETH to energy units, then apply multiplier
+        uint256 baseUnits = (ethAmount * ENERGY_PER_ETH) / 1 ether;
+        loveGained = (baseUnits * loveMultiplier) / 1 ether;
     }
 
     /**
      * @notice Get the current love multiplier based on energy level
      * @dev Returns how much love is gained per 1 ETH
      * @param currentEnergy Current energy level
-     * @return The love amount gained per 1 ETH (in wei)
+     * @return The love amount gained per 1 ETH (in energy units, where 10,000 = 1 ETH)
      */
     function getLoveMultiplier(uint256 currentEnergy) public view returns (uint256) {
         return getLoveForETH(currentEnergy, 1 ether);

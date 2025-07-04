@@ -299,7 +299,7 @@ contract AminalTest is Test {
 
     function test_ReceiveLove() external {
         uint256 ethAmount = 1 ether;
-        uint256 expectedLove = 10 ether; // 10x multiplier at 0 energy
+        uint256 expectedLove = 100000; // 10,000 base units × 10x multiplier at 0 energy
         uint256 expectedEnergy = 10000; // 10,000 energy per ETH
         
         // Check initial state
@@ -415,7 +415,7 @@ contract AminalTest is Test {
 
     function test_EnergySystem() external {
         uint256 feedAmount = 2 ether;
-        uint256 expectedLove = 20 ether; // 10x multiplier at 0 energy
+        uint256 expectedLove = 200000; // 20,000 base units × 10x multiplier at 0 energy
         uint256 expectedEnergy = 20000; // 10,000 per ETH
         uint256 squeakAmount = 5000; // Squeak in energy units
         
@@ -480,7 +480,7 @@ contract AminalTest is Test {
 
     function test_SqueakExactEnergyAmount() external {
         uint256 feedAmount = 1 ether;
-        uint256 expectedLove = 10 ether; // 10x multiplier at 0 energy
+        uint256 expectedLove = 100000; // 10,000 base × 10x multiplier at 0 energy
         uint256 expectedEnergy = 10000; // 10,000 energy per ETH
         
         // Feed the Aminal
@@ -560,7 +560,7 @@ contract AminalTest is Test {
     function test_RevertWhen_InsufficientLove() external {
         uint256 feedAmount = 1 ether;
         uint256 squeakAmount = 5000; // Squeak amount in energy units
-        uint256 expectedLove = 10 ether; // 10x multiplier at 0 energy
+        uint256 expectedLove = 100000; // 10,000 base × 10x multiplier at 0 energy
         uint256 expectedEnergy = 10000; // 10,000 energy per ETH
         
         // Feed the Aminal from user1
@@ -592,8 +592,8 @@ contract AminalTest is Test {
         (bool success,) = address(aminal).call{value: smallFeed}("");
         assertTrue(success);
         
-        // User1 has 0.001 ETH love (10x multiplier), energy is 1
-        uint256 user1InitialLove = 0.001 ether;
+        // User1 has 10 love units (1 energy × 10x multiplier), energy is 1
+        uint256 user1InitialLove = 10; // 1 unit × 10x at 0 energy
         
         // Step 2: User2 feeds a large amount to add lots of energy
         uint256 largeFeed = 1 ether;
@@ -603,20 +603,20 @@ contract AminalTest is Test {
         assertTrue(success);
         
         // Now energy is 1 + 10,000 = 10,001
-        // User1 still has only 0.001 ETH love
+        // User1 still has only 10 love units
         
         // Step 3: User1 tries to squeak more than their love (but less than energy)
         uint256 user1Love = aminal.loveFromUser(user1);
         assertEq(user1Love, user1InitialLove);
         
-        // Try to squeak 2 units (more than love but way less than energy)
+        // Try to squeak more than they have
         vm.prank(user1);
         vm.expectRevert(Aminal.InsufficientLove.selector);
         aminal.squeak(user1Love + 1);
         
-        // Step 4: User1 can squeak exactly their love amount (1000 units)
+        // Step 4: User1 can squeak exactly their love amount
         vm.prank(user1);
-        aminal.squeak(1000); // 0.001 ETH worth
+        aminal.squeak(user1Love);
         
         // Verify user1 has no love left
         assertEq(aminal.loveFromUser(user1), 0);
