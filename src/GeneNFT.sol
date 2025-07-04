@@ -261,8 +261,8 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         if (!_exists(tokenId)) revert InvalidParameters();
         
-        // Generate the standalone SVG image
-        string memory svgImage = generateStandaloneSVG(tokenId);
+        // Use the raw gene SVG for the image
+        string memory svgImage = gene[tokenId];
         
         // Create the metadata using GeneRenderer
         string memory name = string.concat(tokenTraitType[tokenId], ': ', tokenTraitValue[tokenId]);

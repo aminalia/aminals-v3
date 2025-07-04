@@ -340,18 +340,19 @@ contract OutputAminalRenderings is Script {
         string memory svgData,
         string memory description
     ) private pure returns (string memory) {
-        // Generate the standalone SVG for display
+        // For the gallery preview, we show the gene with background and label
         string memory standaloneSvg = GeneRenderer.generateStandaloneGeneSVG(
             traitType,
             name,
             svgData
         );
+        string memory galleryImageURI = GeneRenderer.svgToBase64DataURI(standaloneSvg);
         
-        // Generate the image data URI
-        string memory imageDataURI = GeneRenderer.svgToBase64DataURI(standaloneSvg);
+        // For the tokenURI, we just use the raw SVG (what OpenSea will see)
+        string memory tokenURIImageURI = GeneRenderer.svgToBase64DataURI(svgData);
         
-        // Create the JSON metadata
-        string memory jsonMetadata = buildJsonMetadata(name, traitType, imageDataURI);
+        // Create the JSON metadata using the raw SVG
+        string memory jsonMetadata = buildJsonMetadata(name, traitType, tokenURIImageURI);
 
         // Generate a unique ID for this example
         string memory id = string.concat(name, "_", traitType);
@@ -360,7 +361,7 @@ contract OutputAminalRenderings is Script {
         string memory part1 = string.concat(
             '        <div class="gene-item">\n',
             '          <h3>', name, '</h3>\n',
-            '          <img src="data:image/svg+xml;base64,', Base64.encode(bytes(svgData)), '" alt="', name, '">\n'
+            '          <img src="', galleryImageURI, '" alt="', name, '">\n'
         );
         
         string memory part2 = string.concat(
@@ -381,8 +382,8 @@ contract OutputAminalRenderings is Script {
         
         string memory part4 = string.concat(
             '          <div class="data-section">\n',
-            '            <div class="label">Standalone Display (from tokenURI image):</div>\n',
-            '            <img src="', imageDataURI, '" alt="', name, ' standalone" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">\n',
+            '            <div class="label">OpenSea Display (from tokenURI image):</div>\n',
+            '            <img src="', tokenURIImageURI, '" alt="', name, ' opensea" style="width: 150px; height: 150px; border: 1px solid #ddd; background: #f9f9f9;">\n',
             '          </div>\n',
             '        </div>\n'
         );
