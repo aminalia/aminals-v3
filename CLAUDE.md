@@ -689,12 +689,24 @@ Regular ERC721 NFTs representing genetic traits:
 - Set once at construction via `ITraits.Traits` struct
 - Future: Query from GeneNFT contracts for dynamic traits
 
+### VRGDA Feeding Mechanics
+- **Linear VRGDA**: Modulates love received based on energy level
+- **Fixed Energy**: 10,000 energy per 1 ETH (constant rate)
+- **Variable Love**: Love varies inversely with energy via VRGDA
+- **Energy Thresholds**: 
+  - <1,000 energy: 2x love multiplier (hungry Aminals get bonus love)
+  - 1,000-50,000 energy: VRGDA calculates diminishing returns
+  - >50,000 energy: 0.1x love multiplier (well-fed Aminals get minimal love)
+- **No Time Dependency**: Energy replaces time in VRGDA formula
+- **squeak()**: Only way to reduce energy and improve love multiplier
+
 ### Testing Approach
 - Unit tests for all functionality
 - Fuzz testing for edge cases
 - Self-ownership verification
 - Transfer prevention testing
 - Energy/love system validation
+- VRGDA mechanics testing
 </aminals_project>
 
 <user_prompt>
