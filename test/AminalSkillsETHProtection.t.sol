@@ -46,7 +46,7 @@ contract MaliciousSkill {
     }
 }
 
-contract AminalSkillsSecurityTest is Test {
+contract AminalSkillsETHProtectionTest is Test {
     Aminal public aminal;
     GreedySkill public greedySkill;
     MaliciousSkill public maliciousSkill;
