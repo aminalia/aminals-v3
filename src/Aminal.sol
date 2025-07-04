@@ -84,6 +84,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     /// @dev Event emitted when the Aminal squeaks and loses energy
     event EnergyLost(address indexed squeaker, uint256 amount, uint256 newEnergy);
 
+    /// @dev Event emitted when love is consumed through squeaking
+    event LoveConsumed(address indexed squeaker, uint256 amount, uint256 remainingLove);
+
     /// @dev Error thrown when trying to mint more than one token
     error AlreadyMinted();
 
@@ -92,6 +95,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
 
     /// @dev Error thrown when trying to squeak with insufficient energy
     error InsufficientEnergy();
+
+    /// @dev Error thrown when trying to squeak with insufficient love
+    error InsufficientLove();
 
     /// @dev Error thrown when trying to initialize an already initialized contract
     error AlreadyInitialized();
@@ -262,15 +268,21 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver {
     }
 
     /**
-     * @notice Make the Aminal squeak, consuming energy
-     * @dev Energy decreases by the specified amount. Reverts if insufficient energy.
-     * @param amount The amount of energy to consume for squeaking
+     * @notice Make the Aminal squeak, consuming both love and energy
+     * @dev Energy and love both decrease by the specified amount at a 1:1 ratio
+     * @dev Reverts if insufficient energy or if user has insufficient love
+     * @param amount The amount of energy and love to consume for squeaking
      */
     function squeak(uint256 amount) external {
         if (energy < amount) revert InsufficientEnergy();
+        if (loveFromUser[msg.sender] < amount) revert InsufficientLove();
         
         energy -= amount;
+        loveFromUser[msg.sender] -= amount;
+        totalLove -= amount;
+        
         emit EnergyLost(msg.sender, amount, energy);
+        emit LoveConsumed(msg.sender, amount, loveFromUser[msg.sender]);
     }
 
     /**
