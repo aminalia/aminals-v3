@@ -788,8 +788,8 @@ Implementation:
 Breeding is now implemented as a Skill using the BreedingSkill contract:
 
 **Two-Step Process**:
-1. **Create Proposal**: Any Aminal with 2,500 energy + love can propose to a specific partner
-2. **Accept Proposal**: The target Aminal accepts with 2,500 energy + love to breed
+1. **Create Proposal**: User A with 2,500 love in Aminal A creates proposal for Aminal A to breed with Aminal B
+2. **Accept Proposal**: User B with 2,500 love in Aminal B accepts the proposal to breed
 
 **Key Security Features**:
 - **No consumeAs()**: Removed dangerous function that allowed anyone to drain others' resources
@@ -807,17 +807,22 @@ Breeding is now implemented as a Skill using the BreedingSkill contract:
 
 **Breeding Flow**:
 ```solidity
-// User with love in parent1 creates proposal
-parent1.useSkill(breedingSkill, abi.encodeCall(
+// Step 1: User A (with 2,500+ love in Aminal A) creates proposal
+vm.prank(userA);
+aminalA.useSkill(breedingSkill, abi.encodeCall(
     BreedingSkill.createProposal, 
-    (parent2, "description", "uri")
+    (aminalB, "description", "uri")
 ));
+// This consumes 2,500 energy + 2,500 love from Aminal A
 
-// User with love in parent2 accepts
-parent2.useSkill(breedingSkill, abi.encodeCall(
+// Step 2: User B (with 2,500+ love in Aminal B) accepts proposal
+vm.prank(userB);
+aminalB.useSkill(breedingSkill, abi.encodeCall(
     BreedingSkill.acceptProposal,
     (proposalId)
 ));
+// This consumes 2,500 energy + 2,500 love from Aminal B
+// Child is created with traits alternating between parents
 ```
 
 #### Direct Breeding (Legacy)
