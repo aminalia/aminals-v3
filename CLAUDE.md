@@ -784,16 +784,17 @@ The original `breed()` function in AminalFactory allowed direct breeding but has
 Aminals breed through community voting using the AminalBreedingVote contract:
 
 **Voting Mechanics**:
-- **Love-Based Voting**: Users vote using their love from both parent Aminals
-- **Voting Power**: `min(loveInParent1, loveInParent2)` - ensures meaningful connection to both
+- **Love-Based Voting**: Users vote using their combined love from both parent Aminals
+- **Voting Power**: `loveInParent1 + loveInParent2` - combined voting power from both parents
 - **Per-Trait Voting**: Each of 8 traits voted on independently
 - **Vote Recording**: Love amounts recorded at vote time (no revoting if love changes)
 - **Execution**: Anyone can execute after voting period ends
 - **Tie Breaking**: Parent1 wins ties
+- **Inclusive**: Can vote with love in just one parent (or both)
 
 **Breeding Process**:
 1. **Proposal Creation**: Anyone can propose breeding between two valid Aminals
-2. **Voting Period**: Users with love in both parents vote on trait inheritance
+2. **Voting Period**: Users with love in either parent vote on trait inheritance
 3. **Trait Selection**: Vote per trait - should child inherit from parent1 or parent2?
 4. **Execution**: After voting ends, breeding executes with winning traits
 5. **Child Creation**: Factory creates new self-sovereign Aminal with voted traits

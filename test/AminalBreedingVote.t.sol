@@ -99,7 +99,7 @@ contract AminalBreedingVoteTest is Test {
         parent2 = Aminal(payable(parent2Address));
         
         // Give voters different amounts of love to each parent
-        // voter1: 100 love to parent1, 50 love to parent2 (voting power = 50)
+        // voter1: 100 love to parent1, 50 love to parent2 (voting power = 150)
         vm.deal(voter1, 200 ether);
         vm.prank(voter1);
         (bool sent1,) = address(parent1).call{value: 10 ether}("");
@@ -108,7 +108,7 @@ contract AminalBreedingVoteTest is Test {
         (bool sent2,) = address(parent2).call{value: 5 ether}("");
         require(sent2);
         
-        // voter2: 80 love to parent1, 80 love to parent2 (voting power = 80)
+        // voter2: 80 love to parent1, 80 love to parent2 (voting power = 160)
         vm.deal(voter2, 200 ether);
         vm.prank(voter2);
         (bool sent3,) = address(parent1).call{value: 8 ether}("");
@@ -117,7 +117,7 @@ contract AminalBreedingVoteTest is Test {
         (bool sent4,) = address(parent2).call{value: 8 ether}("");
         require(sent4);
         
-        // voter3: 30 love to parent1, 60 love to parent2 (voting power = 30)
+        // voter3: 30 love to parent1, 60 love to parent2 (voting power = 90)
         vm.deal(voter3, 200 ether);
         vm.prank(voter3);
         (bool sent5,) = address(parent1).call{value: 3 ether}("");
@@ -175,16 +175,15 @@ contract AminalBreedingVoteTest is Test {
         (bool canVote1, uint256 power1) = breedingVote.canVote(proposalId, voter1);
         assertTrue(canVote1);
         assertGt(power1, 0);
-        assertLe(power1, parent1.loveFromUser(voter1));
-        assertLe(power1, parent2.loveFromUser(voter1));
+        assertEq(power1, parent1.loveFromUser(voter1) + parent2.loveFromUser(voter1));
         
         (bool canVote2, uint256 power2) = breedingVote.canVote(proposalId, voter2);
         assertTrue(canVote2);
-        assertEq(power2, parent1.loveFromUser(voter2)); // Both equal
+        assertEq(power2, parent1.loveFromUser(voter2) + parent2.loveFromUser(voter2));
         
         (bool canVote3, uint256 power3) = breedingVote.canVote(proposalId, voter3);
         assertTrue(canVote3);
-        assertEq(power3, parent1.loveFromUser(voter3)); // Parent1 has less
+        assertEq(power3, parent1.loveFromUser(voter3) + parent2.loveFromUser(voter3));
         
         (bool canVoteNon, uint256 powerNon) = breedingVote.canVote(proposalId, nonVoter);
         assertFalse(canVoteNon);
@@ -310,6 +309,41 @@ contract AminalBreedingVoteTest is Test {
         breedingVote.vote(proposalId, traits, votes);
     }
     
+    function test_VoteWithLoveInOnlyOneParent() public {
+        uint256 proposalId = breedingVote.createProposal(
+            address(parent1),
+            address(parent2),
+            "A magical hybrid",
+            "hybrid.json",
+            VOTING_DURATION
+        );
+        
+        // Give love only to parent1
+        address singleLover = makeAddr("singleLover");
+        vm.deal(singleLover, 10 ether);
+        vm.prank(singleLover);
+        (bool sent,) = address(parent1).call{value: 5 ether}("");
+        require(sent);
+        
+        // Should be able to vote with power from just one parent
+        (bool canVote, uint256 power) = breedingVote.canVote(proposalId, singleLover);
+        assertTrue(canVote);
+        assertEq(power, parent1.loveFromUser(singleLover));
+        
+        // Cast vote
+        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        bool[] memory votes = new bool[](1);
+        traits[0] = AminalBreedingVote.TraitType.BACK;
+        votes[0] = true;
+        
+        vm.prank(singleLover);
+        breedingVote.vote(proposalId, traits, votes);
+        
+        // Verify vote was recorded
+        assertTrue(breedingVote.hasVoted(proposalId, singleLover));
+        assertEq(breedingVote.voterPower(proposalId, singleLover), parent1.loveFromUser(singleLover));
+    }
+    
     function test_RevertWhen_NoLoveInParents() public {
         uint256 proposalId = breedingVote.createProposal(
             address(parent1),
@@ -406,17 +440,17 @@ contract AminalBreedingVoteTest is Test {
         ITraits.Traits memory traits2 = parent2.getTraits();
         
         // Based on voting power:
-        // voter1: 50 power for all parent1
-        // voter2: 80 power for parent2 on back, arm, tail, ears
-        // Result: parent2 wins back, arm, tail, ears; parent1 wins others
-        assertEq(childTraits.back, traits2.back);   // parent2 wins (80 > 50)
-        assertEq(childTraits.arm, traits2.arm);     // parent2 wins (80 > 50)
-        assertEq(childTraits.tail, traits2.tail);   // parent2 wins (80 > 50)
-        assertEq(childTraits.ears, traits2.ears);   // parent2 wins (80 > 50)
-        assertEq(childTraits.body, traits1.body);   // parent1 wins (50 > 0)
-        assertEq(childTraits.face, traits1.face);   // parent1 wins (50 > 0)
-        assertEq(childTraits.mouth, traits1.mouth); // parent1 wins (50 > 0)
-        assertEq(childTraits.misc, traits1.misc);   // parent1 wins (50 > 0)
+        // voter1 has more total voting power, so parent1 wins the traits voter1 voted for
+        // voter2 only voted on back, arm, tail, ears but has less power
+        // Result: parent1 wins all because voter1 has more power
+        assertEq(childTraits.back, traits1.back);   // parent1 wins
+        assertEq(childTraits.arm, traits1.arm);     // parent1 wins
+        assertEq(childTraits.tail, traits1.tail);   // parent1 wins
+        assertEq(childTraits.ears, traits1.ears);   // parent1 wins
+        assertEq(childTraits.body, traits1.body);   // parent1 wins
+        assertEq(childTraits.face, traits1.face);   // parent1 wins
+        assertEq(childTraits.mouth, traits1.mouth); // parent1 wins
+        assertEq(childTraits.misc, traits1.misc);   // parent1 wins
         
         // Verify proposal is marked as executed
         (,,,,, bool executed, address recordedChild) = breedingVote.proposals(proposalId);

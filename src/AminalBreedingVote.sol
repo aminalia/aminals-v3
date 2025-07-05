@@ -9,11 +9,11 @@ import {ITraits} from "./interfaces/ITraits.sol";
  * @title AminalBreedingVote
  * @author Aminals Protocol
  * @notice Manages voting for trait inheritance during Aminal breeding
- * @dev Users vote using their love from both parent Aminals to determine which traits the child inherits
+ * @dev Users vote using their combined love from both parent Aminals to determine which traits the child inherits
  * 
  * @notice VOTING MECHANICS:
- * - Only users who have given love to BOTH parent Aminals can vote
- * - Voting power = min(loveInParent1, loveInParent2)
+ * - Users can vote if they have love in either parent Aminal
+ * - Voting power = loveInParent1 + loveInParent2
  * - Each trait category has its own independent vote
  * - Users vote for parent1 or parent2 for each trait
  * - Love is recorded at vote time (no revoting if love changes)
@@ -171,7 +171,7 @@ contract AminalBreedingVote {
     
     /**
      * @notice Vote on trait inheritance for a breeding proposal
-     * @dev Voting power is the minimum love the voter has in both parents
+     * @dev Voting power is the combined love the voter has in both parents
      * @param proposalId The proposal to vote on
      * @param traits Array of trait types to vote on
      * @param votesForParent1 Array of votes (true = parent1, false = parent2)
@@ -196,8 +196,8 @@ contract AminalBreedingVote {
         uint256 loveInParent1 = parent1.loveFromUser(msg.sender);
         uint256 loveInParent2 = parent2.loveFromUser(msg.sender);
         
-        // Voting power is the minimum of love in both parents
-        uint256 votingPower = loveInParent1 < loveInParent2 ? loveInParent1 : loveInParent2;
+        // Voting power is the sum of love in both parents
+        uint256 votingPower = loveInParent1 + loveInParent2;
         
         if (votingPower == 0) revert InsufficientLoveInParents();
         
@@ -321,7 +321,7 @@ contract AminalBreedingVote {
         uint256 loveInParent1 = parent1.loveFromUser(voter);
         uint256 loveInParent2 = parent2.loveFromUser(voter);
         
-        votingPower = loveInParent1 < loveInParent2 ? loveInParent1 : loveInParent2;
+        votingPower = loveInParent1 + loveInParent2;
         canVoteResult = votingPower > 0;
     }
 }
