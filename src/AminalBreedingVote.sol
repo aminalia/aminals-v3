@@ -127,8 +127,8 @@ contract AminalBreedingVote {
     /// @dev Error thrown when user doesn't have enough love/energy to create proposal
     error InsufficientLoveAndEnergy();
     
-    /// @dev Cost to create a breeding proposal (5,000 units = 0.5 ETH)
-    uint256 public constant BREEDING_PROPOSAL_COST = 5000;
+    /// @dev Cost to create a breeding proposal per parent (2,500 units = 0.25 ETH each)
+    uint256 public constant BREEDING_COST_PER_PARENT = 2500;
     
     /**
      * @dev Constructor
@@ -140,7 +140,7 @@ contract AminalBreedingVote {
     
     /**
      * @notice Create a breeding proposal for two Aminals
-     * @dev Costs 5,000 love and energy from the creator, deducted from one of the parents
+     * @dev Costs 2,500 energy from each parent (5,000 total)
      * @param parent1 The first parent Aminal
      * @param parent2 The second parent Aminal
      * @param childDescription Description for the child Aminal
@@ -160,28 +160,23 @@ contract AminalBreedingVote {
         if (!factory.isValidAminal(parent2)) revert InvalidParent();
         if (parent1 == parent2) revert InvalidParent();
         
-        // Check if user has enough love/energy in either parent
+        // Get parent Aminals
         Aminal aminalParent1 = Aminal(payable(parent1));
         Aminal aminalParent2 = Aminal(payable(parent2));
         
-        uint256 loveInParent1 = aminalParent1.loveFromUser(msg.sender);
-        uint256 loveInParent2 = aminalParent2.loveFromUser(msg.sender);
+        // Check energy levels in both parents
+        uint256 energyParent1 = aminalParent1.getEnergy();
+        uint256 energyParent2 = aminalParent2.getEnergy();
         
-        // Try to consume from parent1 first, then parent2
-        bool consumed = false;
-        if (loveInParent1 >= BREEDING_PROPOSAL_COST) {
-            try aminalParent1.consumeAs(msg.sender, BREEDING_PROPOSAL_COST) {
-                consumed = true;
-            } catch {}
+        // Both parents must have sufficient energy
+        if (energyParent1 < BREEDING_COST_PER_PARENT || energyParent2 < BREEDING_COST_PER_PARENT) {
+            revert InsufficientLoveAndEnergy();
         }
         
-        if (!consumed && loveInParent2 >= BREEDING_PROPOSAL_COST) {
-            try aminalParent2.consumeAs(msg.sender, BREEDING_PROPOSAL_COST) {
-                consumed = true;
-            } catch {}
-        }
-        
-        if (!consumed) revert InsufficientLoveAndEnergy();
+        // Consume energy from both parents
+        // Note: consumeAs will revert if the calling user doesn't have enough love
+        aminalParent1.consumeAs(msg.sender, BREEDING_COST_PER_PARENT);
+        aminalParent2.consumeAs(msg.sender, BREEDING_COST_PER_PARENT);
         
         proposalId = nextProposalId++;
         

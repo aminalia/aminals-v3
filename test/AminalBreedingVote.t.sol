@@ -200,13 +200,31 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_CreateProposal() public {
-        // First give voter1 enough love to pay breeding cost
-        uint256 initialLove = parent1.loveFromUser(voter1);
+        // Get initial energy and love levels
+        uint256 initialEnergyP1 = parent1.getEnergy();
+        uint256 initialEnergyP2 = parent2.getEnergy();
+        uint256 initialLoveP1 = parent1.loveFromUser(voter1);
+        uint256 initialLoveP2 = parent2.loveFromUser(voter2);
+        
+        // First test: user with no love in any parent cannot create proposal
+        vm.prank(nonVoter);
+        vm.expectRevert();
+        breedingVote.createProposal(
+            address(parent1),
+            address(parent2),
+            "A magical hybrid",
+            "hybrid.json",
+            VOTING_DURATION
+        );
+        
+        // Now use voter3 who has love in both parents
+        uint256 initialLoveP1Voter3 = parent1.loveFromUser(voter3);
+        uint256 initialLoveP2Voter3 = parent2.loveFromUser(voter3);
         
         vm.expectEmit(true, true, true, true);
         emit ProposalCreated(0, address(parent1), address(parent2), block.timestamp + VOTING_DURATION);
         
-        vm.prank(voter1);
+        vm.prank(voter3);
         uint256 proposalId = breedingVote.createProposal(
             address(parent1),
             address(parent2),
@@ -217,8 +235,13 @@ contract AminalBreedingVoteTest is Test {
         
         assertEq(proposalId, 0);
         
-        // Verify that 5,000 love/energy was consumed
-        assertEq(parent1.loveFromUser(voter1), initialLove - 5000);
+        // Verify that 2,500 energy was consumed from each parent
+        assertEq(parent1.getEnergy(), initialEnergyP1 - 2500);
+        assertEq(parent2.getEnergy(), initialEnergyP2 - 2500);
+        
+        // Verify that 2,500 love was consumed from voter3 in each parent
+        assertEq(parent1.loveFromUser(voter3), initialLoveP1Voter3 - 2500);
+        assertEq(parent2.loveFromUser(voter3), initialLoveP2Voter3 - 2500);
         
         (
             address p1,
@@ -237,6 +260,65 @@ contract AminalBreedingVoteTest is Test {
         assertEq(deadline, block.timestamp + VOTING_DURATION);
         assertFalse(executed);
         assertEq(child, address(0));
+    }
+    
+    function test_RevertWhen_InsufficientEnergyInParents() public {
+        // Create new parents with minimal energy
+        vm.startPrank(owner);
+        address lowEnergyParent1 = factory.createAminalWithTraits(
+            "LowEnergy1",
+            "LOW1",
+            "A low energy parent",
+            "low1.json",
+            ITraits.Traits({
+                back: "Weak Wings",
+                arm: "Tired Arms",
+                tail: "Droopy Tail",
+                ears: "Sleepy Ears",
+                body: "Exhausted Body",
+                face: "Tired Face",
+                mouth: "Yawning Mouth",
+                misc: "Low Energy"
+            })
+        );
+        
+        address lowEnergyParent2 = factory.createAminalWithTraits(
+            "LowEnergy2",
+            "LOW2",
+            "Another low energy parent",
+            "low2.json",
+            ITraits.Traits({
+                back: "Weak Wings 2",
+                arm: "Tired Arms 2",
+                tail: "Droopy Tail 2",
+                ears: "Sleepy Ears 2",
+                body: "Exhausted Body 2",
+                face: "Tired Face 2",
+                mouth: "Yawning Mouth 2",
+                misc: "Low Energy 2"
+            })
+        );
+        vm.stopPrank();
+        
+        // Give them just a bit of energy (less than 2500 each)
+        vm.deal(voter3, 0.2 ether);
+        vm.prank(voter3);
+        (bool s1,) = lowEnergyParent1.call{value: 0.1 ether}(""); // 1000 energy
+        require(s1);
+        vm.prank(voter3);
+        (bool s2,) = lowEnergyParent2.call{value: 0.1 ether}(""); // 1000 energy
+        require(s2);
+        
+        // Try to create proposal - should fail due to insufficient energy
+        vm.prank(voter3);
+        vm.expectRevert(AminalBreedingVote.InsufficientLoveAndEnergy.selector);
+        breedingVote.createProposal(
+            lowEnergyParent1,
+            lowEnergyParent2,
+            "Test",
+            "test.json",
+            VOTING_DURATION
+        );
     }
     
     function test_VotingPower() public {
