@@ -263,7 +263,9 @@ contract BreedingSkillTest is Test {
             address ticketParent2,
             string memory ticketDesc,
             string memory ticketUri,
-            uint256 deadline,
+            uint256 geneProposalDeadline,
+            uint256 votingStartTime,
+            uint256 votingDeadline,
             bool ticketExecuted,
             address childContract,
             address creator

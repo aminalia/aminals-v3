@@ -11,24 +11,45 @@ import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 /**
  * @title AminalBreedingVote
  * @author Aminals Protocol
- * @notice Manages voting for trait inheritance during Aminal breeding
- * @dev Users vote using their combined love from both parent Aminals to determine which traits the child inherits
+ * @notice Manages the four-phase breeding process for Aminals
+ * @dev Breeding occurs in four distinct phases: Gene Proposal, Voting, Execution, and Completed
  * 
- * @notice VOTING MECHANICS:
- * - Users can vote if they have love in either parent Aminal
- * - Voting power = loveInParent1 + loveInParent2
- * - Each trait category has its own independent vote
- * - Users vote for parent1 or parent2 for each trait
- * - Love is recorded at vote time (no revoting if love changes)
- * - Voting concludes when executeBreeding is called
+ * @notice BREEDING PHASES:
+ * Phase 1 - GENE_PROPOSAL (3 days):
+ * - Community members can propose Gene NFTs as trait alternatives
+ * - Proposers need minimum 100 combined love in both parents
+ * - Each user can only have one active gene proposal per breeding ticket
+ * - Users can replace their gene proposal during this phase
+ * 
+ * Phase 2 - VOTING (4 days):
+ * - Users vote on traits (parent1 vs parent2 vs proposed genes)
+ * - Users vote on veto (proceed vs cancel breeding)
+ * - Voting power = loveInParent1 + loveInParent2 (locked at first vote)
+ * - Users can change trait/veto votes but not gene votes
+ * 
+ * Phase 3 - EXECUTION:
+ * - Anyone can execute breeding after voting ends
+ * - Child is created with winning traits
+ * - If vetoed, no child is created
+ * 
+ * Phase 4 - COMPLETED:
+ * - Breeding process is complete
  * 
  * @notice TRAIT VOTING:
  * - 8 trait categories: back, arm, tail, ears, body, face, mouth, misc
- * - For each trait, users choose which parent's trait to inherit
- * - The parent with more votes wins for that trait
+ * - Each trait voted independently
+ * - Highest vote count wins (parent1, parent2, or specific gene)
  * - Ties default to parent1's trait
  */
 contract AminalBreedingVote is IAminalBreedingVote {
+    
+    /// @dev Enum for breeding phases
+    enum Phase {
+        GENE_PROPOSAL,
+        VOTING,
+        EXECUTION,
+        COMPLETED
+    }
     
     /// @dev Structure to track a breeding ticket (formerly proposal)
     struct BreedingTicket {
@@ -36,7 +57,9 @@ contract AminalBreedingVote is IAminalBreedingVote {
         address parent2;
         string childDescription;
         string childTokenURI;
-        uint256 votingDeadline;
+        uint256 geneProposalDeadline; // End of gene proposal phase
+        uint256 votingStartTime;       // Start of voting phase
+        uint256 votingDeadline;        // End of voting phase
         bool executed;
         address childContract; // Set after breeding execution
         address creator; // Who initiated this breeding (for permissions)
@@ -111,8 +134,9 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @notice ticketId => voter => hasVotedOnVeto
     mapping(uint256 => mapping(address => bool)) public hasVotedOnVeto;
     
-    /// @dev Voting duration for trait auctions (3 days)
-    uint256 public constant VOTING_DURATION = 3 days;
+    /// @dev Phase durations
+    uint256 public constant GENE_PROPOSAL_DURATION = 3 days;
+    uint256 public constant VOTING_DURATION = 4 days;
     
     /// @dev Minimum love required to propose a gene (100 units = 0.01 ETH)
     uint256 public constant MIN_LOVE_FOR_GENE_PROPOSAL = 100;
@@ -124,6 +148,18 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Counter for gene proposal IDs
     mapping(uint256 => mapping(TraitType => uint256)) public nextGeneProposalId;
     
+    /// @dev Mapping to track user's active gene proposal for a ticket
+    /// @notice ticketId => proposer => (traitType, geneId)
+    /// @dev (TraitType.BACK, 0) indicates no active proposal
+    mapping(uint256 => mapping(address => ActiveGeneProposal)) public userActiveProposal;
+    
+    /// @dev Structure to track a user's active gene proposal
+    struct ActiveGeneProposal {
+        TraitType traitType;
+        uint256 geneId;
+        bool hasProposal;
+    }
+    
     /// @dev Mapping from ticket ID to veto votes
     mapping(uint256 => VetoVote) public vetoVotes;
     
@@ -132,6 +168,8 @@ contract AminalBreedingVote is IAminalBreedingVote {
         uint256 indexed ticketId,
         address indexed parent1,
         address indexed parent2,
+        uint256 geneProposalDeadline,
+        uint256 votingStartTime,
         uint256 votingDeadline
     );
     
@@ -158,6 +196,16 @@ contract AminalBreedingVote is IAminalBreedingVote {
         address proposer,
         address geneContract,
         uint256 tokenId
+    );
+    
+    /// @dev Event emitted when a gene proposal is replaced
+    event GeneProposalReplaced(
+        uint256 indexed ticketId,
+        address indexed proposer,
+        TraitType oldTraitType,
+        uint256 oldGeneId,
+        TraitType newTraitType,
+        uint256 newGeneId
     );
     
     /// @dev Event emitted when someone votes for a gene
@@ -208,6 +256,12 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Error thrown when called by unauthorized address
     error NotAuthorized();
     
+    /// @dev Error thrown when action is attempted in wrong phase
+    error WrongPhase(Phase currentPhase, Phase requiredPhase);
+    
+    /// @dev Error thrown when user already has an active gene proposal
+    error AlreadyHasGeneProposal(TraitType existingType, uint256 existingGeneId);
+    
     /**
      * @dev Constructor
      * @param _factory The AminalFactory contract address
@@ -216,6 +270,26 @@ contract AminalBreedingVote is IAminalBreedingVote {
     constructor(address _factory, address _breedingSkill) {
         factory = AminalFactory(_factory);
         breedingSkill = _breedingSkill;
+    }
+    
+    /**
+     * @notice Get the current phase of a breeding ticket
+     * @param ticketId The ticket ID to check
+     * @return phase The current phase of the breeding process
+     */
+    function getCurrentPhase(uint256 ticketId) public view returns (Phase) {
+        BreedingTicket memory ticket = tickets[ticketId];
+        if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
+        
+        if (ticket.executed) return Phase.COMPLETED;
+        
+        if (block.timestamp < ticket.geneProposalDeadline) {
+            return Phase.GENE_PROPOSAL;
+        } else if (block.timestamp < ticket.votingDeadline) {
+            return Phase.VOTING;
+        } else {
+            return Phase.EXECUTION;
+        }
     }
     
     /**
@@ -243,18 +317,24 @@ contract AminalBreedingVote is IAminalBreedingVote {
         
         ticketId = ++nextTicketId;
         
+        uint256 geneProposalEnd = block.timestamp + GENE_PROPOSAL_DURATION;
+        uint256 votingStart = geneProposalEnd;
+        uint256 votingEnd = votingStart + VOTING_DURATION;
+        
         tickets[ticketId] = BreedingTicket({
             parent1: parent1,
             parent2: parent2,
             childDescription: childDescription,
             childTokenURI: childTokenURI,
-            votingDeadline: block.timestamp + VOTING_DURATION,
+            geneProposalDeadline: geneProposalEnd,
+            votingStartTime: votingStart,
+            votingDeadline: votingEnd,
             executed: false,
             childContract: address(0),
             creator: tx.origin // Track the original user who initiated breeding
         });
         
-        emit BreedingTicketCreated(ticketId, parent1, parent2, block.timestamp + VOTING_DURATION);
+        emit BreedingTicketCreated(ticketId, parent1, parent2, geneProposalEnd, votingStart, votingEnd);
     }
     
     /**
@@ -273,8 +353,13 @@ contract AminalBreedingVote is IAminalBreedingVote {
         
         BreedingTicket memory ticket = tickets[ticketId];
         if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
-        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
         if (ticket.executed) revert ProposalAlreadyExecuted();
+        
+        // Check we're in voting phase
+        Phase currentPhase = getCurrentPhase(ticketId);
+        if (currentPhase != Phase.VOTING) {
+            revert WrongPhase(currentPhase, Phase.VOTING);
+        }
         
         uint256 votingPower = voterPower[ticketId][msg.sender];
         
@@ -341,8 +426,30 @@ contract AminalBreedingVote is IAminalBreedingVote {
     ) external {
         BreedingTicket memory ticket = tickets[ticketId];
         if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
-        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
         if (ticket.executed) revert ProposalAlreadyExecuted();
+        
+        // Check we're in gene proposal phase
+        Phase currentPhase = getCurrentPhase(ticketId);
+        if (currentPhase != Phase.GENE_PROPOSAL) {
+            revert WrongPhase(currentPhase, Phase.GENE_PROPOSAL);
+        }
+        
+        // Check if user already has an active gene proposal
+        ActiveGeneProposal storage activeProposal = userActiveProposal[ticketId][msg.sender];
+        if (activeProposal.hasProposal) {
+            // User already has a proposal - emit replacement event for the old one
+            emit GeneProposalReplaced(
+                ticketId,
+                msg.sender,
+                activeProposal.traitType,
+                activeProposal.geneId,
+                traitType,
+                nextGeneProposalId[ticketId][traitType]
+            );
+            
+            // Mark the old proposal as replaced by clearing the proposer
+            geneProposals[ticketId][activeProposal.traitType][activeProposal.geneId].proposer = address(0);
+        }
         
         // Check proposer has minimum love in parents
         Aminal parent1 = Aminal(payable(ticket.parent1));
@@ -371,6 +478,11 @@ contract AminalBreedingVote is IAminalBreedingVote {
             proposalTime: block.timestamp
         });
         
+        // Update user's active proposal
+        activeProposal.traitType = traitType;
+        activeProposal.geneId = geneId;
+        activeProposal.hasProposal = true;
+        
         emit GeneProposed(ticketId, traitType, geneId, msg.sender, geneContract, tokenId);
     }
     
@@ -388,12 +500,18 @@ contract AminalBreedingVote is IAminalBreedingVote {
     ) external {
         BreedingTicket memory ticket = tickets[ticketId];
         if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
-        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
         if (ticket.executed) revert ProposalAlreadyExecuted();
         
-        // Verify gene proposal exists
+        // Check we're in voting phase
+        Phase currentPhase = getCurrentPhase(ticketId);
+        if (currentPhase != Phase.VOTING) {
+            revert WrongPhase(currentPhase, Phase.VOTING);
+        }
+        
+        // Verify gene proposal exists and hasn't been replaced
         GeneProposal memory proposal = geneProposals[ticketId][traitType][geneId];
         require(proposal.geneContract != address(0), "Gene proposal does not exist");
+        require(proposal.proposer != address(0), "Gene proposal was replaced");
         
         uint256 votingPower = voterPower[ticketId][msg.sender];
         
@@ -434,8 +552,13 @@ contract AminalBreedingVote is IAminalBreedingVote {
     ) external {
         BreedingTicket memory ticket = tickets[ticketId];
         if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
-        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
         if (ticket.executed) revert ProposalAlreadyExecuted();
+        
+        // Check we're in voting phase
+        Phase currentPhase = getCurrentPhase(ticketId);
+        if (currentPhase != Phase.VOTING) {
+            revert WrongPhase(currentPhase, Phase.VOTING);
+        }
         
         uint256 votingPower = voterPower[ticketId][msg.sender];
         
@@ -490,8 +613,13 @@ contract AminalBreedingVote is IAminalBreedingVote {
     function executeBreeding(uint256 ticketId) external returns (address childContract) {
         BreedingTicket storage ticket = tickets[ticketId];
         if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
-        if (block.timestamp <= ticket.votingDeadline) revert VotingNotEnded();
         if (ticket.executed) revert ProposalAlreadyExecuted();
+        
+        // Check we're in execution phase
+        Phase currentPhase = getCurrentPhase(ticketId);
+        if (currentPhase != Phase.EXECUTION) {
+            revert WrongPhase(currentPhase, Phase.EXECUTION);
+        }
         
         ticket.executed = true;
         
@@ -503,25 +631,37 @@ contract AminalBreedingVote is IAminalBreedingVote {
             return address(0);
         }
         
+        // Extract parent addresses first
+        address parent1Address = ticket.parent1;
+        address parent2Address = ticket.parent2;
+        
+        // Build child and create
+        childContract = _createChild(ticketId, parent1Address, parent2Address, ticket.childDescription, ticket.childTokenURI);
+        
+        ticket.childContract = childContract;
+        
+        emit BreedingExecuted(ticketId, childContract);
+    }
+    
+    /**
+     * @dev Create child Aminal with winning traits
+     */
+    function _createChild(
+        uint256 ticketId,
+        address parent1Address,
+        address parent2Address,
+        string memory childDescription,
+        string memory childTokenURI
+    ) private returns (address childContract) {
         // Get parent traits
-        Aminal parent1 = Aminal(payable(ticket.parent1));
-        Aminal parent2 = Aminal(payable(ticket.parent2));
+        Aminal parent1 = Aminal(payable(parent1Address));
+        Aminal parent2 = Aminal(payable(parent2Address));
         
         ITraits.Traits memory traits1 = parent1.getTraits();
         ITraits.Traits memory traits2 = parent2.getTraits();
         
-        // Determine winning traits based on votes (including gene proposals)
-        ITraits.Traits memory childTraits;
-        
-        // Get winning trait for each category
-        (childTraits.back,,,) = _getWinningTraitValue(ticketId, TraitType.BACK, traits1, traits2);
-        (childTraits.arm,,,) = _getWinningTraitValue(ticketId, TraitType.ARM, traits1, traits2);
-        (childTraits.tail,,,) = _getWinningTraitValue(ticketId, TraitType.TAIL, traits1, traits2);
-        (childTraits.ears,,,) = _getWinningTraitValue(ticketId, TraitType.EARS, traits1, traits2);
-        (childTraits.body,,,) = _getWinningTraitValue(ticketId, TraitType.BODY, traits1, traits2);
-        (childTraits.face,,,) = _getWinningTraitValue(ticketId, TraitType.FACE, traits1, traits2);
-        (childTraits.mouth,,,) = _getWinningTraitValue(ticketId, TraitType.MOUTH, traits1, traits2);
-        (childTraits.misc,,,) = _getWinningTraitValue(ticketId, TraitType.MISC, traits1, traits2);
+        // Build child traits in a separate function to avoid stack too deep
+        ITraits.Traits memory childTraits = _buildChildTraits(ticketId, traits1, traits2);
         
         // Generate child name and symbol from parent names
         string memory parent1Name = parent1.name();
@@ -533,14 +673,32 @@ contract AminalBreedingVote is IAminalBreedingVote {
         childContract = factory.createAminalWithTraits(
             childName,
             childSymbol,
-            ticket.childDescription,
-            ticket.childTokenURI,
+            childDescription,
+            childTokenURI,
             childTraits
         );
-        
-        ticket.childContract = childContract;
-        
-        emit BreedingExecuted(ticketId, childContract);
+    }
+    
+    /**
+     * @dev Build child traits from voting results
+     * @param ticketId The ticket ID
+     * @param traits1 Parent1's traits
+     * @param traits2 Parent2's traits
+     * @return childTraits The assembled child traits
+     */
+    function _buildChildTraits(
+        uint256 ticketId,
+        ITraits.Traits memory traits1,
+        ITraits.Traits memory traits2
+    ) private view returns (ITraits.Traits memory childTraits) {
+        (childTraits.back,,,) = _getWinningTraitValue(ticketId, TraitType.BACK, traits1, traits2);
+        (childTraits.arm,,,) = _getWinningTraitValue(ticketId, TraitType.ARM, traits1, traits2);
+        (childTraits.tail,,,) = _getWinningTraitValue(ticketId, TraitType.TAIL, traits1, traits2);
+        (childTraits.ears,,,) = _getWinningTraitValue(ticketId, TraitType.EARS, traits1, traits2);
+        (childTraits.body,,,) = _getWinningTraitValue(ticketId, TraitType.BODY, traits1, traits2);
+        (childTraits.face,,,) = _getWinningTraitValue(ticketId, TraitType.FACE, traits1, traits2);
+        (childTraits.mouth,,,) = _getWinningTraitValue(ticketId, TraitType.MOUTH, traits1, traits2);
+        (childTraits.misc,,,) = _getWinningTraitValue(ticketId, TraitType.MISC, traits1, traits2);
     }
     
     /**
@@ -582,8 +740,12 @@ contract AminalBreedingVote is IAminalBreedingVote {
         for (uint256 i = 0; i < geneCount; i++) {
             uint256 geneVotes = votes.geneVotes[i];
             if (geneVotes > highestVotes) {
-                highestVotes = geneVotes;
                 GeneProposal memory proposal = geneProposals[ticketId][trait][i];
+                
+                // Skip replaced proposals (proposer set to address(0))
+                if (proposal.proposer == address(0)) continue;
+                
+                highestVotes = geneVotes;
                 
                 // Try to get the trait value from the gene contract
                 try IGene(proposal.geneContract).traitValue(proposal.tokenId) returns (string memory traitVal) {
@@ -692,7 +854,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
-     * @notice Get all gene proposals for a specific trait in a ticket
+     * @notice Get all gene proposals for a specific trait in a ticket (including replaced ones)
      * @param ticketId The ticket ID
      * @param traitType The trait category
      * @return proposals Array of gene proposals for this trait
@@ -706,6 +868,37 @@ contract AminalBreedingVote is IAminalBreedingVote {
         
         for (uint256 i = 0; i < count; i++) {
             proposals[i] = geneProposals[ticketId][traitType][i];
+        }
+    }
+    
+    /**
+     * @notice Get only active (non-replaced) gene proposals for a specific trait
+     * @param ticketId The ticket ID
+     * @param traitType The trait category
+     * @return activeProposals Array of active gene proposals
+     * @return activeCount Number of active proposals
+     */
+    function getActiveGeneProposals(
+        uint256 ticketId,
+        TraitType traitType
+    ) external view returns (GeneProposal[] memory activeProposals, uint256 activeCount) {
+        uint256 totalCount = nextGeneProposalId[ticketId][traitType];
+        
+        // First pass: count active proposals
+        for (uint256 i = 0; i < totalCount; i++) {
+            if (geneProposals[ticketId][traitType][i].proposer != address(0)) {
+                activeCount++;
+            }
+        }
+        
+        // Second pass: fill array with active proposals
+        activeProposals = new GeneProposal[](activeCount);
+        uint256 activeIndex = 0;
+        for (uint256 i = 0; i < totalCount; i++) {
+            GeneProposal memory proposal = geneProposals[ticketId][traitType][i];
+            if (proposal.proposer != address(0)) {
+                activeProposals[activeIndex++] = proposal;
+            }
         }
     }
     

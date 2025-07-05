@@ -22,7 +22,8 @@ contract AminalBreedingVoteTest is Test {
     Aminal public parent2;
     
     string constant BASE_URI = "https://api.aminals.com/metadata/";
-    uint256 constant VOTING_DURATION = 1 days;
+    uint256 constant GENE_PROPOSAL_DURATION = 3 days;
+    uint256 constant VOTING_DURATION = 4 days;
     
     event BreedingTicketCreated(
         uint256 indexed ticketId,
@@ -232,7 +233,9 @@ contract AminalBreedingVoteTest is Test {
             address p2,
             string memory desc,
             string memory uri,
-            uint256 deadline,
+            uint256 geneProposalDeadline,
+            uint256 votingStartTime,
+            uint256 votingDeadline,
             bool executed,
             address child,
             address creator
@@ -242,7 +245,7 @@ contract AminalBreedingVoteTest is Test {
         assertEq(p2, address(parent2));
         assertEq(desc, "A magical hybrid");
         assertEq(uri, "hybrid.json");
-        assertEq(deadline, block.timestamp + 3 days); // VOTING_DURATION in AminalBreedingVote
+        assertEq(votingDeadline, block.timestamp + 3 days + 4 days); // GENE_PROPOSAL_DURATION + VOTING_DURATION
         assertFalse(executed);
         assertEq(child, address(0));
     }
@@ -469,8 +472,8 @@ contract AminalBreedingVoteTest is Test {
     function testSkip_RevertWhen_VotingAfterDeadline() public {
         uint256 proposalId = _createProposal();
         
-        // Skip past deadline
-        vm.warp(block.timestamp + VOTING_DURATION + 1);
+        // Skip past voting deadline (gene proposal + voting phases)
+        vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + VOTING_DURATION + 1);
         
         AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
         bool[] memory votes = new bool[](1);
@@ -478,12 +481,19 @@ contract AminalBreedingVoteTest is Test {
         votes[0] = true;
         
         vm.prank(voter1);
-        vm.expectRevert(AminalBreedingVote.VotingEnded.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            AminalBreedingVote.WrongPhase.selector,
+            AminalBreedingVote.Phase.EXECUTION,
+            AminalBreedingVote.Phase.VOTING
+        ));
         breedingVote.vote(proposalId, traits, votes);
     }
     
     function testSkip_ExecuteBreeding() public {
         uint256 proposalId = _createProposal();
+        
+        // Skip to voting phase
+        vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + 1);
         
         // voter1: votes all parent1
         AminalBreedingVote.TraitType[] memory allTraits = new AminalBreedingVote.TraitType[](8);
@@ -511,8 +521,8 @@ contract AminalBreedingVoteTest is Test {
         vm.prank(voter2);
         breedingVote.vote(proposalId, someTraits, someVotes);
         
-        // Skip to after deadline
-        vm.warp(block.timestamp + VOTING_DURATION + 1);
+        // Skip to execution phase
+        vm.warp(block.timestamp + VOTING_DURATION);
         
         // Anyone can execute
         vm.expectEmit(true, false, false, false);
@@ -544,7 +554,7 @@ contract AminalBreedingVoteTest is Test {
         assertEq(childTraits.misc, traits1.misc);   // parent1 wins
         
         // Verify proposal is marked as executed
-        (,,,,, bool executed, address recordedChild,) = breedingVote.tickets(proposalId);
+        (,,,,,,, bool executed, address recordedChild,) = breedingVote.tickets(proposalId);
         assertTrue(executed);
         assertEq(recordedChild, childContract);
     }
@@ -552,15 +562,19 @@ contract AminalBreedingVoteTest is Test {
     function testSkip_RevertWhen_ExecutingBeforeDeadline() public {
         uint256 proposalId = _createProposal();
         
-        vm.expectRevert(AminalBreedingVote.VotingNotEnded.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            AminalBreedingVote.WrongPhase.selector,
+            AminalBreedingVote.Phase.GENE_PROPOSAL,
+            AminalBreedingVote.Phase.EXECUTION
+        ));
         breedingVote.executeBreeding(proposalId);
     }
     
     function testSkip_RevertWhen_ExecutingTwice() public {
         uint256 proposalId = _createProposal();
         
-        // Skip to after deadline
-        vm.warp(block.timestamp + VOTING_DURATION + 1);
+        // Skip to execution phase
+        vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + VOTING_DURATION + 1);
         
         // First execution
         breedingVote.executeBreeding(proposalId);
@@ -572,6 +586,9 @@ contract AminalBreedingVoteTest is Test {
     
     function testSkip_TieBreaking() public {
         uint256 proposalId = _createProposal();
+        
+        // Skip to voting phase
+        vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + 1);
         
         // Create equal voting power scenario
         // Give voter1 equal love to both parents
@@ -594,8 +611,8 @@ contract AminalBreedingVoteTest is Test {
         vm.prank(voter2);
         breedingVote.vote(proposalId, traits, votes);
         
-        // Skip to after deadline
-        vm.warp(block.timestamp + VOTING_DURATION + 1);
+        // Skip to execution phase
+        vm.warp(block.timestamp + VOTING_DURATION);
         
         address childContract = breedingVote.executeBreeding(proposalId);
         
@@ -610,6 +627,9 @@ contract AminalBreedingVoteTest is Test {
     function testSkip_PartialVoting() public {
         uint256 proposalId = _createProposal();
         
+        // Skip to voting phase
+        vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + 1);
+        
         // voter1 only votes on some traits
         AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](3);
         bool[] memory votes = new bool[](3);
@@ -623,8 +643,8 @@ contract AminalBreedingVoteTest is Test {
         vm.prank(voter1);
         breedingVote.vote(proposalId, traits, votes);
         
-        // Skip to after deadline
-        vm.warp(block.timestamp + VOTING_DURATION + 1);
+        // Skip to execution phase
+        vm.warp(block.timestamp + VOTING_DURATION);
         
         address childContract = breedingVote.executeBreeding(proposalId);
         
