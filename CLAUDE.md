@@ -652,7 +652,6 @@ Self-sovereign ERC721 contract where the NFT owns itself:
 Key functions:
 - `initialize(uri)`: One-time mint to self, callable by anyone
 - `receive()`: Accept ETH as love/energy, using VRGDA for love calculation
-- `consumeAs(user, amount)`: Allows external contracts to consume user's love/energy
 - `useSkill(target, data)`: Call external skills, consuming resources based on return
 - `setBaseURI()`: Only callable by self
 - `getEnergy()`, `getTotalLove()`, `getLoveFromUser(user)`: Public view functions
@@ -785,49 +784,51 @@ Implementation:
 
 ### Breeding System
 
-#### Direct Breeding (Active)
-The `breed()` function in AminalFactory allows Aminals to breed directly:
+#### Skill-Based Breeding (Current - Secure)
+Breeding is now implemented as a Skill using the BreedingSkill contract:
+
+**Two-Step Process**:
+1. **Create Proposal**: Any Aminal with 2,500 energy + love can propose to a specific partner
+2. **Accept Proposal**: The target Aminal accepts with 2,500 energy + love to breed
+
+**Key Security Features**:
+- **No consumeAs()**: Removed dangerous function that allowed anyone to drain others' resources
+- **Standard Skill Pattern**: Uses existing secure useSkill() mechanism
+- **User Control**: Only the user who owns love can spend it
+- **Proposal System**: Allows coordination without requiring both parents simultaneously
+
+**Breeding Mechanics**:
+- **Cost**: 2,500 energy + love per parent (5,000 total)
+- **Proposals**: Valid for 7 days, can be cancelled by proposer
+- **Trait Inheritance**: Alternates between parents (back from P1, arm from P2, etc.)
+- **Child Naming**: "Parent1-Parent2-Child"
+- **Permission**: Anyone can create/accept if they have resources in that Aminal
+
+**Breeding Flow**:
+```solidity
+// User with love in parent1 creates proposal
+parent1.useSkill(breedingSkill, abi.encodeCall(
+    BreedingSkill.createProposal, 
+    (parent2, "description", "uri")
+));
+
+// User with love in parent2 accepts
+parent2.useSkill(breedingSkill, abi.encodeCall(
+    BreedingSkill.acceptProposal,
+    (proposalId)
+));
+```
+
+#### Direct Breeding (Legacy)
+The `breed()` function in AminalFactory allows direct breeding but is not recommended:
 - **Caller Must Be Aminal**: Only valid Aminals can call breed()
 - **Partner Validation**: Partner must also be a valid Aminal
 - **No Self-Breeding**: Aminals cannot breed with themselves
-- **Trait Alternation**: Child traits alternate between parents (back from parent1, arm from parent2, etc.)
-- **Name Combination**: Child named as "Parent1-Parent2-Child"
+- **Trait Alternation**: Child traits alternate between parents
 - **No Energy Cost**: Direct breeding doesn't consume energy/love
 
-#### Voting-Based Breeding (Current)
-Aminals breed through community voting using the AminalBreedingVote contract:
-
-**Breeding Cost** (Updated):
-- **2,500 Energy from Each Parent**: Total 5,000 energy consumed
-- **2,500 Love from Each Parent**: User must have love in BOTH parents
-- **Balanced Requirement**: Encourages relationships with multiple Aminals
-- **consumeAs() Function**: Atomically consumes both energy and love
-
-**Voting Mechanics**:
-- **Love-Based Voting**: Users vote using their combined love from both parent Aminals
-- **Voting Power**: `loveInParent1 + loveInParent2` - combined voting power from both parents
-- **Per-Trait Voting**: Each of 8 traits voted on independently
-- **Vote Recording**: Love amounts recorded at vote time (no revoting if love changes)
-- **Execution**: Anyone can execute after voting period ends
-- **Tie Breaking**: Parent1 wins ties
-- **Inclusive**: Can vote with love in just one parent (or both)
-
-**Breeding Process**:
-1. **Proposal Creation**: Costs 2,500 energy from each parent (5,000 total)
-2. **Energy Check**: Both parents must have sufficient energy (≥2,500 each)
-3. **Love Check**: Proposer must have ≥2,500 love in BOTH parents
-4. **Voting Period**: Users with love in either parent vote on trait inheritance
-5. **Trait Selection**: Vote per trait - should child inherit from parent1 or parent2?
-6. **Execution**: After voting ends, breeding executes with winning traits
-7. **Child Creation**: Factory creates new self-sovereign Aminal with voted traits
-
-**Key Features**:
-- **Democratic**: Community decides trait inheritance
-- **Fair Weighting**: More love = more voting power
-- **Flexible Voting**: Can vote on any subset of traits
-- **Transparent**: All votes and results publicly viewable
-- **Self-Sovereign Children**: Offspring are also self-owning Aminals
-- **Multi-Aminal Engagement**: Requires building relationships with both parents
+#### Voting-Based Breeding (Deprecated)
+AminalBreedingVote contract is deprecated due to security issues with consumeAs()
 
 ### Data Flow Architecture
 
@@ -887,10 +888,10 @@ Aminals breed through community voting using the AminalBreedingVote contract:
 - **Test Adjustments**: All assertions updated to account for initial parent Aminals
 
 #### Breeding Implementation
-- **Dual System**: Both direct breeding and voting-based breeding work
+- **Skill-Based System**: Breeding now uses secure BreedingSkill contract
 - **Energy Requirements**: Breeding proposals require 2,500 energy from each parent
-- **Love Requirements**: Proposer must have love in both parents
-- **Atomic Consumption**: consumeAs() handles both energy and love together
+- **Love Requirements**: Users must have love in the Aminal they control
+- **Secure Consumption**: Only users can spend their own love via useSkill()
 
 #### Testing Infrastructure
 - **Dynamic Test Linking**: Enabled for faster compilation
@@ -904,6 +905,8 @@ Aminals breed through community voting using the AminalBreedingVote contract:
 - **Access Control**: Only self can call admin functions
 - **Input Validation**: All user inputs validated
 - **Resource Checks**: Energy/love checked before consumption
+- **No consumeAs()**: Removed dangerous function that allowed resource theft
+- **User-Controlled Resources**: Only users can spend their own love
 </aminals_project>
 
 <user_prompt>
