@@ -269,6 +269,26 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Create an Aminal with specific traits (for breeding voting contract)
+     * @dev This function is public to allow the breeding vote contract to create children
+     * @param name The name of the Aminal
+     * @param symbol The symbol for the Aminal
+     * @param description A description of the Aminal
+     * @param tokenURI The URI for the token's metadata
+     * @param traits The specific traits for this Aminal
+     * @return aminalContract The address of the newly deployed Aminal contract
+     */
+    function createAminalWithTraits(
+        string memory name,
+        string memory symbol,
+        string memory description,
+        string memory tokenURI,
+        ITraits.Traits memory traits
+    ) external whenNotPaused nonReentrant returns (address) {
+        return _createAminal(name, symbol, description, tokenURI, traits);
+    }
+
+    /**
      * @dev Pause or unpause the factory
      * @param _paused True to pause, false to unpause
      */

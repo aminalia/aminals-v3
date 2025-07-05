@@ -777,18 +777,33 @@ Implementation:
 
 ### Breeding System
 
-Aminals can breed to create offspring:
-- **Aminal-Only**: Only registered Aminals can call `breed()` function
-- **Registry**: Factory maintains `isValidAminal` mapping for all created Aminals
-- **Trait Inheritance**: Child traits alternate between parents:
-  - Parent1: back, tail, body, mouth
-  - Parent2: arm, ears, face, misc
-- **Naming Convention**: 
-  - Child name: `Parent1Name-Parent2Name-Child`
-  - Child symbol: `Parent1Symbol` + `Parent2Symbol`
+#### Direct Breeding (Deprecated)
+The original `breed()` function in AminalFactory allowed direct breeding but has been superseded by the voting system.
+
+#### Voting-Based Breeding (Current)
+Aminals breed through community voting using the AminalBreedingVote contract:
+
+**Voting Mechanics**:
+- **Love-Based Voting**: Users vote using their love from both parent Aminals
+- **Voting Power**: `min(loveInParent1, loveInParent2)` - ensures meaningful connection to both
+- **Per-Trait Voting**: Each of 8 traits voted on independently
+- **Vote Recording**: Love amounts recorded at vote time (no revoting if love changes)
+- **Execution**: Anyone can execute after voting period ends
+- **Tie Breaking**: Parent1 wins ties
+
+**Breeding Process**:
+1. **Proposal Creation**: Anyone can propose breeding between two valid Aminals
+2. **Voting Period**: Users with love in both parents vote on trait inheritance
+3. **Trait Selection**: Vote per trait - should child inherit from parent1 or parent2?
+4. **Execution**: After voting ends, breeding executes with winning traits
+5. **Child Creation**: Factory creates new self-sovereign Aminal with voted traits
+
+**Key Features**:
+- **Democratic**: Community decides trait inheritance
+- **Fair Weighting**: More love = more voting power
+- **Flexible Voting**: Can vote on any subset of traits
+- **Transparent**: All votes and results publicly viewable
 - **Self-Sovereign Children**: Offspring are also self-owning Aminals
-- **Multi-Generational**: Children can breed too
-- **Order Matters**: Initiator becomes "parent1" in trait selection
 
 ### Data Flow Architecture
 
