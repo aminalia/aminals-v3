@@ -645,7 +645,7 @@ Self-sovereign ERC721 contract where the NFT owns itself:
 - **Non-Transferable**: All transfer functions permanently blocked
 - **Love & Energy**: ETH sent becomes "love" and "energy" for interactions
 - **One Token**: Always token ID #1, one per contract
-- **Traits**: Uses `ITraits.Traits` struct for 8 trait categories
+- **Genes**: Uses `IGenes.Genes` struct for 8 gene categories
 - **Dynamic Rendering**: Uses separate AminalRenderer contract for tokenURI generation
 - **Reentrancy Protection**: All state-changing functions protected against reentrancy
 
@@ -667,7 +667,7 @@ Deploys individual Aminal contracts with breeding focus:
 
 Key functions:
 - `breed(partner, description, tokenURI)`: Called by Aminals to breed directly
-- `createAminalWithTraits()`: Public function for special creation needs
+- `createAminalWithGenes()`: Public function for special creation needs  
 - `getAminalsByRange()`: Paginated access to created Aminals
 - `isValidAminal[address]`: Registry of valid Aminals
 
@@ -700,10 +700,10 @@ Fully onchain ERC721 NFTs representing genetic traits with SVG rendering:
 - Admin functions restricted to self only
 - ETH received tracked as love and energy
 
-### Trait System
+### Gene System (formerly Trait System)
 - 8 categories: back, arm, tail, ears, body, face, mouth, misc
-- Set once at construction via `ITraits.Traits` struct
-- Future: Query from Gene contracts for dynamic traits
+- Set once at construction via `IGenes.Genes` struct
+- Genes represent both inherited traits from parents and proposed genes from Gene NFTs
 
 ### VRGDA Feeding Mechanics
 - **Logistic VRGDA**: Smooth S-curve for love distribution based on energy level
@@ -987,6 +987,9 @@ The `breed()` function in AminalFactory allows direct breeding but is not recomm
 - **Energy Requirements**: Breeding proposals require 2,500 energy from each parent
 - **Love Requirements**: Users must have love in the Aminal they control
 - **Secure Consumption**: Only users can spend their own love via useSkill()
+- **Four-Phase Process**: Gene Proposal → Voting → Execution → Completed
+- **Phase Durations**: 3 days for gene proposals, 4 days for voting
+- **Vote Locking**: Voting power locked at first vote, doesn't update with new love
 
 #### Testing Infrastructure
 - **Dynamic Test Linking**: Enabled for faster compilation
@@ -1003,6 +1006,28 @@ The `breed()` function in AminalFactory allows direct breeding but is not recomm
 - **No consumeAs()**: Removed dangerous function that allowed resource theft
 - **User-Controlled Resources**: Only users can spend their own love
 - **No Front-Running**: Breeding proposals cannot be cancelled, preventing griefing
+
+#### Terminology Refactoring (New Codebase)
+- **Complete Gene Terminology**: Unified all references to use "gene" instead of "trait"
+- **Interface Renamed**: `ITraits` → `IGenes` with `Traits` struct → `Genes` struct
+- **Function Updates**: `getTraits()` → `getGenes()`, `createAminalWithTraits()` → `createAminalWithGenes()`
+- **Storage Variables**: `traits` → `genes` throughout the codebase
+- **Import Paths**: All imports updated from `ITraits.sol` to `IGenes.sol`
+- **No Backwards Compatibility**: Since this is a new codebase, all naming is consistent
+
+#### Gene Proposal System Insights
+- **One Proposal Per User**: Each user can only have one active gene proposal per breeding ticket
+- **Proposal Replacement**: Users can replace their own proposal during gene proposal phase
+- **Replaced Proposals**: Marked with `proposer = address(0)` and cannot win voting
+- **Active Proposal Tracking**: `getActiveGeneProposals()` filters out replaced proposals
+- **Vote Prevention**: Attempting to vote for replaced genes reverts with "Gene proposal was replaced"
+
+#### Breeding Voting Mechanics
+- **Parent Gene Voting**: Users vote for parent1 or parent2 genes, votes can be changed
+- **Proposed Gene Voting**: Votes for proposed genes are additive and cannot be changed
+- **Veto Voting**: Separate from gene voting, can be changed between veto/proceed
+- **Tie Resolution**: Parent1's genes win all ties (including veto ties)
+- **No Default Votes**: Unvoted genes default to parent1 (0-0 tie)
 </aminals_project>
 
 <user_prompt>
