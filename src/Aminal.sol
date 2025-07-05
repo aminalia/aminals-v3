@@ -412,6 +412,26 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
+     * @notice Consume love and energy on behalf of a specific user
+     * @dev This function allows external contracts (like breeding) to consume resources
+     * @param user The user whose love to consume
+     * @param amount The amount of love and energy to consume
+     */
+    function consumeAs(address user, uint256 amount) external nonReentrant {
+        // Check resources
+        if (energy < amount) revert InsufficientEnergy();
+        if (loveFromUser[user] < amount) revert InsufficientLove();
+        
+        // Consume resources
+        energy -= amount;
+        loveFromUser[user] -= amount;
+        totalLove -= amount;
+        
+        emit EnergyLost(user, amount, energy);
+        emit LoveConsumed(user, amount, loveFromUser[user]);
+    }
+
+    /**
      * @dev Get the current energy level of this Aminal
      * @return The current energy level
      */

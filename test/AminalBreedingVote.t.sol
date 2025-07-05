@@ -129,10 +129,26 @@ contract AminalBreedingVoteTest is Test {
         // nonVoter: no love to either parent (cannot vote)
     }
     
+    // Helper function to create proposal with voter1 paying the cost
+    function _createProposal() internal returns (uint256) {
+        vm.prank(voter1);
+        return breedingVote.createProposal(
+            address(parent1),
+            address(parent2),
+            "A magical hybrid",
+            "hybrid.json",
+            VOTING_DURATION
+        );
+    }
+    
     function test_CreateProposal() public {
+        // First give voter1 enough love to pay breeding cost
+        uint256 initialLove = parent1.loveFromUser(voter1);
+        
         vm.expectEmit(true, true, true, true);
         emit ProposalCreated(0, address(parent1), address(parent2), block.timestamp + VOTING_DURATION);
         
+        vm.prank(voter1);
         uint256 proposalId = breedingVote.createProposal(
             address(parent1),
             address(parent2),
@@ -142,6 +158,9 @@ contract AminalBreedingVoteTest is Test {
         );
         
         assertEq(proposalId, 0);
+        
+        // Verify that 5,000 love/energy was consumed
+        assertEq(parent1.loveFromUser(voter1), initialLove - 5000);
         
         (
             address p1,
@@ -163,13 +182,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_VotingPower() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // Check voting power calculations
         (bool canVote1, uint256 power1) = breedingVote.canVote(proposalId, voter1);
@@ -191,13 +204,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_CastVote() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // voter1 votes for all parent1 traits
         AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](8);
@@ -229,13 +236,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_MultipleVoters() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // voter1: all parent1
         AminalBreedingVote.TraitType[] memory allTraits = new AminalBreedingVote.TraitType[](8);
@@ -288,13 +289,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_RevertWhen_VotingTwice() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
         bool[] memory votes = new bool[](1);
@@ -310,13 +305,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_VoteWithLoveInOnlyOneParent() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // Give love only to parent1
         address singleLover = makeAddr("singleLover");
@@ -345,13 +334,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_RevertWhen_NoLoveInParents() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
         bool[] memory votes = new bool[](1);
@@ -364,13 +347,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_RevertWhen_VotingAfterDeadline() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // Skip past deadline
         vm.warp(block.timestamp + VOTING_DURATION + 1);
@@ -386,13 +363,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_ExecuteBreeding() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // voter1: votes all parent1
         AminalBreedingVote.TraitType[] memory allTraits = new AminalBreedingVote.TraitType[](8);
@@ -472,13 +443,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_RevertWhen_ExecutingTwice() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // Skip to after deadline
         vm.warp(block.timestamp + VOTING_DURATION + 1);
@@ -492,13 +457,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_TieBreaking() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // Create equal voting power scenario
         // Give voter1 equal love to both parents

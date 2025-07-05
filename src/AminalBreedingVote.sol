@@ -124,6 +124,12 @@ contract AminalBreedingVote {
     /// @dev Error thrown when parent is not a valid Aminal
     error InvalidParent();
     
+    /// @dev Error thrown when user doesn't have enough love/energy to create proposal
+    error InsufficientLoveAndEnergy();
+    
+    /// @dev Cost to create a breeding proposal (5,000 units = 0.5 ETH)
+    uint256 public constant BREEDING_PROPOSAL_COST = 5000;
+    
     /**
      * @dev Constructor
      * @param _factory The AminalFactory contract address
@@ -134,7 +140,7 @@ contract AminalBreedingVote {
     
     /**
      * @notice Create a breeding proposal for two Aminals
-     * @dev Anyone can create a proposal, but only valid Aminals can be parents
+     * @dev Costs 5,000 love and energy from the creator, deducted from one of the parents
      * @param parent1 The first parent Aminal
      * @param parent2 The second parent Aminal
      * @param childDescription Description for the child Aminal
@@ -153,6 +159,29 @@ contract AminalBreedingVote {
         if (!factory.isValidAminal(parent1)) revert InvalidParent();
         if (!factory.isValidAminal(parent2)) revert InvalidParent();
         if (parent1 == parent2) revert InvalidParent();
+        
+        // Check if user has enough love/energy in either parent
+        Aminal aminalParent1 = Aminal(payable(parent1));
+        Aminal aminalParent2 = Aminal(payable(parent2));
+        
+        uint256 loveInParent1 = aminalParent1.loveFromUser(msg.sender);
+        uint256 loveInParent2 = aminalParent2.loveFromUser(msg.sender);
+        
+        // Try to consume from parent1 first, then parent2
+        bool consumed = false;
+        if (loveInParent1 >= BREEDING_PROPOSAL_COST) {
+            try aminalParent1.consumeAs(msg.sender, BREEDING_PROPOSAL_COST) {
+                consumed = true;
+            } catch {}
+        }
+        
+        if (!consumed && loveInParent2 >= BREEDING_PROPOSAL_COST) {
+            try aminalParent2.consumeAs(msg.sender, BREEDING_PROPOSAL_COST) {
+                consumed = true;
+            } catch {}
+        }
+        
+        if (!consumed) revert InsufficientLoveAndEnergy();
         
         proposalId = nextProposalId++;
         
