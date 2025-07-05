@@ -302,18 +302,13 @@ contract AminalBreedingVote is IAminalBreedingVote {
         // Verify the gene exists and is for the correct trait type
         require(geneContract.code.length > 0, "Invalid gene contract");
         
-        // Try to verify the gene is for the correct trait type
-        try IGene(geneContract).traitType(tokenId) returns (string memory geneTraitType) {
-            // Convert TraitType enum to string for comparison
-            string memory expectedType = _traitTypeToString(traitType);
-            require(
-                keccak256(bytes(geneTraitType)) == keccak256(bytes(expectedType)),
-                "Gene trait type mismatch"
-            );
-        } catch {
-            // If the gene contract doesn't implement traitType, allow it
-            // This provides backward compatibility
-        }
+        // Verify the gene is for the correct trait type
+        string memory geneTraitType = IGene(geneContract).traitType(tokenId);
+        string memory expectedType = _traitTypeToString(traitType);
+        require(
+            keccak256(bytes(geneTraitType)) == keccak256(bytes(expectedType)),
+            "Gene trait type mismatch"
+        );
         
         // Create gene proposal
         uint256 geneId = nextGeneProposalId[ticketId][traitType]++;
