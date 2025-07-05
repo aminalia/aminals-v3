@@ -36,7 +36,6 @@ contract BreedingSkillTest is Test {
         address indexed childContract
     );
     
-    event ProposalCancelled(uint256 indexed proposalId);
     
     function setUp() public {
         owner = makeAddr("owner");
@@ -291,42 +290,6 @@ contract BreedingSkillTest is Test {
         parent1.useSkill(address(breedingSkill), proposalData);
     }
     
-    function test_CancelProposal() public {
-        // Setup: Create proposal
-        vm.prank(user1);
-        (bool success,) = address(parent1).call{value: 0.5 ether}("");
-        assertTrue(success);
-        
-        bytes memory proposalData = abi.encodeWithSelector(
-            BreedingSkill.createProposal.selector,
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json"
-        );
-        
-        vm.prank(user1);
-        parent1.useSkill(address(breedingSkill), proposalData);
-        
-        // Cancel proposal (no cost)
-        bytes memory cancelData = abi.encodeWithSelector(
-            BreedingSkill.cancelProposal.selector,
-            uint256(1)
-        );
-        
-        vm.expectEmit(true, false, false, false);
-        emit ProposalCancelled(1);
-        
-        vm.prank(user1);
-        parent1.useSkill(address(breedingSkill), cancelData);
-        
-        // Verify proposal is cancelled
-        (,,,,,bool executed) = breedingSkill.proposals(1);
-        assertTrue(executed); // Marked as executed to prevent further actions
-        
-        // Check no active proposal
-        (bool hasActive,) = breedingSkill.hasActiveProposal(address(parent1), address(parent2));
-        assertFalse(hasActive);
-    }
     
     function test_RevertWhen_ProposeToSelf() public {
         // User1 feeds parent1
@@ -363,7 +326,7 @@ contract BreedingSkillTest is Test {
         vm.prank(user1);
         parent1.useSkill(address(breedingSkill), proposalData);
         
-        // Try to create another proposal to same target
+        // Try to create another proposal to same target while first is still active
         proposalData = abi.encodeWithSelector(
             BreedingSkill.createProposal.selector,
             address(parent2),
@@ -372,7 +335,7 @@ contract BreedingSkillTest is Test {
         );
         
         vm.prank(user1);
-        vm.expectRevert(Aminal.SkillCallFailed.selector); // Skill reverts are wrapped
+        vm.expectRevert(Aminal.SkillCallFailed.selector); // ActiveProposalExists wrapped as SkillCallFailed
         parent1.useSkill(address(breedingSkill), proposalData);
     }
     
@@ -479,6 +442,42 @@ contract BreedingSkillTest is Test {
         vm.prank(user1);
         vm.expectRevert(Aminal.SkillCallFailed.selector); // Skill reverts are wrapped
         parent3.useSkill(address(breedingSkill), acceptData);
+    }
+    
+    function test_CanProposeAfterExpiration() public {
+        // Setup: Create first proposal
+        vm.prank(user1);
+        (bool success,) = address(parent1).call{value: 1 ether}("");
+        assertTrue(success);
+        
+        bytes memory proposalData = abi.encodeWithSelector(
+            BreedingSkill.createProposal.selector,
+            address(parent2),
+            "First proposal",
+            "first.json"
+        );
+        
+        vm.prank(user1);
+        parent1.useSkill(address(breedingSkill), proposalData);
+        
+        // Warp past expiration
+        vm.warp(block.timestamp + 7 days + 1);
+        
+        // Now can create new proposal to same target
+        proposalData = abi.encodeWithSelector(
+            BreedingSkill.createProposal.selector,
+            address(parent2),
+            "Second proposal after expiry",
+            "second.json"
+        );
+        
+        vm.prank(user1);
+        parent1.useSkill(address(breedingSkill), proposalData);
+        
+        // Verify new proposal exists
+        (bool hasActive, uint256 proposalId) = breedingSkill.hasActiveProposal(address(parent1), address(parent2));
+        assertTrue(hasActive);
+        assertEq(proposalId, 2); // Second proposal
     }
     
     function test_ChildTraitsAlternate() public {

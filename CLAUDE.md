@@ -799,10 +799,11 @@ Breeding is now implemented as a Skill using the BreedingSkill contract:
 
 **Breeding Mechanics**:
 - **Cost**: 2,500 energy + love per parent (5,000 total)
-- **Proposals**: Valid for 7 days, can be cancelled by proposer
+- **Proposals**: Valid for 7 days, non-cancellable to prevent front-running
 - **Trait Inheritance**: Alternates between parents (back from P1, arm from P2, etc.)
 - **Child Naming**: "Parent1-Parent2-Child"
 - **Permission**: Anyone can create/accept if they have resources in that Aminal
+- **Guaranteed Execution**: Once proposed, cannot be cancelled - only expiration after 7 days
 
 **Breeding Flow**:
 ```solidity
@@ -907,6 +908,7 @@ AminalBreedingVote contract is deprecated due to security issues with consumeAs(
 - **Resource Checks**: Energy/love checked before consumption
 - **No consumeAs()**: Removed dangerous function that allowed resource theft
 - **User-Controlled Resources**: Only users can spend their own love
+- **No Front-Running**: Breeding proposals cannot be cancelled, preventing griefing
 </aminals_project>
 
 <user_prompt>

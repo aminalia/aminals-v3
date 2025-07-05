@@ -60,8 +60,6 @@ contract BreedingSkill is Skill {
         address indexed childContract
     );
     
-    /// @dev Event emitted when a breeding proposal is cancelled
-    event ProposalCancelled(uint256 indexed proposalId);
     
     /// @dev Error thrown when proposal doesn't exist
     error ProposalDoesNotExist();
@@ -101,8 +99,6 @@ contract BreedingSkill is Skill {
             return BREEDING_COST;
         } else if (selector == this.acceptProposal.selector) {
             return BREEDING_COST;
-        } else if (selector == this.cancelProposal.selector) {
-            return 0; // No cost to cancel
         } else {
             return 1; // Default cost
         }
@@ -133,6 +129,7 @@ contract BreedingSkill is Skill {
         if (activeProposals[proposer][target] != 0) {
             uint256 existingId = activeProposals[proposer][target];
             Proposal memory existing = proposals[existingId];
+            // Only revert if proposal is not executed AND not expired
             if (!existing.executed && block.timestamp <= existing.timestamp + PROPOSAL_EXPIRY) {
                 revert ActiveProposalExists();
             }
@@ -218,28 +215,6 @@ contract BreedingSkill is Skill {
         return BREEDING_COST;
     }
 
-    /**
-     * @notice Cancel an active proposal
-     * @dev Can only be called by the proposer, no cost
-     * @param proposalId The ID of the proposal to cancel
-     * @return The cost of this action (0 - free to cancel)
-     */
-    function cancelProposal(uint256 proposalId) external returns (uint256) {
-        Proposal storage proposal = proposals[proposalId];
-        if (proposal.proposer == address(0)) revert ProposalDoesNotExist();
-        if (proposal.proposer != msg.sender) revert NotAuthorized();
-        if (proposal.executed) revert ProposalAlreadyExecuted();
-        
-        // Clear active proposal mapping
-        activeProposals[proposal.proposer][proposal.target] = 0;
-        
-        // Mark as executed to prevent future actions
-        proposal.executed = true;
-        
-        emit ProposalCancelled(proposalId);
-        
-        return 0; // No cost to cancel
-    }
 
     /**
      * @notice Check if there's an active proposal between two Aminals
