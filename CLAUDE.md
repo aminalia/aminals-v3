@@ -633,6 +633,10 @@ forge script script/Deploy.s.sol \
 
 ## Aminals NFT Project
 
+### Important: New Codebase
+
+**This is a new codebase without any deployed contracts or backwards compatibility requirements.** All design decisions prioritize clarity and consistency over maintaining compatibility with previous versions.
+
 ### Overview
 
 Aminals are self-sovereign, non-transferable 1-of-1 NFTs where each NFT is deployed as its own smart contract that owns itself (`address(this)`). This creates true digital autonomy with no external control possible.
@@ -1007,13 +1011,14 @@ The `breed()` function in AminalFactory allows direct breeding but is not recomm
 - **User-Controlled Resources**: Only users can spend their own love
 - **No Front-Running**: Breeding proposals cannot be cancelled, preventing griefing
 
-#### Terminology Refactoring (New Codebase)
-- **Complete Gene Terminology**: Unified all references to use "gene" instead of "trait"
+#### Terminology Refactoring
+- **NEW CODEBASE - NO BACKWARDS COMPATIBILITY NEEDED**: This is a fresh implementation without legacy constraints
+- **Complete Gene Terminology**: Unified all references to use "gene" instead of "trait" throughout
 - **Interface Renamed**: `ITraits` → `IGenes` with `Traits` struct → `Genes` struct
 - **Function Updates**: `getTraits()` → `getGenes()`, `createAminalWithTraits()` → `createAminalWithGenes()`
 - **Storage Variables**: `traits` → `genes` throughout the codebase
 - **Import Paths**: All imports updated from `ITraits.sol` to `IGenes.sol`
-- **No Backwards Compatibility**: Since this is a new codebase, all naming is consistent
+- **Consistent Naming**: All functions, variables, and comments use "gene" terminology exclusively
 
 #### Gene Proposal System Insights
 - **One Proposal Per User**: Each user can only have one active gene proposal per breeding ticket
