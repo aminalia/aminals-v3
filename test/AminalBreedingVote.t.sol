@@ -348,10 +348,10 @@ contract AminalBreedingVoteTest is Test {
         assertEq(breedingVote.voterPower(proposalId, voter1), votingPower);
         
         // Check vote counts
-        AminalBreedingVote.TraitVote[8] memory results = breedingVote.getVoteResults(proposalId);
+        (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(proposalId);
         for (uint256 i = 0; i < 8; i++) {
-            assertEq(results[i].parent1Votes, votingPower);
-            assertEq(results[i].parent2Votes, 0);
+            assertEq(parent1Votes[i], votingPower);
+            assertEq(parent2Votes[i], 0);
         }
     }
     
@@ -386,7 +386,7 @@ contract AminalBreedingVoteTest is Test {
         breedingVote.vote(proposalId, allTraits, mixed);
         
         // Check final results
-        AminalBreedingVote.TraitVote[8] memory results = breedingVote.getVoteResults(proposalId);
+        (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(proposalId);
         
         // Get recorded voting power (not canVote since they already voted)
         uint256 power1 = breedingVote.voterPower(proposalId, voter1);
@@ -398,12 +398,12 @@ contract AminalBreedingVoteTest is Test {
         for (uint256 i = 0; i < 8; i++) {
             if (i % 2 == 0) {
                 // Even indices: voter1 + voter3 for parent1
-                assertEq(results[i].parent1Votes, power1 + power3);
-                assertEq(results[i].parent2Votes, power2);
+                assertEq(parent1Votes[i], power1 + power3);
+                assertEq(parent2Votes[i], power2);
             } else {
                 // Odd indices: voter2 + voter3 for parent2
-                assertEq(results[i].parent1Votes, power1);
-                assertEq(results[i].parent2Votes, power2 + power3);
+                assertEq(parent1Votes[i], power1);
+                assertEq(parent2Votes[i], power2 + power3);
             }
         }
     }

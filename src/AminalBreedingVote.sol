@@ -500,19 +500,32 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
-     * @notice Get the current vote counts for all traits in a ticket
+     * @notice Get the parent vote counts for all traits in a ticket
      * @param ticketId The ticket to query
-     * @return results Array of vote counts for each trait (8 elements)
+     * @return parent1Votes Array of parent1 vote counts for each trait
+     * @return parent2Votes Array of parent2 vote counts for each trait
      */
-    function getVoteResults(uint256 ticketId) external view returns (TraitVote[8] memory results) {
-        results[0] = traitVotes[ticketId][TraitType.BACK];
-        results[1] = traitVotes[ticketId][TraitType.ARM];
-        results[2] = traitVotes[ticketId][TraitType.TAIL];
-        results[3] = traitVotes[ticketId][TraitType.EARS];
-        results[4] = traitVotes[ticketId][TraitType.BODY];
-        results[5] = traitVotes[ticketId][TraitType.FACE];
-        results[6] = traitVotes[ticketId][TraitType.MOUTH];
-        results[7] = traitVotes[ticketId][TraitType.MISC];
+    function getVoteResults(uint256 ticketId) external view returns (
+        uint256[8] memory parent1Votes,
+        uint256[8] memory parent2Votes
+    ) {
+        parent1Votes[0] = traitVotes[ticketId][TraitType.BACK].parent1Votes;
+        parent1Votes[1] = traitVotes[ticketId][TraitType.ARM].parent1Votes;
+        parent1Votes[2] = traitVotes[ticketId][TraitType.TAIL].parent1Votes;
+        parent1Votes[3] = traitVotes[ticketId][TraitType.EARS].parent1Votes;
+        parent1Votes[4] = traitVotes[ticketId][TraitType.BODY].parent1Votes;
+        parent1Votes[5] = traitVotes[ticketId][TraitType.FACE].parent1Votes;
+        parent1Votes[6] = traitVotes[ticketId][TraitType.MOUTH].parent1Votes;
+        parent1Votes[7] = traitVotes[ticketId][TraitType.MISC].parent1Votes;
+        
+        parent2Votes[0] = traitVotes[ticketId][TraitType.BACK].parent2Votes;
+        parent2Votes[1] = traitVotes[ticketId][TraitType.ARM].parent2Votes;
+        parent2Votes[2] = traitVotes[ticketId][TraitType.TAIL].parent2Votes;
+        parent2Votes[3] = traitVotes[ticketId][TraitType.EARS].parent2Votes;
+        parent2Votes[4] = traitVotes[ticketId][TraitType.BODY].parent2Votes;
+        parent2Votes[5] = traitVotes[ticketId][TraitType.FACE].parent2Votes;
+        parent2Votes[6] = traitVotes[ticketId][TraitType.MOUTH].parent2Votes;
+        parent2Votes[7] = traitVotes[ticketId][TraitType.MISC].parent2Votes;
     }
     
     /**
