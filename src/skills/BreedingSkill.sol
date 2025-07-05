@@ -105,8 +105,9 @@ contract BreedingSkill is Skill {
     }
 
     /**
-     * @notice Create a breeding proposal to a specific Aminal
-     * @dev Called via useSkill, costs 2,500 energy + love
+     * @notice Create a breeding proposal for this Aminal to breed with another
+     * @dev Called via useSkill by the proposing Aminal, costs 2,500 energy + love
+     * @dev User A with love in Aminal A creates proposal for Aminal A to breed with Aminal B
      * @param target The specific Aminal to propose breeding with
      * @param childDescription Description for the potential child
      * @param childTokenURI Token URI for the potential child
@@ -117,7 +118,7 @@ contract BreedingSkill is Skill {
         string memory childDescription,
         string memory childTokenURI
     ) external returns (uint256) {
-        // msg.sender is the Aminal creating the proposal
+        // msg.sender is the proposing Aminal (Aminal A)
         address proposer = msg.sender;
         
         // Validate inputs
@@ -155,13 +156,14 @@ contract BreedingSkill is Skill {
     }
 
     /**
-     * @notice Accept a breeding proposal
+     * @notice Accept a breeding proposal as the target Aminal
      * @dev Called via useSkill by the target Aminal, costs 2,500 energy + love
+     * @dev User B with love in Aminal B accepts proposal for Aminal A to breed with Aminal B
      * @param proposalId The ID of the proposal to accept
      * @return The cost of this action (2,500)
      */
     function acceptProposal(uint256 proposalId) external returns (uint256) {
-        // msg.sender is the Aminal accepting the proposal
+        // msg.sender is the target Aminal (Aminal B) accepting the proposal
         address acceptor = msg.sender;
         
         Proposal storage proposal = proposals[proposalId];

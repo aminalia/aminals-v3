@@ -154,7 +154,7 @@ contract BreedingSkillTest is Test {
     }
     
     function test_CreateProposal() public {
-        // User1 feeds parent1 to get love and energy
+        // User1 feeds parent1 to get love and energy in parent1
         vm.prank(user1);
         (bool success,) = address(parent1).call{value: 0.5 ether}("");
         assertTrue(success);
@@ -165,7 +165,7 @@ contract BreedingSkillTest is Test {
         assertGe(initialEnergy, BREEDING_COST);
         assertGe(initialLove, BREEDING_COST);
         
-        // Create proposal from parent1 to parent2
+        // User1 uses parent1 to create proposal for parent1 to breed with parent2
         bytes memory proposalData = abi.encodeWithSelector(
             BreedingSkill.createProposal.selector,
             address(parent2),
@@ -179,7 +179,7 @@ contract BreedingSkillTest is Test {
         vm.prank(user1);
         parent1.useSkill(address(breedingSkill), proposalData);
         
-        // Verify resources were consumed
+        // Verify resources were consumed from parent1
         assertEq(parent1.getEnergy(), initialEnergy - BREEDING_COST);
         assertEq(parent1.loveFromUser(user1), initialLove - BREEDING_COST);
         
@@ -207,7 +207,7 @@ contract BreedingSkillTest is Test {
     }
     
     function test_AcceptProposal() public {
-        // Setup: User1 feeds parent1 and creates proposal
+        // Setup: User1 feeds parent1 and creates proposal for parent1 to breed with parent2
         vm.prank(user1);
         (bool success,) = address(parent1).call{value: 0.5 ether}("");
         assertTrue(success);
@@ -222,7 +222,7 @@ contract BreedingSkillTest is Test {
         vm.prank(user1);
         parent1.useSkill(address(breedingSkill), proposalData);
         
-        // User2 feeds parent2 to get love and energy
+        // User2 feeds parent2 to get love and energy in parent2
         vm.prank(user2);
         (success,) = address(parent2).call{value: 0.5 ether}("");
         assertTrue(success);
@@ -230,7 +230,7 @@ contract BreedingSkillTest is Test {
         uint256 initialEnergy2 = parent2.getEnergy();
         uint256 initialLove2 = parent2.loveFromUser(user2);
         
-        // Accept proposal from parent2
+        // User2 uses parent2 to accept the proposal
         bytes memory acceptData = abi.encodeWithSelector(
             BreedingSkill.acceptProposal.selector,
             uint256(1)
@@ -242,7 +242,7 @@ contract BreedingSkillTest is Test {
         vm.prank(user2);
         parent2.useSkill(address(breedingSkill), acceptData);
         
-        // Verify resources were consumed
+        // Verify resources were consumed from parent2
         assertEq(parent2.getEnergy(), initialEnergy2 - BREEDING_COST);
         assertEq(parent2.loveFromUser(user2), initialLove2 - BREEDING_COST);
         
