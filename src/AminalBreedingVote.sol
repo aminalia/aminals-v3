@@ -173,10 +173,8 @@ contract AminalBreedingVote {
             revert InsufficientLoveAndEnergy();
         }
         
-        // Consume energy from both parents
-        // Note: consumeAs will revert if the calling user doesn't have enough love
-        aminalParent1.consumeAs(msg.sender, BREEDING_COST_PER_PARENT);
-        aminalParent2.consumeAs(msg.sender, BREEDING_COST_PER_PARENT);
+        // This contract is now deprecated - use BreedingSkill instead
+        revert("Use BreedingSkill instead");
         
         proposalId = nextProposalId++;
         
