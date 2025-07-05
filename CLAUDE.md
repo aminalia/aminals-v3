@@ -807,6 +807,27 @@ Aminals can breed to create offspring:
 5. Composes final SVG with dynamic positioning
 6. Returns base64-encoded metadata JSON
 
+### Gene-Aminal Integration
+
+#### GeneReference System
+- **Structure**: `GeneReference { address geneContract; uint256 tokenId; }`
+- **8 Gene Slots**: back, arm, tail, ears, body, face, mouth, misc
+- **Optional Genes**: Aminals can have zero or more genes assigned
+- **Immutable References**: Set during initialization, cannot be changed
+
+#### Rendering with Genes
+- **GeneRenderer Library**: Provides SVG utilities (rect, text, svg, svgImage)
+- **Dynamic Fetching**: AminalRenderer calls `Gene(geneContract).gene(tokenId)` 
+- **Layered Composition**: Genes rendered in specific order for proper overlapping
+- **Error Handling**: Returns empty string if gene cannot be read
+- **Base64 Encoding**: SVGs embedded as data URIs in final composition
+
+#### Data Storage Model
+- **Genes store raw SVG**: Complete SVG with viewBox, ready for embedding
+- **Aminals store references**: Only addresses and token IDs, not actual SVGs
+- **Renderer fetches on-demand**: No SVG data duplicated or cached
+- **Positioning calculated**: Based on trait text analysis, not stored
+
 ### Testing Approach
 - Unit tests for all functionality
 - Fuzz testing for edge cases
@@ -816,6 +837,7 @@ Aminals can breed to create offspring:
 - VRGDA mechanics testing
 - Skills system testing with various return types
 - Breeding functionality tests
+- Gene integration tests
 - CSV data generation scripts for curve visualization
 </aminals_project>
 
