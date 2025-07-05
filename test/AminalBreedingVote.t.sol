@@ -50,9 +50,44 @@ contract AminalBreedingVoteTest is Test {
         voter3 = makeAddr("voter3");
         nonVoter = makeAddr("nonVoter");
         
+        // Create parent data for Adam and Eve
+        AminalFactory.ParentData memory firstParentData = AminalFactory.ParentData({
+            name: "Adam",
+            symbol: "ADAM",
+            description: "The first Aminal",
+            tokenURI: "ipfs://adam",
+            traits: ITraits.Traits({
+                back: "Original Wings",
+                arm: "First Arms",
+                tail: "Genesis Tail",
+                ears: "Prime Ears",
+                body: "Alpha Body",
+                face: "Beginning Face",
+                mouth: "Initial Mouth",
+                misc: "Creation Spark"
+            })
+        });
+        
+        AminalFactory.ParentData memory secondParentData = AminalFactory.ParentData({
+            name: "Eve",
+            symbol: "EVE",
+            description: "The second Aminal",
+            tokenURI: "ipfs://eve",
+            traits: ITraits.Traits({
+                back: "Life Wings",
+                arm: "Gentle Arms",
+                tail: "Harmony Tail",
+                ears: "Listening Ears",
+                body: "Nurturing Body",
+                face: "Wisdom Face",
+                mouth: "Speaking Mouth",
+                misc: "Life Force"
+            })
+        });
+        
         // Deploy factory and breeding vote contract
         vm.prank(owner);
-        factory = new AminalFactory(owner, BASE_URI);
+        factory = new AminalFactory(owner, BASE_URI, firstParentData, secondParentData);
         breedingVote = new AminalBreedingVote(address(factory));
         
         // Create two parent Aminals
@@ -79,7 +114,7 @@ contract AminalBreedingVoteTest is Test {
         });
         
         vm.prank(voter1);
-        address parent1Address = factory.createAminal(
+        address parent1Address = factory.createAminalWithTraits(
             "FireDragon",
             "FIRE",
             "A fierce dragon",
@@ -89,7 +124,7 @@ contract AminalBreedingVoteTest is Test {
         parent1 = Aminal(payable(parent1Address));
         
         vm.prank(voter2);
-        address parent2Address = factory.createAminal(
+        address parent2Address = factory.createAminalWithTraits(
             "AngelBunny",
             "ANGEL",
             "A gentle bunny",
@@ -97,6 +132,29 @@ contract AminalBreedingVoteTest is Test {
             traits2
         );
         parent2 = Aminal(payable(parent2Address));
+        
+        // Give voters some love in the parents by sending ETH
+        vm.deal(voter1, 10 ether);
+        vm.deal(voter2, 10 ether);
+        vm.deal(voter3, 10 ether);
+        
+        // Voter1 feeds parent1
+        vm.prank(voter1);
+        (bool success1,) = address(parent1).call{value: 1 ether}("");
+        assertTrue(success1);
+        
+        // Voter2 feeds parent2
+        vm.prank(voter2);
+        (bool success2,) = address(parent2).call{value: 1 ether}("");
+        assertTrue(success2);
+        
+        // Voter3 feeds both
+        vm.prank(voter3);
+        (bool success3,) = address(parent1).call{value: 0.5 ether}("");
+        assertTrue(success3);
+        vm.prank(voter3);
+        (bool success4,) = address(parent2).call{value: 0.5 ether}("");
+        assertTrue(success4);
         
         // Give voters different amounts of love to each parent
         // voter1: 100 love to parent1, 50 love to parent2 (voting power = 150)
@@ -430,13 +488,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_RevertWhen_ExecutingBeforeDeadline() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         vm.expectRevert(AminalBreedingVote.VotingNotEnded.selector);
         breedingVote.executeBreeding(proposalId);
@@ -494,13 +546,7 @@ contract AminalBreedingVoteTest is Test {
     }
     
     function test_PartialVoting() public {
-        uint256 proposalId = breedingVote.createProposal(
-            address(parent1),
-            address(parent2),
-            "A magical hybrid",
-            "hybrid.json",
-            VOTING_DURATION
-        );
+        uint256 proposalId = _createProposal();
         
         // voter1 only votes on some traits
         AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](3);

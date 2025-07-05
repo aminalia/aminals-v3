@@ -19,10 +19,47 @@ contract DeployAminalFactory is Script {
         
         vm.startBroadcast(deployerPrivateKey);
         
+        // Create parent data for Adam and Eve
+        AminalFactory.ParentData memory firstParentData = AminalFactory.ParentData({
+            name: "Adam",
+            symbol: "ADAM",
+            description: "The first Aminal",
+            tokenURI: "ipfs://adam",
+            traits: ITraits.Traits({
+                back: "Original Wings",
+                arm: "First Arms",
+                tail: "Genesis Tail",
+                ears: "Prime Ears",
+                body: "Alpha Body",
+                face: "Beginning Face",
+                mouth: "Initial Mouth",
+                misc: "Creation Spark"
+            })
+        });
+        
+        AminalFactory.ParentData memory secondParentData = AminalFactory.ParentData({
+            name: "Eve",
+            symbol: "EVE",
+            description: "The second Aminal",
+            tokenURI: "ipfs://eve",
+            traits: ITraits.Traits({
+                back: "Life Wings",
+                arm: "Gentle Arms",
+                tail: "Harmony Tail",
+                ears: "Listening Ears",
+                body: "Nurturing Body",
+                face: "Wisdom Face",
+                mouth: "Speaking Mouth",
+                misc: "Life Force"
+            })
+        });
+        
         // Deploy AminalFactory
         AminalFactory factory = new AminalFactory(
             deployer,  // owner
-            "https://api.aminals.com/metadata/"  // baseURI
+            "https://api.aminals.com/metadata/",  // baseURI
+            firstParentData,
+            secondParentData
         );
         
         console.log("AminalFactory deployed to:", address(factory));

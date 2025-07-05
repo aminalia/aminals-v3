@@ -29,8 +29,43 @@ contract AminalBreedingTest is Test {
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
         
+        // Create parent data for Adam and Eve
+        AminalFactory.ParentData memory firstParentData = AminalFactory.ParentData({
+            name: "Adam",
+            symbol: "ADAM",
+            description: "The first Aminal",
+            tokenURI: "ipfs://adam",
+            traits: ITraits.Traits({
+                back: "Original Wings",
+                arm: "First Arms",
+                tail: "Genesis Tail",
+                ears: "Prime Ears",
+                body: "Alpha Body",
+                face: "Beginning Face",
+                mouth: "Initial Mouth",
+                misc: "Creation Spark"
+            })
+        });
+        
+        AminalFactory.ParentData memory secondParentData = AminalFactory.ParentData({
+            name: "Eve",
+            symbol: "EVE",
+            description: "The second Aminal",
+            tokenURI: "ipfs://eve",
+            traits: ITraits.Traits({
+                back: "Life Wings",
+                arm: "Gentle Arms",
+                tail: "Harmony Tail",
+                ears: "Listening Ears",
+                body: "Nurturing Body",
+                face: "Wisdom Face",
+                mouth: "Speaking Mouth",
+                misc: "Life Force"
+            })
+        });
+        
         vm.prank(owner);
-        factory = new AminalFactory(owner, BASE_URI);
+        factory = new AminalFactory(owner, BASE_URI, firstParentData, secondParentData);
         
         // Create two parent Aminals
         ITraits.Traits memory traits1 = ITraits.Traits({
@@ -56,7 +91,7 @@ contract AminalBreedingTest is Test {
         });
         
         vm.prank(user1);
-        address parent1Address = factory.createAminal(
+        address parent1Address = factory.createAminalWithTraits(
             "FireDragon",
             "FIRE",
             "A fierce dragon",
@@ -66,7 +101,7 @@ contract AminalBreedingTest is Test {
         parent1 = Aminal(payable(parent1Address));
         
         vm.prank(user2);
-        address parent2Address = factory.createAminal(
+        address parent2Address = factory.createAminalWithTraits(
             "AngelBunny",
             "ANGEL",
             "A gentle bunny",
@@ -81,7 +116,7 @@ contract AminalBreedingTest is Test {
         vm.prank(address(parent1));
         
         vm.expectEmit(true, true, false, true);
-        emit AminalsBred(address(parent1), address(parent2), address(0), 3);
+        emit AminalsBred(address(parent1), address(parent2), address(0), 5); // Adam(1), Eve(2), parent1(3), parent2(4), child(5)
         
         address childAddress = factory.breed(
             address(parent2),
@@ -92,7 +127,7 @@ contract AminalBreedingTest is Test {
         // Verify child was created
         assertTrue(childAddress != address(0));
         assertTrue(factory.isValidAminal(childAddress));
-        assertEq(factory.totalAminals(), 3);
+        assertEq(factory.totalAminals(), 5); // Adam + Eve + 2 parents + 1 child
         
         // Verify child traits alternate between parents
         Aminal child = Aminal(payable(childAddress));
@@ -193,7 +228,7 @@ contract AminalBreedingTest is Test {
         });
         
         vm.prank(user1);
-        address parent3Address = factory.createAminal(
+        address parent3Address = factory.createAminalWithTraits(
             "RainbowCat",
             "RAINBOW",
             "A colorful cat",

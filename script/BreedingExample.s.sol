@@ -17,9 +17,46 @@ contract BreedingExample is Script {
         address deployer = makeAddr("deployer");
         vm.startPrank(deployer);
         
+        // Create parent data for Adam and Eve
+        AminalFactory.ParentData memory firstParentData = AminalFactory.ParentData({
+            name: "Adam",
+            symbol: "ADAM",
+            description: "The first Aminal",
+            tokenURI: "ipfs://adam",
+            traits: ITraits.Traits({
+                back: "Original Wings",
+                arm: "First Arms",
+                tail: "Genesis Tail",
+                ears: "Prime Ears",
+                body: "Alpha Body",
+                face: "Beginning Face",
+                mouth: "Initial Mouth",
+                misc: "Creation Spark"
+            })
+        });
+        
+        AminalFactory.ParentData memory secondParentData = AminalFactory.ParentData({
+            name: "Eve",
+            symbol: "EVE",
+            description: "The second Aminal",
+            tokenURI: "ipfs://eve",
+            traits: ITraits.Traits({
+                back: "Life Wings",
+                arm: "Gentle Arms",
+                tail: "Harmony Tail",
+                ears: "Listening Ears",
+                body: "Nurturing Body",
+                face: "Wisdom Face",
+                mouth: "Speaking Mouth",
+                misc: "Life Force"
+            })
+        });
+        
         AminalFactory factory = new AminalFactory(
             deployer,
-            "https://api.aminals.com/metadata/"
+            "https://api.aminals.com/metadata/",
+            firstParentData,
+            secondParentData
         );
         vm.stopPrank();
         

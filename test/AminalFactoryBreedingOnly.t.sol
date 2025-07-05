@@ -148,7 +148,8 @@ contract AminalFactoryBreedingOnlyTest is Test {
         (bool s2,) = eve.call{value: 5 ether}("");
         require(s2);
         
-        // Create breeding proposal
+        // Create breeding proposal as the user who has love
+        vm.prank(user);
         uint256 proposalId = breedingVote.createProposal(
             adam,
             eve,
@@ -217,6 +218,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
         vm.stopPrank();
         
         // First generation breeding
+        vm.prank(user);
         uint256 proposalId1 = breedingVote.createProposal(adam, eve, "Gen1", "gen1.json", 1 hours);
         
         vm.prank(user);
@@ -231,6 +233,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
         require(s3);
         
         // Second generation breeding (gen1 child with Adam)
+        vm.prank(user);
         uint256 proposalId2 = breedingVote.createProposal(gen1Child, adam, "Gen2", "gen2.json", 1 hours);
         
         vm.prank(user);
