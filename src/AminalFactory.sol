@@ -103,6 +103,9 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
     /// @dev Error thrown when Aminal tries to breed with itself
     error CannotBreedWithSelf();
+    
+    /// @dev Error thrown when trying to create Aminals directly (only breeding allowed)
+    error DirectCreationNotAllowed();
 
     /// @dev Modifier to check if factory is not paused
     modifier whenNotPaused() {
@@ -110,14 +113,52 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         _;
     }
 
+    /// @dev Structure to hold parent creation data
+    struct ParentData {
+        string name;
+        string symbol;
+        string description;
+        string tokenURI;
+        ITraits.Traits traits;
+    }
+    
+    /// @dev Address of the first parent Aminal (Adam)
+    address public immutable firstParent;
+    
+    /// @dev Address of the second parent Aminal (Eve)
+    address public immutable secondParent;
+    
     /**
-     * @dev Constructor initializes the factory
+     * @dev Constructor initializes the factory and creates the first two parent Aminals
      * @param owner The address that will own the factory
      * @param baseURI The base URI for Aminal metadata
+     * @param firstParentData Data for creating the first parent
+     * @param secondParentData Data for creating the second parent
      */
-    constructor(address owner, string memory baseURI) Ownable(owner) {
+    constructor(
+        address owner, 
+        string memory baseURI,
+        ParentData memory firstParentData,
+        ParentData memory secondParentData
+    ) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
         baseTokenURI = baseURI;
+        
+        // Create the first two parent Aminals during construction
+        firstParent = _createAminal(
+            firstParentData.name, 
+            firstParentData.symbol, 
+            firstParentData.description, 
+            firstParentData.tokenURI, 
+            firstParentData.traits
+        );
+        secondParent = _createAminal(
+            secondParentData.name,
+            secondParentData.symbol,
+            secondParentData.description,
+            secondParentData.tokenURI,
+            secondParentData.traits
+        );
     }
 
     /**
@@ -152,7 +193,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory tokenURI,
         ITraits.Traits memory traits
     ) external whenNotPaused nonReentrant returns (address) {
-        return _createAminal(name, symbol, description, tokenURI, traits);
+        revert DirectCreationNotAllowed();
     }
 
     /**
@@ -251,21 +292,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string[] memory tokenURIs,
         ITraits.Traits[] memory traitsArray
     ) external whenNotPaused nonReentrant returns (address[] memory) {
-        if (names.length != symbols.length ||
-            names.length != descriptions.length || 
-            names.length != tokenURIs.length ||
-            names.length != traitsArray.length ||
-            names.length == 0) {
-            revert InvalidParameters();
-        }
-
-        address[] memory aminalContracts = new address[](names.length);
-
-        for (uint256 i = 0; i < names.length; i++) {
-            aminalContracts[i] = _createAminal(names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
-        }
-
-        return aminalContracts;
+        revert DirectCreationNotAllowed();
     }
 
     /**
