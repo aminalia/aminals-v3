@@ -91,13 +91,25 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @notice ticketId => TraitType => TraitVote
     mapping(uint256 => mapping(TraitType => TraitVote)) public traitVotes;
     
-    /// @dev Mapping to track if a user has voted on a ticket
-    /// @notice ticketId => voter => hasVoted
-    mapping(uint256 => mapping(address => bool)) public hasVoted;
-    
-    /// @dev Mapping to track user's voting power for a ticket
-    /// @notice ticketId => voter => votingPower (recorded at vote time)
+    /// @dev Mapping to track user's locked voting power for a ticket
+    /// @notice ticketId => voter => votingPower (locked at first vote time)
     mapping(uint256 => mapping(address => uint256)) public voterPower;
+    
+    /// @dev Mapping to track user's current trait votes
+    /// @notice ticketId => voter => traitType => votedForParent1
+    mapping(uint256 => mapping(address => mapping(TraitType => bool))) public userTraitVotes;
+    
+    /// @dev Mapping to track if user has voted for a specific trait
+    /// @notice ticketId => voter => traitType => hasVoted
+    mapping(uint256 => mapping(address => mapping(TraitType => bool))) public hasVotedOnTrait;
+    
+    /// @dev Mapping to track user's current veto vote
+    /// @notice ticketId => voter => votedForVeto
+    mapping(uint256 => mapping(address => bool)) public userVetoVote;
+    
+    /// @dev Mapping to track if user has voted on veto
+    /// @notice ticketId => voter => hasVotedOnVeto
+    mapping(uint256 => mapping(address => bool)) public hasVotedOnVeto;
     
     /// @dev Voting duration for trait auctions (3 days)
     uint256 public constant VOTING_DURATION = 3 days;
@@ -175,9 +187,6 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Error thrown when trying to vote without love in both parents
     error InsufficientLoveInParents();
     
-    /// @dev Error thrown when trying to vote twice
-    error AlreadyVoted();
-    
     /// @dev Error thrown when voting period has ended
     error VotingEnded();
     
@@ -250,7 +259,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
     
     /**
      * @notice Vote on trait inheritance for a breeding ticket
-     * @dev Voting power is the combined love the voter has in both parents
+     * @dev Voting power is locked at first vote time, but votes can be changed
      * @param ticketId The ticket to vote on
      * @param traits Array of trait types to vote on
      * @param votesForParent1 Array of votes (true = parent1, false = parent2)
@@ -266,32 +275,51 @@ contract AminalBreedingVote is IAminalBreedingVote {
         if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
         if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
         if (ticket.executed) revert ProposalAlreadyExecuted();
-        if (hasVoted[ticketId][msg.sender]) revert AlreadyVoted();
         
-        // Get love from both parents
-        Aminal parent1 = Aminal(payable(ticket.parent1));
-        Aminal parent2 = Aminal(payable(ticket.parent2));
+        uint256 votingPower = voterPower[ticketId][msg.sender];
         
-        uint256 loveInParent1 = parent1.loveFromUser(msg.sender);
-        uint256 loveInParent2 = parent2.loveFromUser(msg.sender);
+        // If first time voting, lock in their voting power
+        if (votingPower == 0) {
+            // Get love from both parents
+            Aminal parent1 = Aminal(payable(ticket.parent1));
+            Aminal parent2 = Aminal(payable(ticket.parent2));
+            
+            uint256 loveInParent1 = parent1.loveFromUser(msg.sender);
+            uint256 loveInParent2 = parent2.loveFromUser(msg.sender);
+            
+            // Voting power is the sum of love in both parents
+            votingPower = loveInParent1 + loveInParent2;
+            
+            if (votingPower == 0) revert InsufficientLoveInParents();
+            
+            // Lock in voting power for this ticket
+            voterPower[ticketId][msg.sender] = votingPower;
+        }
         
-        // Voting power is the sum of love in both parents
-        uint256 votingPower = loveInParent1 + loveInParent2;
-        
-        if (votingPower == 0) revert InsufficientLoveInParents();
-        
-        // Record that user has voted and their voting power
-        hasVoted[ticketId][msg.sender] = true;
-        voterPower[ticketId][msg.sender] = votingPower;
-        
-        // Apply votes to each trait
+        // Process each trait vote
         for (uint256 i = 0; i < traits.length; i++) {
             TraitType trait = traits[i];
+            
+            // If user already voted on this trait, remove their previous vote
+            if (hasVotedOnTrait[ticketId][msg.sender][trait]) {
+                bool previousVote = userTraitVotes[ticketId][msg.sender][trait];
+                if (previousVote) {
+                    traitVotes[ticketId][trait].parent1Votes -= votingPower;
+                } else {
+                    traitVotes[ticketId][trait].parent2Votes -= votingPower;
+                }
+            }
+            
+            // Apply new vote
             if (votesForParent1[i]) {
                 traitVotes[ticketId][trait].parent1Votes += votingPower;
             } else {
                 traitVotes[ticketId][trait].parent2Votes += votingPower;
             }
+            
+            // Record user's vote
+            userTraitVotes[ticketId][msg.sender][trait] = votesForParent1[i];
+            hasVotedOnTrait[ticketId][msg.sender][trait] = true;
         }
         
         emit VoteCast(ticketId, msg.sender, votingPower, traits, votesForParent1);
@@ -348,7 +376,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
     
     /**
      * @notice Vote for a proposed gene
-     * @dev Uses same voting power as trait voting
+     * @dev Uses locked voting power from first vote
      * @param ticketId The breeding ticket ID
      * @param traitType The trait category
      * @param geneId The proposed gene ID to vote for
@@ -367,14 +395,28 @@ contract AminalBreedingVote is IAminalBreedingVote {
         GeneProposal memory proposal = geneProposals[ticketId][traitType][geneId];
         require(proposal.geneContract != address(0), "Gene proposal does not exist");
         
-        // Get voting power
-        Aminal parent1 = Aminal(payable(ticket.parent1));
-        Aminal parent2 = Aminal(payable(ticket.parent2));
+        uint256 votingPower = voterPower[ticketId][msg.sender];
         
-        uint256 votingPower = parent1.loveFromUser(msg.sender) + parent2.loveFromUser(msg.sender);
-        if (votingPower == 0) revert InsufficientLoveInParents();
+        // If first time voting, lock in their voting power
+        if (votingPower == 0) {
+            // Get love from both parents
+            Aminal parent1 = Aminal(payable(ticket.parent1));
+            Aminal parent2 = Aminal(payable(ticket.parent2));
+            
+            uint256 loveInParent1 = parent1.loveFromUser(msg.sender);
+            uint256 loveInParent2 = parent2.loveFromUser(msg.sender);
+            
+            // Voting power is the sum of love in both parents
+            votingPower = loveInParent1 + loveInParent2;
+            
+            if (votingPower == 0) revert InsufficientLoveInParents();
+            
+            // Lock in voting power for this ticket
+            voterPower[ticketId][msg.sender] = votingPower;
+        }
         
-        // Add votes to the gene
+        // Note: Gene votes are additive and cannot be changed/removed
+        // This is different from trait/veto votes which can be changed
         traitVotes[ticketId][traitType].geneVotes[geneId] += votingPower;
         
         emit GeneVoteCast(ticketId, msg.sender, votingPower, traitType, geneId);
@@ -382,7 +424,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
     
     /**
      * @notice Vote on whether to veto this breeding
-     * @dev Uses same voting power as trait voting
+     * @dev Voting power is locked at first vote time, but vote can be changed
      * @param ticketId The breeding ticket ID
      * @param voteForVeto True to vote for veto, false to vote for proceeding
      */
@@ -395,19 +437,46 @@ contract AminalBreedingVote is IAminalBreedingVote {
         if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
         if (ticket.executed) revert ProposalAlreadyExecuted();
         
-        // Get voting power
-        Aminal parent1 = Aminal(payable(ticket.parent1));
-        Aminal parent2 = Aminal(payable(ticket.parent2));
+        uint256 votingPower = voterPower[ticketId][msg.sender];
         
-        uint256 votingPower = parent1.loveFromUser(msg.sender) + parent2.loveFromUser(msg.sender);
-        if (votingPower == 0) revert InsufficientLoveInParents();
+        // If first time voting, lock in their voting power
+        if (votingPower == 0) {
+            // Get love from both parents
+            Aminal parent1 = Aminal(payable(ticket.parent1));
+            Aminal parent2 = Aminal(payable(ticket.parent2));
+            
+            uint256 loveInParent1 = parent1.loveFromUser(msg.sender);
+            uint256 loveInParent2 = parent2.loveFromUser(msg.sender);
+            
+            // Voting power is the sum of love in both parents
+            votingPower = loveInParent1 + loveInParent2;
+            
+            if (votingPower == 0) revert InsufficientLoveInParents();
+            
+            // Lock in voting power for this ticket
+            voterPower[ticketId][msg.sender] = votingPower;
+        }
         
-        // Record vote
+        // If user already voted on veto, remove their previous vote
+        if (hasVotedOnVeto[ticketId][msg.sender]) {
+            bool previousVote = userVetoVote[ticketId][msg.sender];
+            if (previousVote) {
+                vetoVotes[ticketId].vetoVotes -= votingPower;
+            } else {
+                vetoVotes[ticketId].proceedVotes -= votingPower;
+            }
+        }
+        
+        // Apply new vote
         if (voteForVeto) {
             vetoVotes[ticketId].vetoVotes += votingPower;
         } else {
             vetoVotes[ticketId].proceedVotes += votingPower;
         }
+        
+        // Record user's vote
+        userVetoVote[ticketId][msg.sender] = voteForVeto;
+        hasVotedOnVeto[ticketId][msg.sender] = true;
         
         emit VetoVoteCast(ticketId, msg.sender, votingPower, voteForVeto);
     }
@@ -597,22 +666,28 @@ contract AminalBreedingVote is IAminalBreedingVote {
      * @param ticketId The ticket ID
      * @param voter The potential voter
      * @return canVoteResult Whether the user can vote
-     * @return votingPower The voting power they would have
+     * @return votingPower The voting power they have (locked or potential)
      */
     function canVote(uint256 ticketId, address voter) external view returns (bool canVoteResult, uint256 votingPower) {
         BreedingTicket memory ticket = tickets[ticketId];
         if (ticket.parent1 == address(0)) return (false, 0);
         if (block.timestamp > ticket.votingDeadline) return (false, 0);
         if (ticket.executed) return (false, 0);
-        if (hasVoted[ticketId][voter]) return (false, 0);
         
-        Aminal parent1 = Aminal(payable(ticket.parent1));
-        Aminal parent2 = Aminal(payable(ticket.parent2));
+        // Check if voter already has locked voting power
+        votingPower = voterPower[ticketId][voter];
         
-        uint256 loveInParent1 = parent1.loveFromUser(voter);
-        uint256 loveInParent2 = parent2.loveFromUser(voter);
+        if (votingPower == 0) {
+            // Calculate potential voting power
+            Aminal parent1 = Aminal(payable(ticket.parent1));
+            Aminal parent2 = Aminal(payable(ticket.parent2));
+            
+            uint256 loveInParent1 = parent1.loveFromUser(voter);
+            uint256 loveInParent2 = parent2.loveFromUser(voter);
+            
+            votingPower = loveInParent1 + loveInParent2;
+        }
         
-        votingPower = loveInParent1 + loveInParent2;
         canVoteResult = votingPower > 0;
     }
     
