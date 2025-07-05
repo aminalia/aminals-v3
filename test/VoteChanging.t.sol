@@ -7,6 +7,7 @@ import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {Aminal} from "src/Aminal.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {MockGene} from "./mocks/MockGene.sol";
 
 contract VoteChangingTest is Test {
     BreedingSkill public breedingSkill;
@@ -269,12 +270,16 @@ contract VoteChangingTest is Test {
         (success,) = address(parent1).call{value: 0.02 ether}("");
         assertTrue(success);
         
-        // Create mock gene data
+        // Create a mock gene contract
+        MockGene geneContract = new MockGene();
+        geneContract.mint(address(this), "<svg>Rainbow Wings</svg>", "back", "Rainbow Wings");
+        
+        // Propose the gene
         vm.prank(breederA);
         breedingVote.proposeGene(
             ticketId,
             AminalBreedingVote.TraitType.BACK,
-            address(0x123), // Mock gene contract
+            address(geneContract),
             1
         );
         

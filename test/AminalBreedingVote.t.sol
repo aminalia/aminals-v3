@@ -344,8 +344,8 @@ contract AminalBreedingVoteTest is Test {
         breedingVote.vote(proposalId, traits, votesForParent1);
         
         // Check that vote was recorded
-        assertTrue(breedingVote.hasVoted(proposalId, voter1));
         assertEq(breedingVote.voterPower(proposalId, voter1), votingPower);
+        assertTrue(breedingVote.hasVotedOnTrait(proposalId, voter1, AminalBreedingVote.TraitType.BACK));
         
         // Check vote counts
         (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(proposalId);
@@ -419,9 +419,9 @@ contract AminalBreedingVoteTest is Test {
         vm.prank(voter1);
         breedingVote.vote(proposalId, traits, votes);
         
+        // Now users can vote multiple times (change their votes)
         vm.prank(voter1);
-        vm.expectRevert(AminalBreedingVote.AlreadyVoted.selector);
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, traits, votes); // Should not revert
     }
     
     function testSkip_VoteWithLoveInOnlyOneParent() public {
@@ -449,8 +449,8 @@ contract AminalBreedingVoteTest is Test {
         breedingVote.vote(proposalId, traits, votes);
         
         // Verify vote was recorded
-        assertTrue(breedingVote.hasVoted(proposalId, singleLover));
         assertEq(breedingVote.voterPower(proposalId, singleLover), parent1.loveFromUser(singleLover));
+        assertTrue(breedingVote.hasVotedOnTrait(proposalId, singleLover, AminalBreedingVote.TraitType.BACK));
     }
     
     function testSkip_RevertWhen_NoLoveInParents() public {
