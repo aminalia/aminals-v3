@@ -58,7 +58,7 @@ contract AminalBreedingVoteTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -75,7 +75,7 @@ contract AminalBreedingVoteTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -536,9 +536,9 @@ contract AminalBreedingVoteTest is Test {
         
         // Verify child geneTypes based on voting
         Aminal child = Aminal(payable(childContract));
-        IGenes.Genes memory childTraits = child.getTraits();
-        IGenes.Genes memory geneTypes1 = parent1.getTraits();
-        IGenes.Genes memory geneTypes2 = parent2.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
+        IGenes.Genes memory geneTypes1 = parent1.getGenes();
+        IGenes.Genes memory geneTypes2 = parent2.getGenes();
         
         // Based on voting power:
         // voter1 has more total voting power, so parent1 wins the geneTypes voter1 voted for
@@ -618,8 +618,8 @@ contract AminalBreedingVoteTest is Test {
         
         // In a tie, parent1 should win
         Aminal child = Aminal(payable(childContract));
-        IGenes.Genes memory childTraits = child.getTraits();
-        IGenes.Genes memory geneTypes1 = parent1.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
+        IGenes.Genes memory geneTypes1 = parent1.getGenes();
         
         assertEq(childTraits.back, geneTypes1.back); // parent1 wins tie
     }
@@ -649,9 +649,9 @@ contract AminalBreedingVoteTest is Test {
         address childContract = breedingVote.executeBreeding(proposalId);
         
         Aminal child = Aminal(payable(childContract));
-        IGenes.Genes memory childTraits = child.getTraits();
-        IGenes.Genes memory geneTypes1 = parent1.getTraits();
-        IGenes.Genes memory geneTypes2 = parent2.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
+        IGenes.Genes memory geneTypes1 = parent1.getGenes();
+        IGenes.Genes memory geneTypes2 = parent2.getGenes();
         
         // Voted geneTypes should follow votes
         assertEq(childTraits.back, geneTypes2.back);  // voted parent2

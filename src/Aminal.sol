@@ -69,7 +69,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /// @notice These traits are set once during construction and cannot be changed
     /// @dev While not immutable due to Solidity limitations, they are effectively immutable
     ///      as the contract has no functions to modify them
-    IGenes.Genes public traits;
+    IGenes.Genes public genes;
 
     /// @dev Structure to store a Gene reference
     struct GeneReference {
@@ -165,18 +165,18 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @param name The name of this specific Aminal
      * @param symbol The symbol for this specific Aminal
      * @param baseURI The base URI for token metadata
-     * @param _traits The immutable traits for this Aminal
+     * @param _genes The immutable genes for this Aminal
      */
     constructor(
         string memory name,
         string memory symbol,
         string memory baseURI,
-        IGenes.Genes memory _traits
+        IGenes.Genes memory _genes
     ) ERC721(name, symbol) {
         baseTokenURI = baseURI;
         
-        // Set the traits struct
-        traits = _traits;
+        // Set the genes struct
+        genes = _genes;
         
         // Initialize Logistic VRGDA with parameters for love calculation:
         // - Target price: 1 ETH (baseline price for VRGDA calculation)
@@ -210,10 +210,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @dev Initialize the contract by minting the single Aminal NFT to itself and setting gene references
      * @dev This function can only be called once and makes the Aminal self-sovereign
      * @param uri The URI for the token's metadata (can be empty as we'll generate it from genes)
-     * @param genes Array of gene references in order: back, arm, tail, ears, body, face, mouth, misc
+     * @param geneRefs Array of gene references in order: back, arm, tail, ears, body, face, mouth, misc
      * @return tokenId The ID of the newly minted token (always 1)
      */
-    function initialize(string memory uri, GeneReference[8] memory genes) public returns (uint256) {
+    function initialize(string memory uri, GeneReference[8] memory geneRefs) public returns (uint256) {
         if (minted) revert AlreadyMinted();
         if (initialized) revert AlreadyInitialized();
         
@@ -221,14 +221,14 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         minted = true;
         
         // Set the immutable gene references
-        backGene = genes[0];
-        armGene = genes[1];
-        tailGene = genes[2];
-        earsGene = genes[3];
-        bodyGene = genes[4];
-        faceGene = genes[5];
-        mouthGene = genes[6];
-        miscGene = genes[7];
+        backGene = geneRefs[0];
+        armGene = geneRefs[1];
+        tailGene = geneRefs[2];
+        earsGene = geneRefs[3];
+        bodyGene = geneRefs[4];
+        faceGene = geneRefs[5];
+        mouthGene = geneRefs[6];
+        miscGene = geneRefs[7];
         
         // Mint to self - the Aminal owns itself!
         _safeMint(address(this), TOKEN_ID);
@@ -291,11 +291,11 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Get all traits for this Aminal
-     * @return The complete traits struct for this Aminal
+     * @dev Get all genes for this Aminal
+     * @return The complete genes struct for this Aminal
      */
-    function getTraits() external view returns (IGenes.Genes memory) {
-        return traits;
+    function getGenes() external view returns (IGenes.Genes memory) {
+        return genes;
     }
 
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Skill} from "../Skill.sol";
 import {Aminal} from "../Aminal.sol";
 import {AminalFactory} from "../AminalFactory.sol";
-import {IGenes} from "../interfaces/ITraits.sol";
+import {IGenes} from "../interfaces/IGenes.sol";
 import {IAminalBreedingVote} from "../interfaces/IAminalBreedingVote.sol";
 
 /**

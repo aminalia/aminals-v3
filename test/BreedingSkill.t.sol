@@ -50,7 +50,7 @@ contract BreedingSkillTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -67,7 +67,7 @@ contract BreedingSkillTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -538,9 +538,9 @@ contract BreedingSkillTest is Test {
         Aminal child = Aminal(payable(childAddress));
         
         // Verify traits alternate
-        IGenes.Genes memory childTraits = child.getTraits();
-        IGenes.Genes memory traits1 = parent1.getTraits();
-        IGenes.Genes memory traits2 = parent2.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
+        IGenes.Genes memory traits1 = parent1.getGenes();
+        IGenes.Genes memory traits2 = parent2.getGenes();
         
         assertEq(childTraits.back, traits1.back);   // From parent1
         assertEq(childTraits.arm, traits2.arm);     // From parent2

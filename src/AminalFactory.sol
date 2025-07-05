@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Aminal} from "./Aminal.sol";
-import {IGenes} from "./interfaces/ITraits.sol";
+import {IGenes} from "./interfaces/IGenes.sol";
 
 /**
  * @title AminalFactory
@@ -220,7 +220,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
      * @param tokenURI The URI for the token's metadata
-     * @param traits The immutable traits for this Aminal
+     * @param genes The immutable genes for this Aminal
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function _createAminal(
@@ -228,7 +228,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory symbol,
         string memory description,
         string memory tokenURI,
-        IGenes.Genes memory traits
+        IGenes.Genes memory genes
     ) internal returns (address) {
         // Note: 'to' is ignored since Aminals always own themselves
         if (bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
@@ -248,7 +248,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
-        Aminal newAminal = new Aminal(name, symbol, baseTokenURI, traits);
+        Aminal newAminal = new Aminal(name, symbol, baseTokenURI, genes);
         
         // Initialize the Aminal to mint the NFT to itself (self-sovereign)
         // Each Aminal contract can only initialize once, ensuring 1-of-1 uniqueness
@@ -282,7 +282,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param symbols Array of symbols for the Aminals
      * @param descriptions Array of descriptions for the Aminals
      * @param tokenURIs Array of URIs for the tokens' metadata
-     * @param traitsArray Array of traits for each Aminal
+     * @param genesArray Array of genes for each Aminal
      * @return aminalContracts Array of addresses of the newly deployed Aminal contracts
      */
     function batchCreateAminals(
@@ -290,7 +290,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string[] memory symbols,
         string[] memory descriptions,
         string[] memory tokenURIs,
-        IGenes.Genes[] memory traitsArray
+        IGenes.Genes[] memory genesArray
     ) external whenNotPaused nonReentrant returns (address[] memory) {
         revert DirectCreationNotAllowed();
     }
@@ -302,7 +302,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
      * @param tokenURI The URI for the token's metadata
-     * @param traits The specific traits for this Aminal
+     * @param genes The specific genes for this Aminal
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function createAminalWithTraits(
@@ -310,9 +310,9 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory symbol,
         string memory description,
         string memory tokenURI,
-        IGenes.Genes memory traits
+        IGenes.Genes memory genes
     ) external whenNotPaused nonReentrant returns (address) {
-        return _createAminal(name, symbol, description, tokenURI, traits);
+        return _createAminal(name, symbol, description, tokenURI, genes);
     }
 
     /**
@@ -400,20 +400,20 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         Aminal parent1 = Aminal(payable(msg.sender));
         Aminal parent2 = Aminal(payable(partner));
 
-        // Get parent traits
-        IGenes.Genes memory traits1 = parent1.getTraits();
-        IGenes.Genes memory traits2 = parent2.getTraits();
+        // Get parent genes
+        IGenes.Genes memory genes1 = parent1.getGenes();
+        IGenes.Genes memory genes2 = parent2.getGenes();
 
-        // Create child traits by alternating between parents
-        IGenes.Genes memory childTraits = IGenes.Genes({
-            back: traits1.back,      // From parent1
-            arm: traits2.arm,        // From parent2
-            tail: traits1.tail,      // From parent1
-            ears: traits2.ears,      // From parent2
-            body: traits1.body,      // From parent1
-            face: traits2.face,      // From parent2
-            mouth: traits1.mouth,    // From parent1
-            misc: traits2.misc       // From parent2
+        // Create child genes by alternating between parents
+        IGenes.Genes memory childGenes = IGenes.Genes({
+            back: genes1.back,      // From parent1
+            arm: genes2.arm,        // From parent2
+            tail: genes1.tail,      // From parent1
+            ears: genes2.ears,      // From parent2
+            body: genes1.body,      // From parent1
+            face: genes2.face,      // From parent2
+            mouth: genes1.mouth,    // From parent1
+            misc: genes2.misc       // From parent2
         });
 
         // Generate child name and symbol from parent names
@@ -428,7 +428,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
             childSymbol,
             childDescription,
             childTokenURI,
-            childTraits
+            childGenes
         );
 
         emit AminalsBred(msg.sender, partner, childContract, totalAminals);

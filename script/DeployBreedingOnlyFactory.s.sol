@@ -49,7 +49,7 @@ contract DeployBreedingOnlyFactory is Script {
             symbol: "ADAM",
             description: "The first Aminal - the origin of all",
             tokenURI: "adam.json",
-            traits: adamTraits
+            genes: adamTraits
         });
         
         AminalFactory.ParentData memory eveData = AminalFactory.ParentData({
@@ -57,7 +57,7 @@ contract DeployBreedingOnlyFactory is Script {
             symbol: "EVE",
             description: "The second Aminal - the mother of all",
             tokenURI: "eve.json",
-            traits: eveTraits
+            genes: eveTraits
         });
         
         // Deploy AminalFactory with the two initial parents

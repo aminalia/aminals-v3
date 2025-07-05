@@ -35,7 +35,7 @@ contract AminalFactoryTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -52,7 +52,7 @@ contract AminalFactoryTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -94,7 +94,7 @@ contract AminalFactoryTest is Test {
             symbol: "TEST",
             description: "Test",
             tokenURI: "test",
-            traits: createSampleTraits("Test")
+            genes: createSampleTraits("Test")
         });
         
         AminalFactory.ParentData memory secondParentData = AminalFactory.ParentData({
@@ -102,7 +102,7 @@ contract AminalFactoryTest is Test {
             symbol: "TEST2",
             description: "Test2",
             tokenURI: "test2",
-            traits: createSampleTraits("Test2")
+            genes: createSampleTraits("Test2")
         });
         
         vm.expectRevert();

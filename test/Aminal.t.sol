@@ -263,7 +263,7 @@ contract AminalTest is Test {
 
     function test_Traits() external {
         // Test getTraits function
-        IGenes.Genes memory traits = aminal.getTraits();
+        IGenes.Genes memory traits = aminal.getGenes();
         assertEq(traits.back, "Dragon Wings");
         assertEq(traits.arm, "Scaled Arms");
         assertEq(traits.tail, "Fire Tail");

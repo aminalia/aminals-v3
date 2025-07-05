@@ -35,7 +35,7 @@ contract AminalBreedingTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -52,7 +52,7 @@ contract AminalBreedingTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -131,9 +131,9 @@ contract AminalBreedingTest is Test {
         
         // Verify child traits alternate between parents
         Aminal child = Aminal(payable(childAddress));
-        IGenes.Genes memory childTraits = child.getTraits();
-        IGenes.Genes memory parent1Traits = parent1.getTraits();
-        IGenes.Genes memory parent2Traits = parent2.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
+        IGenes.Genes memory parent1Traits = parent1.getGenes();
+        IGenes.Genes memory parent2Traits = parent2.getGenes();
         
         // Check alternating pattern
         assertEq(childTraits.back, parent1Traits.back);   // From parent1
@@ -164,9 +164,9 @@ contract AminalBreedingTest is Test {
         
         // Verify traits still follow the pattern based on who initiated
         Aminal child = Aminal(payable(childAddress));
-        IGenes.Genes memory childTraits = child.getTraits();
-        IGenes.Genes memory initiatorTraits = parent2.getTraits();
-        IGenes.Genes memory partnerTraits = parent1.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
+        IGenes.Genes memory initiatorTraits = parent2.getGenes();
+        IGenes.Genes memory partnerTraits = parent1.getGenes();
         
         // When parent2 initiates, parent2 is "parent1" in the function
         assertEq(childTraits.back, initiatorTraits.back);   // From initiator (parent2)
@@ -272,8 +272,8 @@ contract AminalBreedingTest is Test {
         assertTrue(child1 != child2);
         
         // But have same traits since parents are the same
-        IGenes.Genes memory child1Traits = Aminal(payable(child1)).getTraits();
-        IGenes.Genes memory child2Traits = Aminal(payable(child2)).getTraits();
+        IGenes.Genes memory child1Traits = Aminal(payable(child1)).getGenes();
+        IGenes.Genes memory child2Traits = Aminal(payable(child2)).getGenes();
         
         assertEq(child1Traits.back, child2Traits.back);
         assertEq(child1Traits.arm, child2Traits.arm);

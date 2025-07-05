@@ -23,7 +23,7 @@ contract BreedingExample is Script {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -40,7 +40,7 @@ contract BreedingExample is Script {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -129,7 +129,7 @@ contract BreedingExample is Script {
         console.log("Owner:", childAminal.ownerOf(1));
         
         // Display child traits
-        IGenes.Genes memory childTraits = childAminal.getTraits();
+        IGenes.Genes memory childTraits = childAminal.getGenes();
         console.log("\n--- CHILD TRAITS (Alternating from parents) ---");
         console.log("Back:", childTraits.back, "(from Dragon)");
         console.log("Arm:", childTraits.arm, "(from Bunny)");

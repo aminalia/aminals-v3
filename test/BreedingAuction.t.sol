@@ -38,7 +38,7 @@ contract BreedingAuctionTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -55,7 +55,7 @@ contract BreedingAuctionTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -242,10 +242,10 @@ contract BreedingAuctionTest is Test {
         // Verify traits based on voting
         // Since voting power should be roughly equal but voter1 has slightly more total,
         // we expect mixed traits with slight preference to voter1's choices
-        IGenes.Genes memory childTraits = child.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
         
         // Log the final traits
-        console.log("Child traits:");
+        console.log("Child genes:");
         console.log("Back:", childTraits.back);
         console.log("Arm:", childTraits.arm);
         console.log("Face:", childTraits.face);

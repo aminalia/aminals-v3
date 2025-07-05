@@ -50,7 +50,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "adam.json",
-            traits: adamTraits
+            genes: adamTraits
         });
         
         AminalFactory.ParentData memory eveData = AminalFactory.ParentData({
@@ -58,7 +58,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "eve.json",
-            traits: eveTraits
+            genes: eveTraits
         });
         
         vm.prank(owner);
@@ -91,11 +91,11 @@ contract AminalFactoryBreedingOnlyTest is Test {
         Aminal adamAminal = Aminal(payable(adam));
         Aminal eveAminal = Aminal(payable(eve));
         
-        IGenes.Genes memory adamActualTraits = adamAminal.getTraits();
+        IGenes.Genes memory adamActualTraits = adamAminal.getGenes();
         assertEq(adamActualTraits.back, adamTraits.back);
         assertEq(adamActualTraits.body, adamTraits.body);
         
-        IGenes.Genes memory eveActualTraits = eveAminal.getTraits();
+        IGenes.Genes memory eveActualTraits = eveAminal.getGenes();
         assertEq(eveActualTraits.back, eveTraits.back);
         assertEq(eveActualTraits.body, eveTraits.body);
     }

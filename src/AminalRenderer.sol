@@ -299,7 +299,7 @@ contract AminalRenderer {
      */
     function _getTraitPositions(Aminal aminal) private view returns (TraitPositions memory positions) {
         // Get traits from the Aminal
-        IGenes.Genes memory traits = aminal.getTraits();
+        IGenes.Genes memory traits = aminal.getGenes();
         
         // Determine body type characteristics
         bool isTall = _contains(traits.body, "Tall") || _contains(traits.body, "Slim");

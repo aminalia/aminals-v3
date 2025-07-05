@@ -48,7 +48,7 @@ contract FourPhaseBreedingTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -65,7 +65,7 @@ contract FourPhaseBreedingTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: IGenes.Genes({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -165,7 +165,7 @@ contract FourPhaseBreedingTest is Test {
         
         // Verify child was created with expected traits
         Aminal child = Aminal(payable(childAddress));
-        IGenes.Genes memory childTraits = child.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
         
         // Based on voting, Rainbow Wings gene should have won for back trait
         assertEq(childTraits.back, "Rainbow Wings");
@@ -374,7 +374,7 @@ contract FourPhaseBreedingTest is Test {
         Aminal child = Aminal(payable(childAddress));
         
         // Verify the replaced gene didn't win despite having votes
-        IGenes.Genes memory childTraits = child.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
         assertEq(childTraits.back, "Dragon Wings"); // Parent1's trait wins (no votes)
     }
     

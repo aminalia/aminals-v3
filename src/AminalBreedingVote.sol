@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Aminal} from "./Aminal.sol";
 import {AminalFactory} from "./AminalFactory.sol";
-import {IGenes} from "./interfaces/ITraits.sol";
+import {IGenes} from "./interfaces/IGenes.sol";
 import {IAminalBreedingVote} from "./interfaces/IAminalBreedingVote.sol";
 import {IGene} from "./interfaces/IGene.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
@@ -657,8 +657,8 @@ contract AminalBreedingVote is IAminalBreedingVote {
         Aminal parent1 = Aminal(payable(parent1Address));
         Aminal parent2 = Aminal(payable(parent2Address));
         
-        IGenes.Genes memory parent1Genes = parent1.getTraits();
-        IGenes.Genes memory parent2Genes = parent2.getTraits();
+        IGenes.Genes memory parent1Genes = parent1.getGenes();
+        IGenes.Genes memory parent2Genes = parent2.getGenes();
         
         // Build child genes in a separate function to avoid stack too deep
         IGenes.Genes memory childGenes = _buildChildGenes(ticketId, parent1Genes, parent2Genes);
