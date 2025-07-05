@@ -297,6 +297,10 @@ contract BreedingWithGenesTest is Test {
         vm.prank(voter2);
         breedingVote.voteForGene(ticketId, AminalBreedingVote.TraitType.BACK, 0);
         
+        // Also vote to proceed with breeding (not veto)
+        vm.prank(voter2);
+        breedingVote.voteOnVeto(ticketId, false);
+        
         // Wait for voting to end
         vm.warp(block.timestamp + 3 days + 1);
         

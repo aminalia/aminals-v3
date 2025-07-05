@@ -49,6 +49,12 @@ contract AminalBreedingVote is IAminalBreedingVote {
         mapping(uint256 => uint256) geneVotes; // geneId => votes
     }
     
+    /// @dev Structure to track veto votes
+    struct VetoVote {
+        uint256 vetoVotes;
+        uint256 proceedVotes;
+    }
+    
     /// @dev Structure for a gene proposal
     struct GeneProposal {
         address geneContract;
@@ -106,6 +112,9 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Counter for gene proposal IDs
     mapping(uint256 => mapping(TraitType => uint256)) public nextGeneProposalId;
     
+    /// @dev Mapping from ticket ID to veto votes
+    mapping(uint256 => VetoVote) public vetoVotes;
+    
     /// @dev Event emitted when a breeding ticket is created
     event BreedingTicketCreated(
         uint256 indexed ticketId,
@@ -146,6 +155,21 @@ contract AminalBreedingVote is IAminalBreedingVote {
         uint256 votingPower,
         TraitType traitType,
         uint256 geneId
+    );
+    
+    /// @dev Event emitted when someone votes on veto
+    event VetoVoteCast(
+        uint256 indexed ticketId,
+        address indexed voter,
+        uint256 votingPower,
+        bool voteForVeto
+    );
+    
+    /// @dev Event emitted when breeding is vetoed
+    event BreedingVetoed(
+        uint256 indexed ticketId,
+        uint256 vetoVotes,
+        uint256 proceedVotes
     );
     
     /// @dev Error thrown when trying to vote without love in both parents
@@ -357,6 +381,38 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
+     * @notice Vote on whether to veto this breeding
+     * @dev Uses same voting power as trait voting
+     * @param ticketId The breeding ticket ID
+     * @param voteForVeto True to vote for veto, false to vote for proceeding
+     */
+    function voteOnVeto(
+        uint256 ticketId,
+        bool voteForVeto
+    ) external {
+        BreedingTicket memory ticket = tickets[ticketId];
+        if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
+        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
+        if (ticket.executed) revert ProposalAlreadyExecuted();
+        
+        // Get voting power
+        Aminal parent1 = Aminal(payable(ticket.parent1));
+        Aminal parent2 = Aminal(payable(ticket.parent2));
+        
+        uint256 votingPower = parent1.loveFromUser(msg.sender) + parent2.loveFromUser(msg.sender);
+        if (votingPower == 0) revert InsufficientLoveInParents();
+        
+        // Record vote
+        if (voteForVeto) {
+            vetoVotes[ticketId].vetoVotes += votingPower;
+        } else {
+            vetoVotes[ticketId].proceedVotes += votingPower;
+        }
+        
+        emit VetoVoteCast(ticketId, msg.sender, votingPower, voteForVeto);
+    }
+    
+    /**
      * @notice Execute breeding based on voting results
      * @dev Anyone can execute after voting period ends
      * @param ticketId The ticket to execute
@@ -369,6 +425,14 @@ contract AminalBreedingVote is IAminalBreedingVote {
         if (ticket.executed) revert ProposalAlreadyExecuted();
         
         ticket.executed = true;
+        
+        // Check if veto wins or ties
+        VetoVote memory veto = vetoVotes[ticketId];
+        if (veto.vetoVotes >= veto.proceedVotes) {
+            // Veto wins on ties - no child created
+            emit BreedingVetoed(ticketId, veto.vetoVotes, veto.proceedVotes);
+            return address(0);
+        }
         
         // Get parent traits
         Aminal parent1 = Aminal(payable(ticket.parent1));
@@ -583,5 +647,25 @@ contract AminalBreedingVote is IAminalBreedingVote {
         uint256 geneId
     ) external view returns (uint256 votes) {
         return traitVotes[ticketId][traitType].geneVotes[geneId];
+    }
+    
+    /**
+     * @notice Get the current veto vote status
+     * @param ticketId The ticket ID
+     * @return vetoCount The number of votes to veto
+     * @return proceedCount The number of votes to proceed
+     * @return wouldBeVetoed Whether breeding would be vetoed with current votes
+     */
+    function getVetoStatus(
+        uint256 ticketId
+    ) external view returns (
+        uint256 vetoCount,
+        uint256 proceedCount,
+        bool wouldBeVetoed
+    ) {
+        VetoVote memory veto = vetoVotes[ticketId];
+        vetoCount = veto.vetoVotes;
+        proceedCount = veto.proceedVotes;
+        wouldBeVetoed = vetoCount >= proceedCount; // Veto wins on ties
     }
 }
