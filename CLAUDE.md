@@ -660,17 +660,21 @@ Deploys individual Aminal contracts:
 - Prevents duplicates via content hashing
 - Supports batch deployment
 - Pausable for controlled minting
+- **No `to` parameter**: Removed since Aminals always own themselves
+- **Anyone can create**: Removed onlyOwner restriction for decentralization
+- **Registry system**: Tracks valid Aminals for breeding (`isValidAminal`)
 
 ### Gene System
 
 Fully onchain ERC721 NFTs representing genetic traits with SVG rendering:
+- **Renamed from GeneNFT to Gene**: Simplified naming throughout codebase
 - **Onchain SVG Storage**: Each gene stores complete self-contained SVG with viewBox
 - **Dual Output**: 
   - `gene[tokenId]` public mapping returns raw SVG for composability
   - `tokenURI()` returns OpenSea-compatible metadata with base64 SVG
 - **Public Minting**: Anyone can mint genes with SVG data
 - **Query Functions**: Filter by trait type or value
-- **Solady Integration**: Uses LibString and Base64 for efficient onchain rendering
+- **No Factory Needed**: Genes are regular ERC721s, not 1-of-1 contracts like Aminals
 
 ### Key Design Principles
 
@@ -771,6 +775,38 @@ Implementation:
 - **Minimum Cost**: Always requires at least 1 energy/love to prevent free execution
 - Exception: Breeding skills will have a separate, controlled mechanism (future feature)
 
+### Breeding System
+
+Aminals can breed to create offspring:
+- **Aminal-Only**: Only registered Aminals can call `breed()` function
+- **Registry**: Factory maintains `isValidAminal` mapping for all created Aminals
+- **Trait Inheritance**: Child traits alternate between parents:
+  - Parent1: back, tail, body, mouth
+  - Parent2: arm, ears, face, misc
+- **Naming Convention**: 
+  - Child name: `Parent1Name-Parent2Name-Child`
+  - Child symbol: `Parent1Symbol` + `Parent2Symbol`
+- **Self-Sovereign Children**: Offspring are also self-owning Aminals
+- **Multi-Generational**: Children can breed too
+- **Order Matters**: Initiator becomes "parent1" in trait selection
+
+### Data Flow Architecture
+
+#### Aminal ↔ AminalRenderer
+- **Separation of Concerns**: Core NFT logic in Aminal, rendering in AminalRenderer
+- **Delegation Pattern**: `tokenURI()` passes `this` to renderer
+- **Data Access**: Renderer reads all public state from Aminal instance
+- **Dynamic Composition**: Traits determine positioning logic at render time
+- **No Storage**: Positioning data calculated on-demand, never stored
+
+#### Rendering Pipeline
+1. External call → `Aminal.tokenURI(1)`
+2. Aminal delegates → `renderer.tokenURI(this, 1)`
+3. Renderer accesses Aminal's public state
+4. Renderer fetches Gene SVGs from references
+5. Composes final SVG with dynamic positioning
+6. Returns base64-encoded metadata JSON
+
 ### Testing Approach
 - Unit tests for all functionality
 - Fuzz testing for edge cases
@@ -779,6 +815,7 @@ Implementation:
 - Energy/love system validation
 - VRGDA mechanics testing
 - Skills system testing with various return types
+- Breeding functionality tests
 - CSV data generation scripts for curve visualization
 </aminals_project>
 
