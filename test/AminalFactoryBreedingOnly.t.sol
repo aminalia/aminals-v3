@@ -185,7 +185,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
         
         // Should work when called by anyone (in practice, only breeding contract should call this)
         vm.prank(user);
-        address child = factory.createAminalWithTraits(
+        address child = factory.createAminalWithGenes(
             "Child",
             "CHILD",
             "A child aminal",

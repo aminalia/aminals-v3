@@ -116,7 +116,7 @@ contract AminalBreedingVoteTest is Test {
         });
         
         vm.prank(voter1);
-        address parent1Address = factory.createAminalWithTraits(
+        address parent1Address = factory.createAminalWithGenes(
             "FireDragon",
             "FIRE",
             "A fierce dragon",
@@ -126,7 +126,7 @@ contract AminalBreedingVoteTest is Test {
         parent1 = Aminal(payable(parent1Address));
         
         vm.prank(voter2);
-        address parent2Address = factory.createAminalWithTraits(
+        address parent2Address = factory.createAminalWithGenes(
             "AngelBunny",
             "ANGEL",
             "A gentle bunny",
@@ -253,7 +253,7 @@ contract AminalBreedingVoteTest is Test {
     function testSkip_RevertWhen_InsufficientEnergyInParents() public {
         // Create new parents with minimal energy
         vm.startPrank(owner);
-        address lowEnergyParent1 = factory.createAminalWithTraits(
+        address lowEnergyParent1 = factory.createAminalWithGenes(
             "LowEnergy1",
             "LOW1",
             "A low energy parent",
@@ -270,7 +270,7 @@ contract AminalBreedingVoteTest is Test {
             })
         );
         
-        address lowEnergyParent2 = factory.createAminalWithTraits(
+        address lowEnergyParent2 = factory.createAminalWithGenes(
             "LowEnergy2",
             "LOW2",
             "Another low energy parent",

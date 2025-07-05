@@ -125,7 +125,7 @@ contract BreedingSkillTest is Test {
         });
         
         vm.prank(owner);
-        address parent1Address = factory.createAminalWithTraits(
+        address parent1Address = factory.createAminalWithGenes(
             "FireDragon",
             "FIRE",
             "A fierce dragon",
@@ -135,7 +135,7 @@ contract BreedingSkillTest is Test {
         parent1 = Aminal(payable(parent1Address));
         
         vm.prank(owner);
-        address parent2Address = factory.createAminalWithTraits(
+        address parent2Address = factory.createAminalWithGenes(
             "AngelBunny",
             "ANGEL",
             "A gentle bunny",
@@ -145,7 +145,7 @@ contract BreedingSkillTest is Test {
         parent2 = Aminal(payable(parent2Address));
         
         vm.prank(owner);
-        address parent3Address = factory.createAminalWithTraits(
+        address parent3Address = factory.createAminalWithGenes(
             "FairyButterfly",
             "FAIRY",
             "A mystical butterfly",

@@ -296,7 +296,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Create an Aminal with specific traits (for breeding voting contract)
+     * @notice Create an Aminal with specific genes (for breeding voting contract)
      * @dev This function is public to allow the breeding vote contract to create children
      * @param name The name of the Aminal
      * @param symbol The symbol for the Aminal
@@ -305,7 +305,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @param genes The specific genes for this Aminal
      * @return aminalContract The address of the newly deployed Aminal contract
      */
-    function createAminalWithTraits(
+    function createAminalWithGenes(
         string memory name,
         string memory symbol,
         string memory description,

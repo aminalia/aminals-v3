@@ -102,12 +102,12 @@ contract BreedingVetoTest is Test {
         });
         
         vm.prank(owner);
-        parent1 = Aminal(payable(factory.createAminalWithTraits(
+        parent1 = Aminal(payable(factory.createAminalWithGenes(
             "FireDragon", "FIRE", "A fierce dragon", "dragon.json", traits1
         )));
         
         vm.prank(owner);
-        parent2 = Aminal(payable(factory.createAminalWithTraits(
+        parent2 = Aminal(payable(factory.createAminalWithGenes(
             "AngelBunny", "ANGEL", "A gentle bunny", "bunny.json", traits2
         )));
         

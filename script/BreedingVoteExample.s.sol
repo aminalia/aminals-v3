@@ -80,7 +80,7 @@ contract BreedingVoteExample is Script {
             misc: "Glowing Eyes"
         });
         
-        address dragon = factory.createAminalWithTraits(
+        address dragon = factory.createAminalWithGenes(
             "FireDragon",
             "FIRE",
             "A powerful fire dragon",
@@ -101,7 +101,7 @@ contract BreedingVoteExample is Script {
             misc: "Sparkles"
         });
         
-        address bunny = factory.createAminalWithTraits(
+        address bunny = factory.createAminalWithGenes(
             "AngelBunny",
             "ANGEL",
             "A gentle angel bunny",

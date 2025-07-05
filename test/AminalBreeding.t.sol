@@ -91,7 +91,7 @@ contract AminalBreedingTest is Test {
         });
         
         vm.prank(user1);
-        address parent1Address = factory.createAminalWithTraits(
+        address parent1Address = factory.createAminalWithGenes(
             "FireDragon",
             "FIRE",
             "A fierce dragon",
@@ -101,7 +101,7 @@ contract AminalBreedingTest is Test {
         parent1 = Aminal(payable(parent1Address));
         
         vm.prank(user2);
-        address parent2Address = factory.createAminalWithTraits(
+        address parent2Address = factory.createAminalWithGenes(
             "AngelBunny",
             "ANGEL",
             "A gentle bunny",
@@ -228,7 +228,7 @@ contract AminalBreedingTest is Test {
         });
         
         vm.prank(user1);
-        address parent3Address = factory.createAminalWithTraits(
+        address parent3Address = factory.createAminalWithGenes(
             "RainbowCat",
             "RAINBOW",
             "A colorful cat",

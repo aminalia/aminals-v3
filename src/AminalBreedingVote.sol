@@ -670,7 +670,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
         string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
         
         // Create the child through the factory
-        childContract = factory.createAminalWithTraits(
+        childContract = factory.createAminalWithGenes(
             childName,
             childSymbol,
             childDescription,
