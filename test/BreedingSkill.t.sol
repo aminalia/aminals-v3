@@ -82,7 +82,7 @@ contract BreedingSkillTest is Test {
         factory = new AminalFactory(owner, BASE_URI, firstParentData, secondParentData);
         
         // Deploy breeding skill
-        breedingSkill = new BreedingSkill(address(factory));
+        breedingSkill = new BreedingSkill(address(factory), address(0x123)); // Placeholder
         
         // Create test Aminals
         ITraits.Traits memory traits1 = ITraits.Traits({
@@ -190,7 +190,8 @@ contract BreedingSkillTest is Test {
             string memory desc,
             string memory uri,
             uint256 timestamp,
-            bool executed
+            bool executed,
+            uint256 breedingTicketId
         ) = breedingSkill.proposals(1);
         
         assertEq(proposer, address(parent1));
@@ -247,7 +248,7 @@ contract BreedingSkillTest is Test {
         assertEq(parent2.loveFromUser(user2), initialLove2 - BREEDING_COST);
         
         // Verify proposal was executed
-        (,,,,,bool executed) = breedingSkill.proposals(1);
+        (,,,,,bool executed,) = breedingSkill.proposals(1);
         assertTrue(executed);
         
         // Verify child was created

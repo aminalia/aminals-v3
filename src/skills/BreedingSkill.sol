@@ -5,6 +5,7 @@ import {Skill} from "../Skill.sol";
 import {Aminal} from "../Aminal.sol";
 import {AminalFactory} from "../AminalFactory.sol";
 import {ITraits} from "../interfaces/ITraits.sol";
+import {IAminalBreedingVote} from "../interfaces/IAminalBreedingVote.sol";
 
 /**
  * @title BreedingSkill
@@ -23,10 +24,14 @@ contract BreedingSkill is Skill {
         string childTokenURI;
         uint256 timestamp;
         bool executed;
+        uint256 breedingTicketId; // ID in AminalBreedingVote contract
     }
 
     /// @dev The AminalFactory contract
     AminalFactory public immutable factory;
+    
+    /// @dev The AminalBreedingVote contract for trait auctions
+    address public immutable breedingVote;
     
     /// @dev Breeding cost per parent (2,500 units = 0.25 ETH worth)
     uint256 public constant BREEDING_COST = 2500;
@@ -53,11 +58,11 @@ contract BreedingSkill is Skill {
         string childTokenURI
     );
     
-    /// @dev Event emitted when a breeding proposal is accepted
+    /// @dev Event emitted when a breeding proposal is accepted and auction starts
     event ProposalAccepted(
         uint256 indexed proposalId,
         address indexed acceptor,
-        address indexed childContract
+        uint256 indexed breedingTicketId
     );
     
     
@@ -82,8 +87,9 @@ contract BreedingSkill is Skill {
     /// @dev Error thrown when parents are not valid Aminals
     error InvalidParent();
 
-    constructor(address _factory) {
+    constructor(address _factory, address _breedingVote) {
         factory = AminalFactory(_factory);
+        breedingVote = _breedingVote;
     }
 
 
@@ -145,7 +151,8 @@ contract BreedingSkill is Skill {
             childDescription: childDescription,
             childTokenURI: childTokenURI,
             timestamp: block.timestamp,
-            executed: false
+            executed: false,
+            breedingTicketId: 0 // Will be set when accepted
         });
         
         activeProposals[proposer][target] = proposalId;
@@ -178,41 +185,19 @@ contract BreedingSkill is Skill {
         // Clear active proposal mapping
         activeProposals[proposal.proposer][proposal.target] = 0;
         
-        // Get parent traits
-        Aminal parent1 = Aminal(payable(proposal.proposer));
-        Aminal parent2 = Aminal(payable(acceptor));
-        
-        ITraits.Traits memory traits1 = parent1.getTraits();
-        ITraits.Traits memory traits2 = parent2.getTraits();
-        
-        // Create child traits by alternating between parents
-        ITraits.Traits memory childTraits = ITraits.Traits({
-            back: traits1.back,
-            arm: traits2.arm,
-            tail: traits1.tail,
-            ears: traits2.ears,
-            body: traits1.body,
-            face: traits2.face,
-            mouth: traits1.mouth,
-            misc: traits2.misc
-        });
-        
-        // Generate child name and symbol
-        string memory parent1Name = parent1.name();
-        string memory parent2Name = parent2.name();
-        string memory childName = string.concat(parent1Name, "-", parent2Name, "-Child");
-        string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
-        
-        // Create the child through the factory
-        address childContract = factory.createAminalWithTraits(
-            childName,
-            childSymbol,
+        // Create breeding ticket in AminalBreedingVote contract
+        // This starts the trait auction process
+        uint256 breedingTicketId = IAminalBreedingVote(breedingVote).createBreedingTicket(
+            proposal.proposer,
+            acceptor,
             proposal.childDescription,
-            proposal.childTokenURI,
-            childTraits
+            proposal.childTokenURI
         );
         
-        emit ProposalAccepted(proposalId, acceptor, childContract);
+        // Store the breeding ticket ID
+        proposal.breedingTicketId = breedingTicketId;
+        
+        emit ProposalAccepted(proposalId, acceptor, breedingTicketId);
         
         return BREEDING_COST;
     }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Aminal} from "./Aminal.sol";
 import {AminalFactory} from "./AminalFactory.sol";
 import {ITraits} from "./interfaces/ITraits.sol";
+import {IAminalBreedingVote} from "./interfaces/IAminalBreedingVote.sol";
 
 /**
  * @title AminalBreedingVote
@@ -25,10 +26,10 @@ import {ITraits} from "./interfaces/ITraits.sol";
  * - The parent with more votes wins for that trait
  * - Ties default to parent1's trait
  */
-contract AminalBreedingVote {
+contract AminalBreedingVote is IAminalBreedingVote {
     
-    /// @dev Structure to track a single breeding proposal
-    struct BreedingProposal {
+    /// @dev Structure to track a breeding ticket (formerly proposal)
+    struct BreedingTicket {
         address parent1;
         address parent2;
         string childDescription;
@@ -36,6 +37,7 @@ contract AminalBreedingVote {
         uint256 votingDeadline;
         bool executed;
         address childContract; // Set after breeding execution
+        address creator; // Who initiated this breeding (for permissions)
     }
     
     /// @dev Structure to track votes for a specific trait
@@ -59,27 +61,33 @@ contract AminalBreedingVote {
     /// @dev The AminalFactory contract
     AminalFactory public immutable factory;
     
-    /// @dev Counter for breeding proposal IDs
-    uint256 public nextProposalId;
+    /// @dev Counter for breeding ticket IDs
+    uint256 public nextTicketId;
     
-    /// @dev Mapping from proposal ID to breeding proposal
-    mapping(uint256 => BreedingProposal) public proposals;
+    /// @dev Mapping from ticket ID to breeding ticket
+    mapping(uint256 => BreedingTicket) public tickets;
     
-    /// @dev Mapping from proposal ID to trait type to vote counts
-    /// @notice proposalId => TraitType => TraitVote
+    /// @dev Authorized breeding skill contract
+    address public immutable breedingSkill;
+    
+    /// @dev Mapping from ticket ID to trait type to vote counts
+    /// @notice ticketId => TraitType => TraitVote
     mapping(uint256 => mapping(TraitType => TraitVote)) public traitVotes;
     
-    /// @dev Mapping to track if a user has voted on a proposal
-    /// @notice proposalId => voter => hasVoted
+    /// @dev Mapping to track if a user has voted on a ticket
+    /// @notice ticketId => voter => hasVoted
     mapping(uint256 => mapping(address => bool)) public hasVoted;
     
-    /// @dev Mapping to track user's voting power for a proposal
-    /// @notice proposalId => voter => votingPower (recorded at vote time)
+    /// @dev Mapping to track user's voting power for a ticket
+    /// @notice ticketId => voter => votingPower (recorded at vote time)
     mapping(uint256 => mapping(address => uint256)) public voterPower;
     
-    /// @dev Event emitted when a breeding proposal is created
-    event ProposalCreated(
-        uint256 indexed proposalId,
+    /// @dev Voting duration for trait auctions (3 days)
+    uint256 public constant VOTING_DURATION = 3 days;
+    
+    /// @dev Event emitted when a breeding ticket is created
+    event BreedingTicketCreated(
+        uint256 indexed ticketId,
         address indexed parent1,
         address indexed parent2,
         uint256 votingDeadline
@@ -87,7 +95,7 @@ contract AminalBreedingVote {
     
     /// @dev Event emitted when someone votes
     event VoteCast(
-        uint256 indexed proposalId,
+        uint256 indexed ticketId,
         address indexed voter,
         uint256 votingPower,
         TraitType[] traits,
@@ -96,7 +104,7 @@ contract AminalBreedingVote {
     
     /// @dev Event emitted when breeding is executed
     event BreedingExecuted(
-        uint256 indexed proposalId,
+        uint256 indexed ticketId,
         address indexed childContract
     );
     
@@ -124,96 +132,81 @@ contract AminalBreedingVote {
     /// @dev Error thrown when parent is not a valid Aminal
     error InvalidParent();
     
-    /// @dev Error thrown when user doesn't have enough love/energy to create proposal
-    error InsufficientLoveAndEnergy();
-    
-    /// @dev Cost to create a breeding proposal per parent (2,500 units = 0.25 ETH each)
-    uint256 public constant BREEDING_COST_PER_PARENT = 2500;
+    /// @dev Error thrown when called by unauthorized address
+    error NotAuthorized();
     
     /**
      * @dev Constructor
      * @param _factory The AminalFactory contract address
+     * @param _breedingSkill The authorized BreedingSkill contract
      */
-    constructor(address _factory) {
+    constructor(address _factory, address _breedingSkill) {
         factory = AminalFactory(_factory);
+        breedingSkill = _breedingSkill;
     }
     
     /**
-     * @notice Create a breeding proposal for two Aminals
-     * @dev Costs 2,500 energy from each parent (5,000 total)
+     * @notice Create a breeding ticket that starts the trait voting process
+     * @dev Only callable by the authorized BreedingSkill contract
      * @param parent1 The first parent Aminal
      * @param parent2 The second parent Aminal
      * @param childDescription Description for the child Aminal
      * @param childTokenURI Token URI for the child Aminal
-     * @param votingDuration How long the voting period lasts (in seconds)
-     * @return proposalId The ID of the created proposal
+     * @return ticketId The ID of the created breeding ticket
      */
-    function createProposal(
+    function createBreedingTicket(
         address parent1,
         address parent2,
         string memory childDescription,
-        string memory childTokenURI,
-        uint256 votingDuration
-    ) external returns (uint256 proposalId) {
+        string memory childTokenURI
+    ) external returns (uint256 ticketId) {
+        // Only the authorized BreedingSkill can create tickets
+        if (msg.sender != breedingSkill) revert NotAuthorized();
+        
         // Validate parents
         if (!factory.isValidAminal(parent1)) revert InvalidParent();
         if (!factory.isValidAminal(parent2)) revert InvalidParent();
         if (parent1 == parent2) revert InvalidParent();
         
-        // Get parent Aminals
-        Aminal aminalParent1 = Aminal(payable(parent1));
-        Aminal aminalParent2 = Aminal(payable(parent2));
+        ticketId = ++nextTicketId;
         
-        // Check energy levels in both parents
-        uint256 energyParent1 = aminalParent1.getEnergy();
-        uint256 energyParent2 = aminalParent2.getEnergy();
-        
-        // Both parents must have sufficient energy
-        if (energyParent1 < BREEDING_COST_PER_PARENT || energyParent2 < BREEDING_COST_PER_PARENT) {
-            revert InsufficientLoveAndEnergy();
-        }
-        
-        // This contract is now deprecated - use BreedingSkill instead
-        revert("Use BreedingSkill instead");
-        
-        proposalId = nextProposalId++;
-        
-        proposals[proposalId] = BreedingProposal({
+        tickets[ticketId] = BreedingTicket({
             parent1: parent1,
             parent2: parent2,
             childDescription: childDescription,
             childTokenURI: childTokenURI,
-            votingDeadline: block.timestamp + votingDuration,
+            votingDeadline: block.timestamp + VOTING_DURATION,
             executed: false,
-            childContract: address(0)
+            childContract: address(0),
+            creator: tx.origin // Track the original user who initiated breeding
         });
         
-        emit ProposalCreated(proposalId, parent1, parent2, block.timestamp + votingDuration);
+        emit BreedingTicketCreated(ticketId, parent1, parent2, block.timestamp + VOTING_DURATION);
     }
     
     /**
-     * @notice Vote on trait inheritance for a breeding proposal
+     * @notice Vote on trait inheritance for a breeding ticket
      * @dev Voting power is the combined love the voter has in both parents
-     * @param proposalId The proposal to vote on
+     * @param ticketId The ticket to vote on
      * @param traits Array of trait types to vote on
      * @param votesForParent1 Array of votes (true = parent1, false = parent2)
      */
     function vote(
-        uint256 proposalId,
+        uint256 ticketId,
         TraitType[] calldata traits,
         bool[] calldata votesForParent1
     ) external {
         if (traits.length != votesForParent1.length) revert ArrayLengthMismatch();
         
-        BreedingProposal memory proposal = proposals[proposalId];
-        if (proposal.parent1 == address(0)) revert ProposalDoesNotExist();
-        if (block.timestamp > proposal.votingDeadline) revert VotingEnded();
-        if (proposal.executed) revert ProposalAlreadyExecuted();
-        if (hasVoted[proposalId][msg.sender]) revert AlreadyVoted();
+        BreedingTicket memory ticket = tickets[ticketId];
+        if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
+        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
+        if (ticket.executed) revert ProposalAlreadyExecuted();
+        if (hasVoted[ticketId][msg.sender]) revert AlreadyVoted();
         
         // Get love from both parents
-        Aminal parent1 = Aminal(payable(proposal.parent1));
-        Aminal parent2 = Aminal(payable(proposal.parent2));
+        Aminal parent1 = Aminal(payable(ticket.parent1));
+        Aminal parent2 = Aminal(payable(ticket.parent2));
         
         uint256 loveInParent1 = parent1.loveFromUser(msg.sender);
         uint256 loveInParent2 = parent2.loveFromUser(msg.sender);
@@ -224,53 +217,53 @@ contract AminalBreedingVote {
         if (votingPower == 0) revert InsufficientLoveInParents();
         
         // Record that user has voted and their voting power
-        hasVoted[proposalId][msg.sender] = true;
-        voterPower[proposalId][msg.sender] = votingPower;
+        hasVoted[ticketId][msg.sender] = true;
+        voterPower[ticketId][msg.sender] = votingPower;
         
         // Apply votes to each trait
         for (uint256 i = 0; i < traits.length; i++) {
             TraitType trait = traits[i];
             if (votesForParent1[i]) {
-                traitVotes[proposalId][trait].parent1Votes += votingPower;
+                traitVotes[ticketId][trait].parent1Votes += votingPower;
             } else {
-                traitVotes[proposalId][trait].parent2Votes += votingPower;
+                traitVotes[ticketId][trait].parent2Votes += votingPower;
             }
         }
         
-        emit VoteCast(proposalId, msg.sender, votingPower, traits, votesForParent1);
+        emit VoteCast(ticketId, msg.sender, votingPower, traits, votesForParent1);
     }
     
     /**
      * @notice Execute breeding based on voting results
      * @dev Anyone can execute after voting period ends
-     * @param proposalId The proposal to execute
+     * @param ticketId The ticket to execute
      * @return childContract The address of the created child Aminal
      */
-    function executeBreeding(uint256 proposalId) external returns (address childContract) {
-        BreedingProposal storage proposal = proposals[proposalId];
-        if (proposal.parent1 == address(0)) revert ProposalDoesNotExist();
-        if (block.timestamp <= proposal.votingDeadline) revert VotingNotEnded();
-        if (proposal.executed) revert ProposalAlreadyExecuted();
+    function executeBreeding(uint256 ticketId) external returns (address childContract) {
+        BreedingTicket storage ticket = tickets[ticketId];
+        if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
+        if (block.timestamp <= ticket.votingDeadline) revert VotingNotEnded();
+        if (ticket.executed) revert ProposalAlreadyExecuted();
         
-        proposal.executed = true;
+        ticket.executed = true;
         
         // Get parent traits
-        Aminal parent1 = Aminal(payable(proposal.parent1));
-        Aminal parent2 = Aminal(payable(proposal.parent2));
+        Aminal parent1 = Aminal(payable(ticket.parent1));
+        Aminal parent2 = Aminal(payable(ticket.parent2));
         
         ITraits.Traits memory traits1 = parent1.getTraits();
         ITraits.Traits memory traits2 = parent2.getTraits();
         
         // Determine winning traits based on votes
         ITraits.Traits memory childTraits = ITraits.Traits({
-            back: _getWinningTrait(proposalId, TraitType.BACK) ? traits1.back : traits2.back,
-            arm: _getWinningTrait(proposalId, TraitType.ARM) ? traits1.arm : traits2.arm,
-            tail: _getWinningTrait(proposalId, TraitType.TAIL) ? traits1.tail : traits2.tail,
-            ears: _getWinningTrait(proposalId, TraitType.EARS) ? traits1.ears : traits2.ears,
-            body: _getWinningTrait(proposalId, TraitType.BODY) ? traits1.body : traits2.body,
-            face: _getWinningTrait(proposalId, TraitType.FACE) ? traits1.face : traits2.face,
-            mouth: _getWinningTrait(proposalId, TraitType.MOUTH) ? traits1.mouth : traits2.mouth,
-            misc: _getWinningTrait(proposalId, TraitType.MISC) ? traits1.misc : traits2.misc
+            back: _getWinningTrait(ticketId, TraitType.BACK) ? traits1.back : traits2.back,
+            arm: _getWinningTrait(ticketId, TraitType.ARM) ? traits1.arm : traits2.arm,
+            tail: _getWinningTrait(ticketId, TraitType.TAIL) ? traits1.tail : traits2.tail,
+            ears: _getWinningTrait(ticketId, TraitType.EARS) ? traits1.ears : traits2.ears,
+            body: _getWinningTrait(ticketId, TraitType.BODY) ? traits1.body : traits2.body,
+            face: _getWinningTrait(ticketId, TraitType.FACE) ? traits1.face : traits2.face,
+            mouth: _getWinningTrait(ticketId, TraitType.MOUTH) ? traits1.mouth : traits2.mouth,
+            misc: _getWinningTrait(ticketId, TraitType.MISC) ? traits1.misc : traits2.misc
         });
         
         // Generate child name and symbol from parent names
@@ -280,65 +273,63 @@ contract AminalBreedingVote {
         string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
         
         // Create the child through the factory
-        // Note: This will fail if factory doesn't have a function to create with specific traits
-        // We'll need to add this to AminalFactory
         childContract = factory.createAminalWithTraits(
             childName,
             childSymbol,
-            proposal.childDescription,
-            proposal.childTokenURI,
+            ticket.childDescription,
+            ticket.childTokenURI,
             childTraits
         );
         
-        proposal.childContract = childContract;
+        ticket.childContract = childContract;
         
-        emit BreedingExecuted(proposalId, childContract);
+        emit BreedingExecuted(ticketId, childContract);
     }
     
     /**
      * @dev Determine which parent wins for a specific trait
-     * @param proposalId The proposal ID
+     * @param ticketId The ticket ID
      * @param trait The trait type
      * @return True if parent1 wins, false if parent2 wins
      */
-    function _getWinningTrait(uint256 proposalId, TraitType trait) private view returns (bool) {
-        TraitVote memory votes = traitVotes[proposalId][trait];
+    function _getWinningTrait(uint256 ticketId, TraitType trait) private view returns (bool) {
+        TraitVote memory votes = traitVotes[ticketId][trait];
         // Parent1 wins ties
         return votes.parent1Votes >= votes.parent2Votes;
     }
     
     /**
-     * @notice Get the current vote counts for all traits in a proposal
-     * @param proposalId The proposal to query
+     * @notice Get the current vote counts for all traits in a ticket
+     * @param ticketId The ticket to query
      * @return results Array of vote counts for each trait (8 elements)
      */
-    function getVoteResults(uint256 proposalId) external view returns (TraitVote[8] memory results) {
-        results[0] = traitVotes[proposalId][TraitType.BACK];
-        results[1] = traitVotes[proposalId][TraitType.ARM];
-        results[2] = traitVotes[proposalId][TraitType.TAIL];
-        results[3] = traitVotes[proposalId][TraitType.EARS];
-        results[4] = traitVotes[proposalId][TraitType.BODY];
-        results[5] = traitVotes[proposalId][TraitType.FACE];
-        results[6] = traitVotes[proposalId][TraitType.MOUTH];
-        results[7] = traitVotes[proposalId][TraitType.MISC];
+    function getVoteResults(uint256 ticketId) external view returns (TraitVote[8] memory results) {
+        results[0] = traitVotes[ticketId][TraitType.BACK];
+        results[1] = traitVotes[ticketId][TraitType.ARM];
+        results[2] = traitVotes[ticketId][TraitType.TAIL];
+        results[3] = traitVotes[ticketId][TraitType.EARS];
+        results[4] = traitVotes[ticketId][TraitType.BODY];
+        results[5] = traitVotes[ticketId][TraitType.FACE];
+        results[6] = traitVotes[ticketId][TraitType.MOUTH];
+        results[7] = traitVotes[ticketId][TraitType.MISC];
     }
     
     /**
-     * @notice Check if a user can vote on a proposal
-     * @param proposalId The proposal ID
+     * @notice Check if a user can vote on a ticket
+     * @param ticketId The ticket ID
      * @param voter The potential voter
      * @return canVoteResult Whether the user can vote
      * @return votingPower The voting power they would have
      */
-    function canVote(uint256 proposalId, address voter) external view returns (bool canVoteResult, uint256 votingPower) {
-        BreedingProposal memory proposal = proposals[proposalId];
-        if (proposal.parent1 == address(0)) return (false, 0);
-        if (block.timestamp > proposal.votingDeadline) return (false, 0);
-        if (proposal.executed) return (false, 0);
-        if (hasVoted[proposalId][voter]) return (false, 0);
+    function canVote(uint256 ticketId, address voter) external view returns (bool canVoteResult, uint256 votingPower) {
+        BreedingTicket memory ticket = tickets[ticketId];
+        if (ticket.parent1 == address(0)) return (false, 0);
+        if (block.timestamp > ticket.votingDeadline) return (false, 0);
+        if (ticket.executed) return (false, 0);
+        if (hasVoted[ticketId][voter]) return (false, 0);
         
-        Aminal parent1 = Aminal(payable(proposal.parent1));
-        Aminal parent2 = Aminal(payable(proposal.parent2));
+        Aminal parent1 = Aminal(payable(ticket.parent1));
+        Aminal parent2 = Aminal(payable(ticket.parent2));
         
         uint256 loveInParent1 = parent1.loveFromUser(voter);
         uint256 loveInParent2 = parent2.loveFromUser(voter);
