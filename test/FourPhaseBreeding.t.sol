@@ -191,7 +191,7 @@ contract FourPhaseBreedingTest is Test {
         ));
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.BACK,
+            AminalBreedingVote.GeneType.BACK,
             address(geneContract),
             1
         );
@@ -206,9 +206,9 @@ contract FourPhaseBreedingTest is Test {
         assertTrue(success);
         
         // Try to vote in gene proposal phase
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(voter1);
@@ -217,7 +217,7 @@ contract FourPhaseBreedingTest is Test {
             AminalBreedingVote.Phase.GENE_PROPOSAL,
             AminalBreedingVote.Phase.VOTING
         ));
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
     }
     
     function test_OneGeneProposalPerUser() public {
@@ -235,37 +235,37 @@ contract FourPhaseBreedingTest is Test {
         vm.prank(proposer1);
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.BACK,
+            AminalBreedingVote.GeneType.BACK,
             address(geneContract),
             1 // Rainbow Wings
         );
         
         // Check active proposal
-        (AminalBreedingVote.TraitType traitType, uint256 geneId, bool hasProposal) = 
+        (AminalBreedingVote.GeneType geneType, uint256 proposalId, bool hasProposal) = 
             breedingVote.userActiveProposal(ticketId, proposer1);
         assertTrue(hasProposal);
-        assertEq(uint256(traitType), uint256(AminalBreedingVote.TraitType.BACK));
-        assertEq(geneId, 0);
+        assertEq(uint256(geneType), uint256(AminalBreedingVote.GeneType.BACK));
+        assertEq(proposalId, 0);
         
         // Replace with new proposal
         vm.prank(proposer1);
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.ARM,
+            AminalBreedingVote.GeneType.ARM,
             address(geneContract),
             3 // Laser Arms
         );
         
         // Check updated active proposal
-        (traitType, geneId, hasProposal) = breedingVote.userActiveProposal(ticketId, proposer1);
+        (geneType, proposalId, hasProposal) = breedingVote.userActiveProposal(ticketId, proposer1);
         assertTrue(hasProposal);
-        assertEq(uint256(traitType), uint256(AminalBreedingVote.TraitType.ARM));
-        assertEq(geneId, 0); // First gene proposal for ARM trait
+        assertEq(uint256(geneType), uint256(AminalBreedingVote.GeneType.ARM));
+        assertEq(proposalId, 0); // First gene proposal for ARM category
         
         // Verify old proposal was marked as replaced
         AminalBreedingVote.GeneProposal[] memory allBackProposals = breedingVote.getGeneProposals(
             ticketId, 
-            AminalBreedingVote.TraitType.BACK
+            AminalBreedingVote.GeneType.BACK
         );
         assertEq(allBackProposals[0].proposer, address(0)); // Replaced proposals have proposer cleared
     }
@@ -290,21 +290,21 @@ contract FourPhaseBreedingTest is Test {
         
         // Proposer1: Creates then replaces
         vm.prank(proposer1);
-        breedingVote.proposeGene(ticketId, AminalBreedingVote.TraitType.BACK, address(geneContract), 1);
+        breedingVote.proposeGene(ticketId, AminalBreedingVote.GeneType.BACK, address(geneContract), 1);
         vm.prank(proposer1);
-        breedingVote.proposeGene(ticketId, AminalBreedingVote.TraitType.BACK, address(geneContract), 2);
+        breedingVote.proposeGene(ticketId, AminalBreedingVote.GeneType.BACK, address(geneContract), 2);
         
         // Proposer2: Creates one
         vm.prank(proposer2);
-        breedingVote.proposeGene(ticketId, AminalBreedingVote.TraitType.BACK, address(geneContract), 1);
+        breedingVote.proposeGene(ticketId, AminalBreedingVote.GeneType.BACK, address(geneContract), 1);
         
-        // Proposer3: Creates for different trait
+        // Proposer3: Creates for different gene category
         vm.prank(proposer3);
-        breedingVote.proposeGene(ticketId, AminalBreedingVote.TraitType.ARM, address(geneContract), 3);
+        breedingVote.proposeGene(ticketId, AminalBreedingVote.GeneType.ARM, address(geneContract), 3);
         
-        // Get active proposals for BACK trait
+        // Get active proposals for BACK gene category
         (AminalBreedingVote.GeneProposal[] memory activeProposals, uint256 activeCount) = 
-            breedingVote.getActiveGeneProposals(ticketId, AminalBreedingVote.TraitType.BACK);
+            breedingVote.getActiveGeneProposals(ticketId, AminalBreedingVote.GeneType.BACK);
         
         assertEq(activeCount, 2); // proposer1's second proposal and proposer2's proposal
         assertEq(activeProposals.length, 2);
@@ -328,7 +328,7 @@ contract FourPhaseBreedingTest is Test {
         vm.prank(proposer1);
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.BACK,
+            AminalBreedingVote.GeneType.BACK,
             address(geneContract),
             1 // Rainbow Wings
         );
@@ -337,9 +337,9 @@ contract FourPhaseBreedingTest is Test {
         vm.prank(proposer1);
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.ARM,
+            AminalBreedingVote.GeneType.ARM,
             address(geneContract),
-            3 // Laser Arms - different trait type
+            3 // Laser Arms - different gene type
         );
         
         // Move to voting phase
@@ -352,7 +352,7 @@ contract FourPhaseBreedingTest is Test {
         
         vm.prank(voter1);
         vm.expectRevert("Gene proposal was replaced");
-        breedingVote.voteForGene(ticketId, AminalBreedingVote.TraitType.BACK, 0);
+        breedingVote.voteForGene(ticketId, AminalBreedingVote.GeneType.BACK, 0);
         
         // Voter2 votes to proceed
         vm.prank(voter2);
@@ -430,7 +430,7 @@ contract FourPhaseBreedingTest is Test {
         vm.prank(proposer1);
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.BACK,
+            AminalBreedingVote.GeneType.BACK,
             address(geneContract),
             1
         );
@@ -439,14 +439,14 @@ contract FourPhaseBreedingTest is Test {
         vm.prank(proposer2);
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.BACK,
+            AminalBreedingVote.GeneType.BACK,
             address(geneContract),
             2
         );
         
         // Verify proposals exist
         (AminalBreedingVote.GeneProposal[] memory activeProposals,) = 
-            breedingVote.getActiveGeneProposals(ticketId, AminalBreedingVote.TraitType.BACK);
+            breedingVote.getActiveGeneProposals(ticketId, AminalBreedingVote.GeneType.BACK);
         assertEq(activeProposals.length, 2);
     }
     
@@ -467,22 +467,22 @@ contract FourPhaseBreedingTest is Test {
         (success,) = address(parent2).call{value: 0.1 ether}("");
         assertTrue(success);
         
-        // Voter1 votes for Rainbow Wings gene (geneId 0) with high voting power
+        // Voter1 votes for Rainbow Wings gene (proposalId 0) with high voting power
         vm.prank(voter1);
-        breedingVote.voteForGene(ticketId, AminalBreedingVote.TraitType.BACK, 0);
+        breedingVote.voteForGene(ticketId, AminalBreedingVote.GeneType.BACK, 0);
         
         // Check vote was recorded
-        uint256 geneVotes = breedingVote.getGeneVotes(ticketId, AminalBreedingVote.TraitType.BACK, 0);
+        uint256 geneVotes = breedingVote.getGeneVotes(ticketId, AminalBreedingVote.GeneType.BACK, 0);
         console.log("Gene votes for Rainbow Wings:", geneVotes);
         
         // Voter2 votes for parent traits
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true; // parent1
         
         vm.prank(voter2);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         // Vote to proceed (not veto)
         vm.prank(voter1);
@@ -494,7 +494,7 @@ contract FourPhaseBreedingTest is Test {
         (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(ticketId);
         console.log("Parent1 back votes:", parent1Votes[0]);
         console.log("Parent2 back votes:", parent2Votes[0]);
-        console.log("Gene 0 (Rainbow) votes:", breedingVote.getGeneVotes(ticketId, AminalBreedingVote.TraitType.BACK, 0));
-        console.log("Gene 1 (Crystal) votes:", breedingVote.getGeneVotes(ticketId, AminalBreedingVote.TraitType.BACK, 1));
+        console.log("Gene 0 (Rainbow) votes:", breedingVote.getGeneVotes(ticketId, AminalBreedingVote.GeneType.BACK, 0));
+        console.log("Gene 1 (Crystal) votes:", breedingVote.getGeneVotes(ticketId, AminalBreedingVote.GeneType.BACK, 1));
     }
 }

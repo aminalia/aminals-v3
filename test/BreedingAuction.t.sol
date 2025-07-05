@@ -183,19 +183,19 @@ contract BreedingAuctionTest is Test {
         assertTrue(success);
         
         // Step 4: Voters vote on traits
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](8);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](8);
         bool[] memory voter1Choices = new bool[](8);
         bool[] memory voter2Choices = new bool[](8);
         
         // Voter1 prefers mostly parent1 traits
-        traits[0] = AminalBreedingVote.TraitType.BACK;
-        traits[1] = AminalBreedingVote.TraitType.ARM;
-        traits[2] = AminalBreedingVote.TraitType.TAIL;
-        traits[3] = AminalBreedingVote.TraitType.EARS;
-        traits[4] = AminalBreedingVote.TraitType.BODY;
-        traits[5] = AminalBreedingVote.TraitType.FACE;
-        traits[6] = AminalBreedingVote.TraitType.MOUTH;
-        traits[7] = AminalBreedingVote.TraitType.MISC;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        geneTypes[1] = AminalBreedingVote.GeneType.ARM;
+        geneTypes[2] = AminalBreedingVote.GeneType.TAIL;
+        geneTypes[3] = AminalBreedingVote.GeneType.EARS;
+        geneTypes[4] = AminalBreedingVote.GeneType.BODY;
+        geneTypes[5] = AminalBreedingVote.GeneType.FACE;
+        geneTypes[6] = AminalBreedingVote.GeneType.MOUTH;
+        geneTypes[7] = AminalBreedingVote.GeneType.MISC;
         
         voter1Choices[0] = true;  // BACK from parent1
         voter1Choices[1] = true;  // ARM from parent1
@@ -217,10 +217,10 @@ contract BreedingAuctionTest is Test {
         voter2Choices[7] = false; // MISC from parent2
         
         vm.prank(voter1);
-        breedingVote.vote(1, traits, voter1Choices);
+        breedingVote.vote(1, geneTypes, voter1Choices);
         
         vm.prank(voter2);
-        breedingVote.vote(1, traits, voter2Choices);
+        breedingVote.vote(1, geneTypes, voter2Choices);
         
         // Check voting power
         uint256 voter1Power = parent1.loveFromUser(voter1) + parent2.loveFromUser(voter1);

@@ -110,14 +110,14 @@ contract SimpleBreedingVoteExample is Script {
         // Vote for mixed traits
         vm.startPrank(voter);
         
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](4);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](4);
         bool[] memory votes = new bool[](4);
         
         // Vote for dragon back and tail, bunny ears and face
-        traits[0] = AminalBreedingVote.TraitType.BACK;
-        traits[1] = AminalBreedingVote.TraitType.TAIL;
-        traits[2] = AminalBreedingVote.TraitType.EARS;
-        traits[3] = AminalBreedingVote.TraitType.FACE;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        geneTypes[1] = AminalBreedingVote.GeneType.TAIL;
+        geneTypes[2] = AminalBreedingVote.GeneType.EARS;
+        geneTypes[3] = AminalBreedingVote.GeneType.FACE;
         
         votes[0] = true;  // Dragon back
         votes[1] = true;  // Dragon tail

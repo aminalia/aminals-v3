@@ -243,13 +243,13 @@ contract BreedingVetoTest is Test {
         assertFalse(wouldBeVetoed, "Should not be vetoed");
         
         // Also vote on some traits
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votesForParent1 = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votesForParent1[0] = true;
         
         vm.prank(proceedVoter1);
-        breedingVote.vote(ticketId, traits, votesForParent1);
+        breedingVote.vote(ticketId, geneTypes, votesForParent1);
         
         // Wait for voting to end
         vm.warp(block.timestamp + 3 days + 1);
@@ -328,15 +328,15 @@ contract BreedingVetoTest is Test {
         breedingVote.voteOnVeto(ticketId, false);
         
         // Also vote on traits
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](2);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](2);
         bool[] memory votesForParent1 = new bool[](2);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
-        traits[1] = AminalBreedingVote.TraitType.FACE;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        geneTypes[1] = AminalBreedingVote.GeneType.FACE;
         votesForParent1[0] = true;
         votesForParent1[1] = false;
         
         vm.prank(vetoVoter);
-        breedingVote.vote(ticketId, traits, votesForParent1);
+        breedingVote.vote(ticketId, geneTypes, votesForParent1);
         
         // Check that trait votes are recorded independently
         (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(ticketId);

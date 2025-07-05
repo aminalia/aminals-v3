@@ -131,13 +131,13 @@ contract VoteChangingTest is Test {
         assertEq(initialPower, expectedPower);
         
         // Vote for first time
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(voter);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         // Verify voting power is locked
         assertEq(breedingVote.voterPower(ticketId, voter), expectedPower);
@@ -169,15 +169,15 @@ contract VoteChangingTest is Test {
         assertTrue(success);
         
         // Initial vote for parent1
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](2);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](2);
         bool[] memory votes = new bool[](2);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
-        traits[1] = AminalBreedingVote.TraitType.ARM;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        geneTypes[1] = AminalBreedingVote.GeneType.ARM;
         votes[0] = true;  // parent1
         votes[1] = true;  // parent1
         
         vm.prank(voter);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         // Check initial vote counts
         (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(ticketId);
@@ -193,7 +193,7 @@ contract VoteChangingTest is Test {
         votes[1] = false;  // parent2
         
         vm.prank(voter);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         // Check vote counts changed
         (parent1Votes, parent2Votes) = breedingVote.getVoteResults(ticketId);
@@ -250,13 +250,13 @@ contract VoteChangingTest is Test {
         assertTrue(success);
         
         // Vote on trait first to lock power
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(voter);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         uint256 lockedPower = breedingVote.voterPower(ticketId, voter);
         
@@ -278,18 +278,18 @@ contract VoteChangingTest is Test {
         vm.prank(breederA);
         breedingVote.proposeGene(
             ticketId,
-            AminalBreedingVote.TraitType.BACK,
+            AminalBreedingVote.GeneType.BACK,
             address(geneContract),
             1
         );
         
         // Vote for gene - should use locked power, not current
         vm.prank(voter);
-        breedingVote.voteForGene(ticketId, AminalBreedingVote.TraitType.BACK, 0);
+        breedingVote.voteForGene(ticketId, AminalBreedingVote.GeneType.BACK, 0);
         
         uint256 geneVotes = breedingVote.getGeneVotes(
             ticketId,
-            AminalBreedingVote.TraitType.BACK,
+            AminalBreedingVote.GeneType.BACK,
             0
         );
         
@@ -310,35 +310,35 @@ contract VoteChangingTest is Test {
         assertTrue(success);
         
         // Vote on some traits
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](2);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](2);
         bool[] memory votes = new bool[](2);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
-        traits[1] = AminalBreedingVote.TraitType.FACE;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        geneTypes[1] = AminalBreedingVote.GeneType.FACE;
         votes[0] = true;  // parent1
         votes[1] = false; // parent2
         
         vm.prank(voter);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         // Vote on different traits
-        traits = new AminalBreedingVote.TraitType[](2);
+        geneTypes = new AminalBreedingVote.GeneType[](2);
         votes = new bool[](2);
-        traits[0] = AminalBreedingVote.TraitType.ARM;
-        traits[1] = AminalBreedingVote.TraitType.TAIL;
+        geneTypes[0] = AminalBreedingVote.GeneType.ARM;
+        geneTypes[1] = AminalBreedingVote.GeneType.TAIL;
         votes[0] = false; // parent2
         votes[1] = true;  // parent1
         
         vm.prank(voter);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         // Change one of the previous votes
-        traits = new AminalBreedingVote.TraitType[](1);
+        geneTypes = new AminalBreedingVote.GeneType[](1);
         votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = false; // Change to parent2
         
         vm.prank(voter);
-        breedingVote.vote(ticketId, traits, votes);
+        breedingVote.vote(ticketId, geneTypes, votes);
         
         // Verify all votes are correct
         (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(ticketId);

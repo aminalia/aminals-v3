@@ -152,13 +152,13 @@ contract AminalFactoryBreedingOnlyTest is Test {
         uint256 proposalId = 1; // Mock ticket ID
         
         // Vote
-        AminalBreedingVote.TraitType[] memory voteTraits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory voteGeneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        voteTraits[0] = AminalBreedingVote.TraitType.BACK;
+        voteGeneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true; // Vote for Adam's back
         
         vm.prank(user);
-        breedingVote.vote(proposalId, voteTraits, votes);
+        breedingVote.vote(proposalId, voteGeneTypes, votes);
         
         // Execute breeding
         vm.warp(block.timestamp + 2 hours);
@@ -215,7 +215,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
         uint256 proposalId1 = 1; // Mock ticket ID
         
         vm.prank(user);
-        breedingVote.vote(proposalId1, new AminalBreedingVote.TraitType[](0), new bool[](0));
+        breedingVote.vote(proposalId1, new AminalBreedingVote.GeneType[](0), new bool[](0));
         
         vm.warp(block.timestamp + 2 hours);
         address gen1Child = breedingVote.executeBreeding(proposalId1);
@@ -230,7 +230,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
         uint256 proposalId2 = 2; // Mock ticket ID
         
         vm.prank(user);
-        breedingVote.vote(proposalId2, new AminalBreedingVote.TraitType[](0), new bool[](0));
+        breedingVote.vote(proposalId2, new AminalBreedingVote.GeneType[](0), new bool[](0));
         
         vm.warp(block.timestamp + 4 hours);
         address gen2Child = breedingVote.executeBreeding(proposalId2);

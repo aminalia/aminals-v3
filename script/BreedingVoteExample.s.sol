@@ -162,35 +162,35 @@ contract BreedingVoteExample is Script {
         // Cast votes
         console.log("\n--- CASTING VOTES ---");
         
-        // Alice votes for all dragon traits
-        AminalBreedingVote.TraitType[] memory aliceTraits = new AminalBreedingVote.TraitType[](8);
+        // Alice votes for all dragon genes
+        AminalBreedingVote.GeneType[] memory aliceGeneTypes = new AminalBreedingVote.GeneType[](8);
         bool[] memory aliceVotes = new bool[](8);
         for (uint256 i = 0; i < 8; i++) {
-            aliceTraits[i] = AminalBreedingVote.TraitType(i);
+            aliceGeneTypes[i] = AminalBreedingVote.GeneType(i);
             aliceVotes[i] = true; // All dragon
         }
         
         // In real flow, voting would happen on actual ticket
-        console.log("Alice would vote for all dragon traits");
+        console.log("Alice would vote for all dragon genes");
         
         // Bob votes for specific traits
-        AminalBreedingVote.TraitType[] memory bobTraits = new AminalBreedingVote.TraitType[](4);
+        AminalBreedingVote.GeneType[] memory bobGeneTypes = new AminalBreedingVote.GeneType[](4);
         bool[] memory bobVotes = new bool[](4);
-        bobTraits[0] = AminalBreedingVote.TraitType.BACK;   // Angel Wings
-        bobTraits[1] = AminalBreedingVote.TraitType.EARS;   // Bunny Ears
-        bobTraits[2] = AminalBreedingVote.TraitType.BODY;   // Fluffy Body
-        bobTraits[3] = AminalBreedingVote.TraitType.MOUTH;  // Sweet Smile
+        bobGeneTypes[0] = AminalBreedingVote.GeneType.BACK;   // Angel Wings
+        bobGeneTypes[1] = AminalBreedingVote.GeneType.EARS;   // Bunny Ears
+        bobGeneTypes[2] = AminalBreedingVote.GeneType.BODY;   // Fluffy Body
+        bobGeneTypes[3] = AminalBreedingVote.GeneType.MOUTH;  // Sweet Smile
         // All false = bunny traits
         
         console.log("Bob would vote for bunny wings, ears, body, and mouth");
         
         // Charlie votes mixed
-        AminalBreedingVote.TraitType[] memory charlieTraits = new AminalBreedingVote.TraitType[](4);
+        AminalBreedingVote.GeneType[] memory charlieTraits = new AminalBreedingVote.GeneType[](4);
         bool[] memory charlieVotes = new bool[](4);
-        charlieTraits[0] = AminalBreedingVote.TraitType.TAIL;  // Fire Tail
-        charlieTraits[1] = AminalBreedingVote.TraitType.FACE;  // Fierce Face
-        charlieTraits[2] = AminalBreedingVote.TraitType.MISC;  // Glowing Eyes
-        charlieTraits[3] = AminalBreedingVote.TraitType.ARM;   // Soft Arms
+        charlieTraits[0] = AminalBreedingVote.GeneType.TAIL;  // Fire Tail
+        charlieTraits[1] = AminalBreedingVote.GeneType.FACE;  // Fierce Face
+        charlieTraits[2] = AminalBreedingVote.GeneType.MISC;  // Glowing Eyes
+        charlieTraits[3] = AminalBreedingVote.GeneType.ARM;   // Soft Arms
         charlieVotes[0] = true;  // Dragon
         charlieVotes[1] = true;  // Dragon
         charlieVotes[2] = true;  // Dragon

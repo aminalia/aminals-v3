@@ -36,7 +36,7 @@ contract AminalBreedingVoteTest is Test {
         uint256 indexed proposalId,
         address indexed voter,
         uint256 votingPower,
-        AminalBreedingVote.TraitType[] traits,
+        AminalBreedingVote.GeneType[] geneTypes,
         bool[] votesForParent1
     );
     
@@ -93,7 +93,7 @@ contract AminalBreedingVoteTest is Test {
         breedingVote = new AminalBreedingVote(address(factory), address(0x123)); // Placeholder
         
         // Create two parent Aminals
-        ITraits.Traits memory traits1 = ITraits.Traits({
+        ITraits.Traits memory geneTypes1 = ITraits.Traits({
             back: "Dragon Wings",
             arm: "Strong Arms",
             tail: "Fire Tail",
@@ -104,7 +104,7 @@ contract AminalBreedingVoteTest is Test {
             misc: "Glowing Eyes"
         });
         
-        ITraits.Traits memory traits2 = ITraits.Traits({
+        ITraits.Traits memory geneTypes2 = ITraits.Traits({
             back: "Angel Wings",
             arm: "Gentle Arms",
             tail: "Fluffy Tail",
@@ -121,7 +121,7 @@ contract AminalBreedingVoteTest is Test {
             "FIRE",
             "A fierce dragon",
             "dragon.json",
-            traits1
+            geneTypes1
         );
         parent1 = Aminal(payable(parent1Address));
         
@@ -131,7 +131,7 @@ contract AminalBreedingVoteTest is Test {
             "ANGEL",
             "A gentle bunny",
             "bunny.json",
-            traits2
+            geneTypes2
         );
         parent2 = Aminal(payable(parent2Address));
         
@@ -329,11 +329,11 @@ contract AminalBreedingVoteTest is Test {
     function testSkip_CastVote() public {
         uint256 proposalId = _createProposal();
         
-        // voter1 votes for all parent1 traits
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](8);
+        // voter1 votes for all parent1 geneTypes
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](8);
         bool[] memory votesForParent1 = new bool[](8);
         for (uint256 i = 0; i < 8; i++) {
-            traits[i] = AminalBreedingVote.TraitType(i);
+            geneTypes[i] = AminalBreedingVote.GeneType(i);
             votesForParent1[i] = true;
         }
         
@@ -341,14 +341,14 @@ contract AminalBreedingVoteTest is Test {
         assertTrue(canVote);
         
         vm.expectEmit(true, true, false, true);
-        emit VoteCast(proposalId, voter1, votingPower, traits, votesForParent1);
+        emit VoteCast(proposalId, voter1, votingPower, geneTypes, votesForParent1);
         
         vm.prank(voter1);
-        breedingVote.vote(proposalId, traits, votesForParent1);
+        breedingVote.vote(proposalId, geneTypes, votesForParent1);
         
         // Check that vote was recorded
         assertEq(breedingVote.voterPower(proposalId, voter1), votingPower);
-        assertTrue(breedingVote.hasVotedOnTrait(proposalId, voter1, AminalBreedingVote.TraitType.BACK));
+        assertTrue(breedingVote.hasVotedOnGene(proposalId, voter1, AminalBreedingVote.GeneType.BACK));
         
         // Check vote counts
         (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(proposalId);
@@ -362,22 +362,22 @@ contract AminalBreedingVoteTest is Test {
         uint256 proposalId = _createProposal();
         
         // voter1: all parent1
-        AminalBreedingVote.TraitType[] memory allTraits = new AminalBreedingVote.TraitType[](8);
+        AminalBreedingVote.GeneType[] memory allGeneTypes = new AminalBreedingVote.GeneType[](8);
         bool[] memory allParent1 = new bool[](8);
         for (uint256 i = 0; i < 8; i++) {
-            allTraits[i] = AminalBreedingVote.TraitType(i);
+            allGeneTypes[i] = AminalBreedingVote.GeneType(i);
             allParent1[i] = true;
         }
         
         vm.prank(voter1);
-        breedingVote.vote(proposalId, allTraits, allParent1);
+        breedingVote.vote(proposalId, allGeneTypes, allParent1);
         
         // voter2: all parent2
         bool[] memory allParent2 = new bool[](8);
         // All false = parent2
         
         vm.prank(voter2);
-        breedingVote.vote(proposalId, allTraits, allParent2);
+        breedingVote.vote(proposalId, allGeneTypes, allParent2);
         
         // voter3: mixed (alternating)
         bool[] memory mixed = new bool[](8);
@@ -386,7 +386,7 @@ contract AminalBreedingVoteTest is Test {
         }
         
         vm.prank(voter3);
-        breedingVote.vote(proposalId, allTraits, mixed);
+        breedingVote.vote(proposalId, allGeneTypes, mixed);
         
         // Check final results
         (uint256[8] memory parent1Votes, uint256[8] memory parent2Votes) = breedingVote.getVoteResults(proposalId);
@@ -414,17 +414,17 @@ contract AminalBreedingVoteTest is Test {
     function testSkip_RevertWhen_VotingTwice() public {
         uint256 proposalId = _createProposal();
         
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(voter1);
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, geneTypes, votes);
         
         // Now users can vote multiple times (change their votes)
         vm.prank(voter1);
-        breedingVote.vote(proposalId, traits, votes); // Should not revert
+        breedingVote.vote(proposalId, geneTypes, votes); // Should not revert
     }
     
     function testSkip_VoteWithLoveInOnlyOneParent() public {
@@ -443,30 +443,30 @@ contract AminalBreedingVoteTest is Test {
         assertEq(power, parent1.loveFromUser(singleLover));
         
         // Cast vote
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(singleLover);
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, geneTypes, votes);
         
         // Verify vote was recorded
         assertEq(breedingVote.voterPower(proposalId, singleLover), parent1.loveFromUser(singleLover));
-        assertTrue(breedingVote.hasVotedOnTrait(proposalId, singleLover, AminalBreedingVote.TraitType.BACK));
+        assertTrue(breedingVote.hasVotedOnGene(proposalId, singleLover, AminalBreedingVote.GeneType.BACK));
     }
     
     function testSkip_RevertWhen_NoLoveInParents() public {
         uint256 proposalId = _createProposal();
         
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(nonVoter);
         vm.expectRevert(AminalBreedingVote.InsufficientLoveInParents.selector);
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, geneTypes, votes);
     }
     
     function testSkip_RevertWhen_VotingAfterDeadline() public {
@@ -475,9 +475,9 @@ contract AminalBreedingVoteTest is Test {
         // Skip past voting deadline (gene proposal + voting phases)
         vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + VOTING_DURATION + 1);
         
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(voter1);
@@ -486,7 +486,7 @@ contract AminalBreedingVoteTest is Test {
             AminalBreedingVote.Phase.EXECUTION,
             AminalBreedingVote.Phase.VOTING
         ));
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, geneTypes, votes);
     }
     
     function testSkip_ExecuteBreeding() public {
@@ -496,30 +496,30 @@ contract AminalBreedingVoteTest is Test {
         vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + 1);
         
         // voter1: votes all parent1
-        AminalBreedingVote.TraitType[] memory allTraits = new AminalBreedingVote.TraitType[](8);
+        AminalBreedingVote.GeneType[] memory allGeneTypes = new AminalBreedingVote.GeneType[](8);
         bool[] memory allParent1 = new bool[](8);
         for (uint256 i = 0; i < 8; i++) {
-            allTraits[i] = AminalBreedingVote.TraitType(i);
+            allGeneTypes[i] = AminalBreedingVote.GeneType(i);
             allParent1[i] = true;
         }
         
         vm.prank(voter1);
-        breedingVote.vote(proposalId, allTraits, allParent1);
+        breedingVote.vote(proposalId, allGeneTypes, allParent1);
         
-        // voter2: votes specific traits
-        AminalBreedingVote.TraitType[] memory someTraits = new AminalBreedingVote.TraitType[](4);
+        // voter2: votes specific geneTypes
+        AminalBreedingVote.GeneType[] memory someGeneTypes = new AminalBreedingVote.GeneType[](4);
         bool[] memory someVotes = new bool[](4);
-        someTraits[0] = AminalBreedingVote.TraitType.BACK;
-        someTraits[1] = AminalBreedingVote.TraitType.ARM;
-        someTraits[2] = AminalBreedingVote.TraitType.TAIL;
-        someTraits[3] = AminalBreedingVote.TraitType.EARS;
+        someGeneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        someGeneTypes[1] = AminalBreedingVote.GeneType.ARM;
+        someGeneTypes[2] = AminalBreedingVote.GeneType.TAIL;
+        someGeneTypes[3] = AminalBreedingVote.GeneType.EARS;
         someVotes[0] = false; // parent2
         someVotes[1] = false; // parent2
         someVotes[2] = false; // parent2
         someVotes[3] = false; // parent2
         
         vm.prank(voter2);
-        breedingVote.vote(proposalId, someTraits, someVotes);
+        breedingVote.vote(proposalId, someGeneTypes, someVotes);
         
         // Skip to execution phase
         vm.warp(block.timestamp + VOTING_DURATION);
@@ -534,24 +534,24 @@ contract AminalBreedingVoteTest is Test {
         assertTrue(childContract != address(0));
         assertTrue(factory.isValidAminal(childContract));
         
-        // Verify child traits based on voting
+        // Verify child geneTypes based on voting
         Aminal child = Aminal(payable(childContract));
         ITraits.Traits memory childTraits = child.getTraits();
-        ITraits.Traits memory traits1 = parent1.getTraits();
-        ITraits.Traits memory traits2 = parent2.getTraits();
+        ITraits.Traits memory geneTypes1 = parent1.getTraits();
+        ITraits.Traits memory geneTypes2 = parent2.getTraits();
         
         // Based on voting power:
-        // voter1 has more total voting power, so parent1 wins the traits voter1 voted for
+        // voter1 has more total voting power, so parent1 wins the geneTypes voter1 voted for
         // voter2 only voted on back, arm, tail, ears but has less power
         // Result: parent1 wins all because voter1 has more power
-        assertEq(childTraits.back, traits1.back);   // parent1 wins
-        assertEq(childTraits.arm, traits1.arm);     // parent1 wins
-        assertEq(childTraits.tail, traits1.tail);   // parent1 wins
-        assertEq(childTraits.ears, traits1.ears);   // parent1 wins
-        assertEq(childTraits.body, traits1.body);   // parent1 wins
-        assertEq(childTraits.face, traits1.face);   // parent1 wins
-        assertEq(childTraits.mouth, traits1.mouth); // parent1 wins
-        assertEq(childTraits.misc, traits1.misc);   // parent1 wins
+        assertEq(childTraits.back, geneTypes1.back);   // parent1 wins
+        assertEq(childTraits.arm, geneTypes1.arm);     // parent1 wins
+        assertEq(childTraits.tail, geneTypes1.tail);   // parent1 wins
+        assertEq(childTraits.ears, geneTypes1.ears);   // parent1 wins
+        assertEq(childTraits.body, geneTypes1.body);   // parent1 wins
+        assertEq(childTraits.face, geneTypes1.face);   // parent1 wins
+        assertEq(childTraits.mouth, geneTypes1.mouth); // parent1 wins
+        assertEq(childTraits.misc, geneTypes1.misc);   // parent1 wins
         
         // Verify proposal is marked as executed
         (,,,,,,, bool executed, address recordedChild,) = breedingVote.tickets(proposalId);
@@ -598,18 +598,18 @@ contract AminalBreedingVoteTest is Test {
         require(sent1);
         
         // voter1 votes for parent1
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](1);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
         bool[] memory votes = new bool[](1);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
         votes[0] = true;
         
         vm.prank(voter1);
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, geneTypes, votes);
         
         // voter2 votes for parent2 with same power
         votes[0] = false;
         vm.prank(voter2);
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, geneTypes, votes);
         
         // Skip to execution phase
         vm.warp(block.timestamp + VOTING_DURATION);
@@ -619,9 +619,9 @@ contract AminalBreedingVoteTest is Test {
         // In a tie, parent1 should win
         Aminal child = Aminal(payable(childContract));
         ITraits.Traits memory childTraits = child.getTraits();
-        ITraits.Traits memory traits1 = parent1.getTraits();
+        ITraits.Traits memory geneTypes1 = parent1.getTraits();
         
-        assertEq(childTraits.back, traits1.back); // parent1 wins tie
+        assertEq(childTraits.back, geneTypes1.back); // parent1 wins tie
     }
     
     function testSkip_PartialVoting() public {
@@ -630,18 +630,18 @@ contract AminalBreedingVoteTest is Test {
         // Skip to voting phase
         vm.warp(block.timestamp + GENE_PROPOSAL_DURATION + 1);
         
-        // voter1 only votes on some traits
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](3);
+        // voter1 only votes on some geneTypes
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](3);
         bool[] memory votes = new bool[](3);
-        traits[0] = AminalBreedingVote.TraitType.BACK;
-        traits[1] = AminalBreedingVote.TraitType.FACE;
-        traits[2] = AminalBreedingVote.TraitType.MISC;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        geneTypes[1] = AminalBreedingVote.GeneType.FACE;
+        geneTypes[2] = AminalBreedingVote.GeneType.MISC;
         votes[0] = false; // parent2
         votes[1] = true;  // parent1
         votes[2] = true;  // parent1
         
         vm.prank(voter1);
-        breedingVote.vote(proposalId, traits, votes);
+        breedingVote.vote(proposalId, geneTypes, votes);
         
         // Skip to execution phase
         vm.warp(block.timestamp + VOTING_DURATION);
@@ -650,19 +650,19 @@ contract AminalBreedingVoteTest is Test {
         
         Aminal child = Aminal(payable(childContract));
         ITraits.Traits memory childTraits = child.getTraits();
-        ITraits.Traits memory traits1 = parent1.getTraits();
-        ITraits.Traits memory traits2 = parent2.getTraits();
+        ITraits.Traits memory geneTypes1 = parent1.getTraits();
+        ITraits.Traits memory geneTypes2 = parent2.getTraits();
         
-        // Voted traits should follow votes
-        assertEq(childTraits.back, traits2.back);  // voted parent2
-        assertEq(childTraits.face, traits1.face);  // voted parent1
-        assertEq(childTraits.misc, traits1.misc);  // voted parent1
+        // Voted geneTypes should follow votes
+        assertEq(childTraits.back, geneTypes2.back);  // voted parent2
+        assertEq(childTraits.face, geneTypes1.face);  // voted parent1
+        assertEq(childTraits.misc, geneTypes1.misc);  // voted parent1
         
-        // Unvoted traits default to parent1 (tie = parent1 wins)
-        assertEq(childTraits.arm, traits1.arm);
-        assertEq(childTraits.tail, traits1.tail);
-        assertEq(childTraits.ears, traits1.ears);
-        assertEq(childTraits.body, traits1.body);
-        assertEq(childTraits.mouth, traits1.mouth);
+        // Unvoted geneTypes default to parent1 (tie = parent1 wins)
+        assertEq(childTraits.arm, geneTypes1.arm);
+        assertEq(childTraits.tail, geneTypes1.tail);
+        assertEq(childTraits.ears, geneTypes1.ears);
+        assertEq(childTraits.body, geneTypes1.body);
+        assertEq(childTraits.mouth, geneTypes1.mouth);
     }
 }
