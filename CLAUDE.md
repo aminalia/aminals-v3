@@ -784,28 +784,28 @@ Implementation:
 
 ### Breeding System
 
-#### Skill-Based Breeding (Current - Secure)
-Breeding is now implemented as a Skill using the BreedingSkill contract:
+#### Overview
+The breeding system has evolved to be secure, community-driven, and flexible:
+1. **Secure Skill-Based Initiation**: Uses BreedingSkill for proposal/acceptance
+2. **Love Auction for Traits**: Community votes on which traits the child inherits
+3. **Gene Proposals**: Community can propose new traits via Gene NFTs
+4. **Veto Mechanism**: Community can prevent unwanted breeding
+
+#### Skill-Based Breeding Initiation
+Breeding starts with a two-step process using the BreedingSkill contract:
 
 **Two-Step Process**:
 1. **Create Proposal**: User A with 2,500 love in Aminal A creates proposal for Aminal A to breed with Aminal B
-2. **Accept Proposal**: User B with 2,500 love in Aminal B accepts the proposal to breed
+2. **Accept Proposal**: User B with 2,500 love in Aminal B accepts the proposal, creating a breeding ticket
 
 **Key Security Features**:
 - **No consumeAs()**: Removed dangerous function that allowed anyone to drain others' resources
 - **Standard Skill Pattern**: Uses existing secure useSkill() mechanism
 - **User Control**: Only the user who owns love can spend it
 - **Proposal System**: Allows coordination without requiring both parents simultaneously
+- **Non-cancellable**: Proposals cannot be cancelled (prevents front-running), expire after 7 days
 
-**Breeding Mechanics**:
-- **Cost**: 2,500 energy + love per parent (5,000 total)
-- **Proposals**: Valid for 7 days, non-cancellable to prevent front-running
-- **Trait Inheritance**: Alternates between parents (back from P1, arm from P2, etc.)
-- **Child Naming**: "Parent1-Parent2-Child"
-- **Permission**: Anyone can create/accept if they have resources in that Aminal
-- **Guaranteed Execution**: Once proposed, cannot be cancelled - only expiration after 7 days
-
-**Breeding Flow**:
+**Breeding Initiation Flow**:
 ```solidity
 // Step 1: User A (with 2,500+ love in Aminal A) creates proposal
 vm.prank(userA);
@@ -822,19 +822,108 @@ aminalB.useSkill(breedingSkill, abi.encodeCall(
     (proposalId)
 ));
 // This consumes 2,500 energy + 2,500 love from Aminal B
-// Child is created with traits alternating between parents
+// Creates a breeding ticket in AminalBreedingVote for trait voting
+```
+
+#### Love Auction Mechanics (AminalBreedingVote)
+After proposal acceptance, a 3-day voting period begins where the community determines traits:
+
+**Voting System**:
+- **Voting Power**: Combined love from both parents (loveInParent1 + loveInParent2)
+- **Vote Locking**: Voting power is locked at first vote time (love amount doesn't update)
+- **Vote Changing**: Users can change their votes at any time during the voting period
+- **Trait Independence**: Each trait (back, arm, tail, etc.) is voted on independently
+- **Default Winner**: Parent1's trait wins ties
+
+**Vote Types**:
+1. **Trait Voting**: Choose between parent1 or parent2 for each trait
+2. **Gene Voting**: Vote for community-proposed gene alternatives (additive, cannot be changed)
+3. **Veto Voting**: Vote to prevent breeding entirely
+
+**Voting Implementation**:
+```solidity
+// Users can vote and change votes freely
+function vote(ticketId, traits[], votesForParent1[]) {
+    // First vote locks voting power
+    if (voterPower[ticketId][msg.sender] == 0) {
+        voterPower[ticketId][msg.sender] = calculateLove();
+    }
+    // Remove previous votes and apply new ones
+    for each trait:
+        if (hasVotedOnTrait[ticketId][msg.sender][trait]) {
+            // Remove old vote
+        }
+        // Apply new vote
+}
+
+// Veto votes can also be changed
+function voteOnVeto(ticketId, voteForVeto) {
+    // Similar pattern - lock power on first vote, allow changes
+}
+
+// Gene votes are additive only (cannot be changed)
+function voteForGene(ticketId, traitType, geneId) {
+    // Uses locked voting power
+    geneVotes[geneId] += voterPower[ticketId][msg.sender];
+}
+```
+
+#### Gene Proposal System
+Community members can propose Gene NFTs as alternative traits:
+
+**Requirements**:
+- **Minimum Love**: 100 combined love in both parents (spam prevention)
+- **Type Matching**: Gene must match the trait type (e.g., "back" gene for back trait)
+- **No Revisions**: Gene proposals cannot be modified or cancelled
+
+**Gene Voting**:
+- Uses same locked voting power as trait voting
+- Gene votes are additive (cannot be changed/removed like trait votes)
+- Genes compete with parent traits and other proposed genes
+- Highest vote total wins
+
+**Implementation**:
+```solidity
+// Propose a gene
+function proposeGene(ticketId, traitType, geneContract, tokenId) {
+    require(combinedLove >= 100);
+    require(IGene(geneContract).traitType(tokenId) == traitTypeToString(traitType));
+    // Create proposal
+}
+
+// Vote for gene (additive only)
+function voteForGene(ticketId, traitType, geneId) {
+    // Uses locked voting power
+    geneVotes[geneId] += voterPower[ticketId][msg.sender];
+}
+```
+
+#### Veto Mechanism
+The community can prevent breeding through veto voting:
+
+**Veto Rules**:
+- **Veto Wins Ties**: If vetoVotes >= proceedVotes, breeding is cancelled
+- **Default Veto**: No votes at all (0-0 tie) results in veto
+- **Vote Changing**: Users can switch between veto/proceed during voting period
+- **Independent**: Veto voting is separate from trait voting
+
+**Veto Flow**:
+```solidity
+function executeBreeding(ticketId) {
+    // Check veto first
+    if (vetoVotes >= proceedVotes) {
+        emit BreedingVetoed(ticketId, vetoVotes, proceedVotes);
+        return address(0); // No child created
+    }
+    // Otherwise proceed with breeding using winning traits
+}
 ```
 
 #### Direct Breeding (Legacy)
 The `breed()` function in AminalFactory allows direct breeding but is not recommended:
 - **Caller Must Be Aminal**: Only valid Aminals can call breed()
-- **Partner Validation**: Partner must also be a valid Aminal
-- **No Self-Breeding**: Aminals cannot breed with themselves
-- **Trait Alternation**: Child traits alternate between parents
-- **No Energy Cost**: Direct breeding doesn't consume energy/love
-
-#### Voting-Based Breeding (Deprecated)
-AminalBreedingVote contract is deprecated due to security issues with consumeAs()
+- **No Community Input**: Bypasses voting system entirely
+- **No Energy Cost**: Doesn't consume resources
 
 ### Data Flow Architecture
 
