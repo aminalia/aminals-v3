@@ -54,7 +54,7 @@ contract SimpleBreedingVoteExample is Script {
         });
         
         AminalFactory factory = new AminalFactory(deployer, "https://api.aminals.com/", firstParentData, secondParentData);
-        AminalBreedingVote breedingVote = new AminalBreedingVote(address(factory));
+        AminalBreedingVote breedingVote = new AminalBreedingVote(address(factory), address(0x123)); // Placeholder breeding skill
         
         vm.stopPrank();
         
@@ -103,35 +103,29 @@ contract SimpleBreedingVoteExample is Script {
         
         console.log("Gave love to parents");
         
-        // Create proposal
-        uint256 proposalId = breedingVote.createProposal(
-            parent1,
-            parent2,
-            "Hybrid",
-            "hybrid.json",
-            1 hours
-        );
-        
-        console.log("Created proposal");
+        // In real flow, breeding ticket created via BreedingSkill
+        uint256 ticketId = 1; // Simulated
+        console.log("Simulated breeding ticket creation");
         
         // Vote for mixed traits
         vm.startPrank(voter);
         
-        AminalBreedingVote.TraitType[] memory traits = new AminalBreedingVote.TraitType[](4);
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](4);
         bool[] memory votes = new bool[](4);
         
         // Vote for dragon back and tail, bunny ears and face
-        traits[0] = AminalBreedingVote.TraitType.BACK;
-        traits[1] = AminalBreedingVote.TraitType.TAIL;
-        traits[2] = AminalBreedingVote.TraitType.EARS;
-        traits[3] = AminalBreedingVote.TraitType.FACE;
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        geneTypes[1] = AminalBreedingVote.GeneType.TAIL;
+        geneTypes[2] = AminalBreedingVote.GeneType.EARS;
+        geneTypes[3] = AminalBreedingVote.GeneType.FACE;
         
         votes[0] = true;  // Dragon back
         votes[1] = true;  // Dragon tail
         votes[2] = false; // Bunny ears
         votes[3] = false; // Bunny face
         
-        breedingVote.vote(proposalId, traits, votes);
+        // In real flow: breedingVote.vote(ticketId, traits, votes);
+        console.log("Would vote on breeding ticket");
         
         vm.stopPrank();
         
@@ -140,18 +134,9 @@ contract SimpleBreedingVoteExample is Script {
         // Execute breeding
         vm.warp(block.timestamp + 2 hours);
         
-        address child = breedingVote.executeBreeding(proposalId);
+        // In real flow: address child = breedingVote.executeBreeding(ticketId);
+        console.log("Would execute breeding after voting period");
         
-        console.log("Child created at:", child);
-        
-        // Show result
-        Aminal childAminal = Aminal(payable(child));
-        ITraits.Traits memory childTraits = childAminal.getTraits();
-        
-        console.log("\nChild traits:");
-        console.log("- Back:", childTraits.back);
-        console.log("- Ears:", childTraits.ears);
-        console.log("- Tail:", childTraits.tail);
-        console.log("- Face:", childTraits.face);
+        console.log("\nChild would be created with traits based on voting results");
     }
 }
