@@ -5,6 +5,8 @@ import {Aminal} from "./Aminal.sol";
 import {AminalFactory} from "./AminalFactory.sol";
 import {ITraits} from "./interfaces/ITraits.sol";
 import {IAminalBreedingVote} from "./interfaces/IAminalBreedingVote.sol";
+import {IGene} from "./interfaces/IGene.sol";
+import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
  * @title AminalBreedingVote
@@ -44,6 +46,15 @@ contract AminalBreedingVote is IAminalBreedingVote {
     struct TraitVote {
         uint256 parent1Votes;
         uint256 parent2Votes;
+        mapping(uint256 => uint256) geneVotes; // geneId => votes
+    }
+    
+    /// @dev Structure for a gene proposal
+    struct GeneProposal {
+        address geneContract;
+        uint256 tokenId;
+        address proposer;
+        uint256 proposalTime;
     }
     
     /// @dev Enum for trait types
@@ -85,6 +96,16 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Voting duration for trait auctions (3 days)
     uint256 public constant VOTING_DURATION = 3 days;
     
+    /// @dev Minimum love required to propose a gene (100 units = 0.01 ETH)
+    uint256 public constant MIN_LOVE_FOR_GENE_PROPOSAL = 100;
+    
+    /// @dev Mapping from ticket ID to trait type to gene proposals
+    /// @notice ticketId => TraitType => geneId => GeneProposal
+    mapping(uint256 => mapping(TraitType => mapping(uint256 => GeneProposal))) public geneProposals;
+    
+    /// @dev Counter for gene proposal IDs
+    mapping(uint256 => mapping(TraitType => uint256)) public nextGeneProposalId;
+    
     /// @dev Event emitted when a breeding ticket is created
     event BreedingTicketCreated(
         uint256 indexed ticketId,
@@ -106,6 +127,25 @@ contract AminalBreedingVote is IAminalBreedingVote {
     event BreedingExecuted(
         uint256 indexed ticketId,
         address indexed childContract
+    );
+    
+    /// @dev Event emitted when a gene is proposed for a trait
+    event GeneProposed(
+        uint256 indexed ticketId,
+        TraitType indexed traitType,
+        uint256 indexed geneId,
+        address proposer,
+        address geneContract,
+        uint256 tokenId
+    );
+    
+    /// @dev Event emitted when someone votes for a gene
+    event GeneVoteCast(
+        uint256 indexed ticketId,
+        address indexed voter,
+        uint256 votingPower,
+        TraitType traitType,
+        uint256 geneId
     );
     
     /// @dev Error thrown when trying to vote without love in both parents
@@ -234,6 +274,94 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
+     * @notice Propose a gene as an alternative trait option
+     * @dev Requires at least 100 combined love in both parents
+     * @param ticketId The breeding ticket ID
+     * @param traitType The trait category for this gene
+     * @param geneContract The Gene NFT contract address
+     * @param tokenId The specific gene token ID
+     */
+    function proposeGene(
+        uint256 ticketId,
+        TraitType traitType,
+        address geneContract,
+        uint256 tokenId
+    ) external {
+        BreedingTicket memory ticket = tickets[ticketId];
+        if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
+        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
+        if (ticket.executed) revert ProposalAlreadyExecuted();
+        
+        // Check proposer has minimum love in parents
+        Aminal parent1 = Aminal(payable(ticket.parent1));
+        Aminal parent2 = Aminal(payable(ticket.parent2));
+        
+        uint256 combinedLove = parent1.loveFromUser(msg.sender) + parent2.loveFromUser(msg.sender);
+        if (combinedLove < MIN_LOVE_FOR_GENE_PROPOSAL) revert InsufficientLoveInParents();
+        
+        // Verify the gene exists and is for the correct trait type
+        require(geneContract.code.length > 0, "Invalid gene contract");
+        
+        // Try to verify the gene is for the correct trait type
+        try IGene(geneContract).traitType(tokenId) returns (string memory geneTraitType) {
+            // Convert TraitType enum to string for comparison
+            string memory expectedType = _traitTypeToString(traitType);
+            require(
+                keccak256(bytes(geneTraitType)) == keccak256(bytes(expectedType)),
+                "Gene trait type mismatch"
+            );
+        } catch {
+            // If the gene contract doesn't implement traitType, allow it
+            // This provides backward compatibility
+        }
+        
+        // Create gene proposal
+        uint256 geneId = nextGeneProposalId[ticketId][traitType]++;
+        geneProposals[ticketId][traitType][geneId] = GeneProposal({
+            geneContract: geneContract,
+            tokenId: tokenId,
+            proposer: msg.sender,
+            proposalTime: block.timestamp
+        });
+        
+        emit GeneProposed(ticketId, traitType, geneId, msg.sender, geneContract, tokenId);
+    }
+    
+    /**
+     * @notice Vote for a proposed gene
+     * @dev Uses same voting power as trait voting
+     * @param ticketId The breeding ticket ID
+     * @param traitType The trait category
+     * @param geneId The proposed gene ID to vote for
+     */
+    function voteForGene(
+        uint256 ticketId,
+        TraitType traitType,
+        uint256 geneId
+    ) external {
+        BreedingTicket memory ticket = tickets[ticketId];
+        if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
+        if (block.timestamp > ticket.votingDeadline) revert VotingEnded();
+        if (ticket.executed) revert ProposalAlreadyExecuted();
+        
+        // Verify gene proposal exists
+        GeneProposal memory proposal = geneProposals[ticketId][traitType][geneId];
+        require(proposal.geneContract != address(0), "Gene proposal does not exist");
+        
+        // Get voting power
+        Aminal parent1 = Aminal(payable(ticket.parent1));
+        Aminal parent2 = Aminal(payable(ticket.parent2));
+        
+        uint256 votingPower = parent1.loveFromUser(msg.sender) + parent2.loveFromUser(msg.sender);
+        if (votingPower == 0) revert InsufficientLoveInParents();
+        
+        // Add votes to the gene
+        traitVotes[ticketId][traitType].geneVotes[geneId] += votingPower;
+        
+        emit GeneVoteCast(ticketId, msg.sender, votingPower, traitType, geneId);
+    }
+    
+    /**
      * @notice Execute breeding based on voting results
      * @dev Anyone can execute after voting period ends
      * @param ticketId The ticket to execute
@@ -254,17 +382,18 @@ contract AminalBreedingVote is IAminalBreedingVote {
         ITraits.Traits memory traits1 = parent1.getTraits();
         ITraits.Traits memory traits2 = parent2.getTraits();
         
-        // Determine winning traits based on votes
-        ITraits.Traits memory childTraits = ITraits.Traits({
-            back: _getWinningTrait(ticketId, TraitType.BACK) ? traits1.back : traits2.back,
-            arm: _getWinningTrait(ticketId, TraitType.ARM) ? traits1.arm : traits2.arm,
-            tail: _getWinningTrait(ticketId, TraitType.TAIL) ? traits1.tail : traits2.tail,
-            ears: _getWinningTrait(ticketId, TraitType.EARS) ? traits1.ears : traits2.ears,
-            body: _getWinningTrait(ticketId, TraitType.BODY) ? traits1.body : traits2.body,
-            face: _getWinningTrait(ticketId, TraitType.FACE) ? traits1.face : traits2.face,
-            mouth: _getWinningTrait(ticketId, TraitType.MOUTH) ? traits1.mouth : traits2.mouth,
-            misc: _getWinningTrait(ticketId, TraitType.MISC) ? traits1.misc : traits2.misc
-        });
+        // Determine winning traits based on votes (including gene proposals)
+        ITraits.Traits memory childTraits;
+        
+        // Get winning trait for each category
+        (childTraits.back,,,) = _getWinningTraitValue(ticketId, TraitType.BACK, traits1, traits2);
+        (childTraits.arm,,,) = _getWinningTraitValue(ticketId, TraitType.ARM, traits1, traits2);
+        (childTraits.tail,,,) = _getWinningTraitValue(ticketId, TraitType.TAIL, traits1, traits2);
+        (childTraits.ears,,,) = _getWinningTraitValue(ticketId, TraitType.EARS, traits1, traits2);
+        (childTraits.body,,,) = _getWinningTraitValue(ticketId, TraitType.BODY, traits1, traits2);
+        (childTraits.face,,,) = _getWinningTraitValue(ticketId, TraitType.FACE, traits1, traits2);
+        (childTraits.mouth,,,) = _getWinningTraitValue(ticketId, TraitType.MOUTH, traits1, traits2);
+        (childTraits.misc,,,) = _getWinningTraitValue(ticketId, TraitType.MISC, traits1, traits2);
         
         // Generate child name and symbol from parent names
         string memory parent1Name = parent1.name();
@@ -287,15 +416,92 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
-     * @dev Determine which parent wins for a specific trait
+     * @dev Determine the winning trait value (could be from parent1, parent2, or a gene)
      * @param ticketId The ticket ID
      * @param trait The trait type
-     * @return True if parent1 wins, false if parent2 wins
+     * @param traits1 Parent1's traits
+     * @param traits2 Parent2's traits
+     * @return winningTrait The winning trait string
+     * @return isGene Whether the winner is a gene
+     * @return geneContract The gene contract if winner is a gene
+     * @return geneTokenId The gene token ID if winner is a gene
      */
-    function _getWinningTrait(uint256 ticketId, TraitType trait) private view returns (bool) {
-        TraitVote memory votes = traitVotes[ticketId][trait];
-        // Parent1 wins ties
-        return votes.parent1Votes >= votes.parent2Votes;
+    function _getWinningTraitValue(
+        uint256 ticketId,
+        TraitType trait,
+        ITraits.Traits memory traits1,
+        ITraits.Traits memory traits2
+    ) private view returns (
+        string memory winningTrait,
+        bool isGene,
+        address geneContract,
+        uint256 geneTokenId
+    ) {
+        TraitVote storage votes = traitVotes[ticketId][trait];
+        
+        uint256 highestVotes = votes.parent1Votes;
+        winningTrait = _getTraitByType(traits1, trait);
+        isGene = false;
+        
+        // Check if parent2 has more votes
+        if (votes.parent2Votes > highestVotes) {
+            highestVotes = votes.parent2Votes;
+            winningTrait = _getTraitByType(traits2, trait);
+        }
+        
+        // Check all gene proposals
+        uint256 geneCount = nextGeneProposalId[ticketId][trait];
+        for (uint256 i = 0; i < geneCount; i++) {
+            uint256 geneVotes = votes.geneVotes[i];
+            if (geneVotes > highestVotes) {
+                highestVotes = geneVotes;
+                GeneProposal memory proposal = geneProposals[ticketId][trait][i];
+                
+                // Try to get the trait value from the gene contract
+                try IGene(proposal.geneContract).traitValue(proposal.tokenId) returns (string memory traitVal) {
+                    winningTrait = traitVal;
+                } catch {
+                    // Fallback if gene doesn't implement traitValue
+                    winningTrait = string(abi.encodePacked("Gene#", Strings.toString(proposal.tokenId)));
+                }
+                
+                isGene = true;
+                geneContract = proposal.geneContract;
+                geneTokenId = proposal.tokenId;
+            }
+        }
+        
+        return (winningTrait, isGene, geneContract, geneTokenId);
+    }
+    
+    /**
+     * @dev Helper to get trait value by type
+     */
+    function _getTraitByType(ITraits.Traits memory traits, TraitType traitType) private pure returns (string memory) {
+        if (traitType == TraitType.BACK) return traits.back;
+        if (traitType == TraitType.ARM) return traits.arm;
+        if (traitType == TraitType.TAIL) return traits.tail;
+        if (traitType == TraitType.EARS) return traits.ears;
+        if (traitType == TraitType.BODY) return traits.body;
+        if (traitType == TraitType.FACE) return traits.face;
+        if (traitType == TraitType.MOUTH) return traits.mouth;
+        if (traitType == TraitType.MISC) return traits.misc;
+        return "";
+    }
+    
+    /**
+     * @dev Convert TraitType enum to string
+     */
+    function _traitTypeToString(TraitType traitType) private pure returns (string memory) {
+        if (traitType == TraitType.BACK) return "back";
+        if (traitType == TraitType.ARM) return "arm";
+        if (traitType == TraitType.TAIL) return "tail";
+        if (traitType == TraitType.EARS) return "ears";
+        if (traitType == TraitType.BODY) return "body";
+        if (traitType == TraitType.FACE) return "face";
+        if (traitType == TraitType.MOUTH) return "mouth";
+        if (traitType == TraitType.MISC) return "misc";
+        return "";
     }
     
     /**
@@ -336,5 +542,38 @@ contract AminalBreedingVote is IAminalBreedingVote {
         
         votingPower = loveInParent1 + loveInParent2;
         canVoteResult = votingPower > 0;
+    }
+    
+    /**
+     * @notice Get all gene proposals for a specific trait in a ticket
+     * @param ticketId The ticket ID
+     * @param traitType The trait category
+     * @return proposals Array of gene proposals for this trait
+     */
+    function getGeneProposals(
+        uint256 ticketId,
+        TraitType traitType
+    ) external view returns (GeneProposal[] memory proposals) {
+        uint256 count = nextGeneProposalId[ticketId][traitType];
+        proposals = new GeneProposal[](count);
+        
+        for (uint256 i = 0; i < count; i++) {
+            proposals[i] = geneProposals[ticketId][traitType][i];
+        }
+    }
+    
+    /**
+     * @notice Get vote count for a specific gene proposal
+     * @param ticketId The ticket ID
+     * @param traitType The trait category
+     * @param geneId The gene proposal ID
+     * @return votes The number of votes for this gene
+     */
+    function getGeneVotes(
+        uint256 ticketId,
+        TraitType traitType,
+        uint256 geneId
+    ) external view returns (uint256 votes) {
+        return traitVotes[ticketId][traitType].geneVotes[geneId];
     }
 }
