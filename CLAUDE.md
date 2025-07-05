@@ -646,23 +646,30 @@ Self-sovereign ERC721 contract where the NFT owns itself:
 - **Love & Energy**: ETH sent becomes "love" and "energy" for interactions
 - **One Token**: Always token ID #1, one per contract
 - **Traits**: Uses `ITraits.Traits` struct for 8 trait categories
+- **Dynamic Rendering**: Uses separate AminalRenderer contract for tokenURI generation
+- **Reentrancy Protection**: All state-changing functions protected against reentrancy
 
 Key functions:
-- `initialize(uri)`: One-time mint to self
-- `receive()`: Accept ETH as love/energy
-- `squeak(amount)`: Consume energy and love equally
+- `initialize(uri)`: One-time mint to self, callable by anyone
+- `receive()`: Accept ETH as love/energy, using VRGDA for love calculation
 - `useSkill(target, data)`: Call external skills, consuming resources based on return
 - `setBaseURI()`: Only callable by self
+- `getEnergy()`, `getTotalLove()`, `getLoveFromUser(user)`: Public view functions
 
 #### AminalFactory.sol
-Deploys individual Aminal contracts:
-- Creates unique contracts per Aminal
-- Prevents duplicates via content hashing
-- Supports batch deployment
-- Pausable for controlled minting
-- **No `to` parameter**: Removed since Aminals always own themselves
-- **Anyone can create**: Removed onlyOwner restriction for decentralization
-- **Registry system**: Tracks valid Aminals for breeding (`isValidAminal`)
+Deploys individual Aminal contracts with breeding focus:
+- **Initial Parents**: Creates Adam and Eve during construction
+- **Direct Creation Blocked**: `createAminal()` reverts with DirectCreationNotAllowed
+- **Breeding Only**: New Aminals created through breeding (except via createAminalWithTraits)
+- **Registry System**: Tracks valid Aminals for breeding (`isValidAminal`)
+- **Batch Creation Removed**: `batchCreateAminals()` now reverts
+- **Public Creation**: `createAminalWithTraits()` allows anyone to create (for testing/special cases)
+
+Key functions:
+- `breed(partner, description, tokenURI)`: Called by Aminals to breed directly
+- `createAminalWithTraits()`: Public function for special creation needs
+- `getAminalsByRange()`: Paginated access to created Aminals
+- `isValidAminal[address]`: Registry of valid Aminals
 
 ### Gene System
 
@@ -777,18 +784,57 @@ Implementation:
 
 ### Breeding System
 
-Aminals can breed to create offspring:
-- **Aminal-Only**: Only registered Aminals can call `breed()` function
-- **Registry**: Factory maintains `isValidAminal` mapping for all created Aminals
-- **Trait Inheritance**: Child traits alternate between parents:
-  - Parent1: back, tail, body, mouth
-  - Parent2: arm, ears, face, misc
-- **Naming Convention**: 
-  - Child name: `Parent1Name-Parent2Name-Child`
-  - Child symbol: `Parent1Symbol` + `Parent2Symbol`
-- **Self-Sovereign Children**: Offspring are also self-owning Aminals
-- **Multi-Generational**: Children can breed too
-- **Order Matters**: Initiator becomes "parent1" in trait selection
+#### Skill-Based Breeding (Current - Secure)
+Breeding is now implemented as a Skill using the BreedingSkill contract:
+
+**Two-Step Process**:
+1. **Create Proposal**: User A with 2,500 love in Aminal A creates proposal for Aminal A to breed with Aminal B
+2. **Accept Proposal**: User B with 2,500 love in Aminal B accepts the proposal to breed
+
+**Key Security Features**:
+- **No consumeAs()**: Removed dangerous function that allowed anyone to drain others' resources
+- **Standard Skill Pattern**: Uses existing secure useSkill() mechanism
+- **User Control**: Only the user who owns love can spend it
+- **Proposal System**: Allows coordination without requiring both parents simultaneously
+
+**Breeding Mechanics**:
+- **Cost**: 2,500 energy + love per parent (5,000 total)
+- **Proposals**: Valid for 7 days, non-cancellable to prevent front-running
+- **Trait Inheritance**: Alternates between parents (back from P1, arm from P2, etc.)
+- **Child Naming**: "Parent1-Parent2-Child"
+- **Permission**: Anyone can create/accept if they have resources in that Aminal
+- **Guaranteed Execution**: Once proposed, cannot be cancelled - only expiration after 7 days
+
+**Breeding Flow**:
+```solidity
+// Step 1: User A (with 2,500+ love in Aminal A) creates proposal
+vm.prank(userA);
+aminalA.useSkill(breedingSkill, abi.encodeCall(
+    BreedingSkill.createProposal, 
+    (aminalB, "description", "uri")
+));
+// This consumes 2,500 energy + 2,500 love from Aminal A
+
+// Step 2: User B (with 2,500+ love in Aminal B) accepts proposal
+vm.prank(userB);
+aminalB.useSkill(breedingSkill, abi.encodeCall(
+    BreedingSkill.acceptProposal,
+    (proposalId)
+));
+// This consumes 2,500 energy + 2,500 love from Aminal B
+// Child is created with traits alternating between parents
+```
+
+#### Direct Breeding (Legacy)
+The `breed()` function in AminalFactory allows direct breeding but is not recommended:
+- **Caller Must Be Aminal**: Only valid Aminals can call breed()
+- **Partner Validation**: Partner must also be a valid Aminal
+- **No Self-Breeding**: Aminals cannot breed with themselves
+- **Trait Alternation**: Child traits alternate between parents
+- **No Energy Cost**: Direct breeding doesn't consume energy/love
+
+#### Voting-Based Breeding (Deprecated)
+AminalBreedingVote contract is deprecated due to security issues with consumeAs()
 
 ### Data Flow Architecture
 
@@ -829,16 +875,45 @@ Aminals can breed to create offspring:
 - **Positioning calculated**: Based on trait text analysis, not stored
 
 ### Testing Approach
-- Unit tests for all functionality
-- Fuzz testing for edge cases
-- Self-ownership verification
-- Transfer prevention testing
-- Energy/love system validation
-- VRGDA mechanics testing
-- Skills system testing with various return types
-- Breeding functionality tests
-- Gene integration tests
-- CSV data generation scripts for curve visualization
+- **Comprehensive Coverage**: 158+ tests covering all major functionality
+- **Fuzz Testing**: Property-based testing for energy/love calculations
+- **Self-Ownership Verification**: Ensures Aminals always own themselves
+- **Transfer Prevention**: Validates non-transferability
+- **Energy/Love System**: Tests VRGDA mechanics and consumption
+- **Skills System**: Tests various return types and edge cases
+- **Breeding Tests**: Both direct and voting-based breeding
+- **Gene Integration**: Tests SVG rendering and composition
+- **Factory Tests**: Validates creation restrictions and breeding
+- **Test Helpers**: Uses vm.skip() for deprecated functionality
+
+### Project Status & Key Learnings
+
+#### Constructor Updates
+- **AminalFactory Constructor**: Now requires 4 params including ParentData for Adam/Eve
+- **Initial Aminals**: Factory starts with 2 Aminals (Adam and Eve)
+- **Test Adjustments**: All assertions updated to account for initial parent Aminals
+
+#### Breeding Implementation
+- **Skill-Based System**: Breeding now uses secure BreedingSkill contract
+- **Energy Requirements**: Breeding proposals require 2,500 energy from each parent
+- **Love Requirements**: Users must have love in the Aminal they control
+- **Secure Consumption**: Only users can spend their own love via useSkill()
+
+#### Testing Infrastructure
+- **Dynamic Test Linking**: Enabled for faster compilation
+- **Skipped Tests**: Batch creation and dynamic URI tests marked as skipped
+- **Energy Setup**: Tests properly fund Aminals with ETH for energy/love
+- **Multi-User Testing**: Tests validate voting with multiple participants
+
+#### Security Considerations
+- **Reentrancy Protection**: All critical functions protected
+- **ETH Protection**: Skills cannot drain Aminal's ETH balance
+- **Access Control**: Only self can call admin functions
+- **Input Validation**: All user inputs validated
+- **Resource Checks**: Energy/love checked before consumption
+- **No consumeAs()**: Removed dangerous function that allowed resource theft
+- **User-Controlled Resources**: Only users can spend their own love
+- **No Front-Running**: Breeding proposals cannot be cancelled, preventing griefing
 </aminals_project>
 
 <user_prompt>

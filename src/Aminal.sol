@@ -411,6 +411,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         emit SkillUsed(msg.sender, energyCost, target, selector);
     }
 
+
     /**
      * @dev Get the current energy level of this Aminal
      * @return The current energy level
