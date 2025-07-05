@@ -660,14 +660,21 @@ Deploys individual Aminal contracts:
 - Prevents duplicates via content hashing
 - Supports batch deployment
 - Pausable for controlled minting
+- **No `to` parameter**: Removed since Aminals always own themselves
+- **Anyone can create**: Removed onlyOwner restriction for decentralization
+- **Registry system**: Tracks valid Aminals for breeding (`isValidAminal`)
 
-### GeneNFT System
+### Gene System
 
-Regular ERC721 NFTs representing genetic traits:
-- **Trait Storage**: Mappings for trait type and value
-- **Public Minting**: Anyone can mint
+Fully onchain ERC721 NFTs representing genetic traits with SVG rendering:
+- **Renamed from GeneNFT to Gene**: Simplified naming throughout codebase
+- **Onchain SVG Storage**: Each gene stores complete self-contained SVG with viewBox
+- **Dual Output**: 
+  - `gene[tokenId]` public mapping returns raw SVG for composability
+  - `tokenURI()` returns OpenSea-compatible metadata with base64 SVG
+- **Public Minting**: Anyone can mint genes with SVG data
 - **Query Functions**: Filter by trait type or value
-- **Integration**: Future Aminals will reference GeneNFTs for dynamic traits
+- **No Factory Needed**: Genes are regular ERC721s, not 1-of-1 contracts like Aminals
 
 ### Key Design Principles
 
@@ -689,7 +696,7 @@ Regular ERC721 NFTs representing genetic traits:
 ### Trait System
 - 8 categories: back, arm, tail, ears, body, face, mouth, misc
 - Set once at construction via `ITraits.Traits` struct
-- Future: Query from GeneNFT contracts for dynamic traits
+- Future: Query from Gene contracts for dynamic traits
 
 ### VRGDA Feeding Mechanics
 - **Logistic VRGDA**: Smooth S-curve for love distribution based on energy level
@@ -768,6 +775,59 @@ Implementation:
 - **Minimum Cost**: Always requires at least 1 energy/love to prevent free execution
 - Exception: Breeding skills will have a separate, controlled mechanism (future feature)
 
+### Breeding System
+
+Aminals can breed to create offspring:
+- **Aminal-Only**: Only registered Aminals can call `breed()` function
+- **Registry**: Factory maintains `isValidAminal` mapping for all created Aminals
+- **Trait Inheritance**: Child traits alternate between parents:
+  - Parent1: back, tail, body, mouth
+  - Parent2: arm, ears, face, misc
+- **Naming Convention**: 
+  - Child name: `Parent1Name-Parent2Name-Child`
+  - Child symbol: `Parent1Symbol` + `Parent2Symbol`
+- **Self-Sovereign Children**: Offspring are also self-owning Aminals
+- **Multi-Generational**: Children can breed too
+- **Order Matters**: Initiator becomes "parent1" in trait selection
+
+### Data Flow Architecture
+
+#### Aminal ↔ AminalRenderer
+- **Separation of Concerns**: Core NFT logic in Aminal, rendering in AminalRenderer
+- **Delegation Pattern**: `tokenURI()` passes `this` to renderer
+- **Data Access**: Renderer reads all public state from Aminal instance
+- **Dynamic Composition**: Traits determine positioning logic at render time
+- **No Storage**: Positioning data calculated on-demand, never stored
+
+#### Rendering Pipeline
+1. External call → `Aminal.tokenURI(1)`
+2. Aminal delegates → `renderer.tokenURI(this, 1)`
+3. Renderer accesses Aminal's public state
+4. Renderer fetches Gene SVGs from references
+5. Composes final SVG with dynamic positioning
+6. Returns base64-encoded metadata JSON
+
+### Gene-Aminal Integration
+
+#### GeneReference System
+- **Structure**: `GeneReference { address geneContract; uint256 tokenId; }`
+- **8 Gene Slots**: back, arm, tail, ears, body, face, mouth, misc
+- **Optional Genes**: Aminals can have zero or more genes assigned
+- **Immutable References**: Set during initialization, cannot be changed
+
+#### Rendering with Genes
+- **GeneRenderer Library**: Provides SVG utilities (rect, text, svg, svgImage)
+- **Dynamic Fetching**: AminalRenderer calls `Gene(geneContract).gene(tokenId)` 
+- **Layered Composition**: Genes rendered in specific order for proper overlapping
+- **Error Handling**: Returns empty string if gene cannot be read
+- **Base64 Encoding**: SVGs embedded as data URIs in final composition
+
+#### Data Storage Model
+- **Genes store raw SVG**: Complete SVG with viewBox, ready for embedding
+- **Aminals store references**: Only addresses and token IDs, not actual SVGs
+- **Renderer fetches on-demand**: No SVG data duplicated or cached
+- **Positioning calculated**: Based on trait text analysis, not stored
+
 ### Testing Approach
 - Unit tests for all functionality
 - Fuzz testing for edge cases
@@ -776,6 +836,8 @@ Implementation:
 - Energy/love system validation
 - VRGDA mechanics testing
 - Skills system testing with various return types
+- Breeding functionality tests
+- Gene integration tests
 - CSV data generation scripts for curve visualization
 </aminals_project>
 

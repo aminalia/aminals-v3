@@ -11,6 +11,10 @@ import {ERC165Checker} from "lib/openzeppelin-contracts/contracts/utils/introspe
 import {ITraits} from "src/interfaces/ITraits.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
+import {IGeneStaking} from "src/interfaces/IGeneStaking.sol";
+import {AminalRenderer} from "src/AminalRenderer.sol";
+import {LibString} from "solady/utils/LibString.sol";
+import {Base64} from "solady/utils/Base64.sol";
 
 /**
  * @title Aminal
@@ -36,9 +40,16 @@ import {ISkill} from "src/interfaces/ISkill.sol";
  * - DECENTRALIZED: No single point of control over all Aminals
  * - COMPOSABLE: Each Aminal can interact independently with other protocols
  * - AUTONOMOUS: Operates as a truly independent digital entity
+ *
+ * @notice RENDERING ARCHITECTURE:
+ * - Each Aminal deploys its own AminalRenderer for visual composition
+ * - Rendering logic is separated from core NFT functionality
+ * - Data flows from Aminal → AminalRenderer when tokenURI is called
+ * - See AminalRenderer contract for detailed data flow documentation
  */
 contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     using Strings for uint256;
+    using LibString for string;
     using ERC165Checker for address;
 
     /// @dev The fixed token ID for this Aminal (always 1)
@@ -60,6 +71,23 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     ///      as the contract has no functions to modify them
     ITraits.Traits public traits;
 
+    /// @dev Structure to store a Gene reference
+    struct GeneReference {
+        address geneContract;  // The Gene contract address
+        uint256 tokenId;       // The specific token ID
+    }
+    
+    /// @dev Immutable Gene references for each trait type
+    /// @notice These define the visual appearance of the Aminal by referencing specific Genes
+    GeneReference public backGene;
+    GeneReference public armGene;
+    GeneReference public tailGene;
+    GeneReference public earsGene;
+    GeneReference public bodyGene;
+    GeneReference public faceGene;
+    GeneReference public mouthGene;
+    GeneReference public miscGene;
+
     /// @dev Total love received by this Aminal (in energy units)
     /// @notice Love is tracked per-user to create individual relationships
     uint256 public totalLove;
@@ -75,6 +103,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
 
     /// @dev VRGDA contract for calculating feeding costs
     AminalVRGDA public immutable vrgda;
+    
+    /// @dev Renderer contract for generating metadata
+    AminalRenderer public immutable renderer;
 
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
@@ -127,6 +158,10 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /**
      * @dev Constructor sets the name and symbol for the NFT collection and immutable traits
      * @dev This contract is self-sovereign - it owns itself and cannot be controlled by external parties
+     * @notice DATA FLOW - Renderer Initialization:
+     *         1. Deploys a new AminalRenderer instance specifically for this Aminal
+     *         2. Stores the renderer address as an immutable variable
+     *         3. The renderer will later access this contract's public data for composition
      * @param name The name of this specific Aminal
      * @param symbol The symbol for this specific Aminal
      * @param baseURI The base URI for token metadata
@@ -155,20 +190,45 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
             30e18,            // Low asymptote for very early curve activation
             30e18             // Large time scale for very smooth transition
         );
+        
+        // Deploy the renderer for this Aminal
+        renderer = new AminalRenderer();
     }
 
     /**
-     * @dev Initialize the contract by minting the single Aminal NFT to itself
+     * @dev Initialize the contract by minting the single Aminal NFT to itself (backward compatible)
      * @dev This function can only be called once and makes the Aminal self-sovereign
      * @param uri The URI for the token's metadata
      * @return tokenId The ID of the newly minted token (always 1)
      */
     function initialize(string memory uri) external returns (uint256) {
+        GeneReference[8] memory emptyGenes;
+        return initialize(uri, emptyGenes);
+    }
+
+    /**
+     * @dev Initialize the contract by minting the single Aminal NFT to itself and setting gene references
+     * @dev This function can only be called once and makes the Aminal self-sovereign
+     * @param uri The URI for the token's metadata (can be empty as we'll generate it from genes)
+     * @param genes Array of gene references in order: back, arm, tail, ears, body, face, mouth, misc
+     * @return tokenId The ID of the newly minted token (always 1)
+     */
+    function initialize(string memory uri, GeneReference[8] memory genes) public returns (uint256) {
         if (minted) revert AlreadyMinted();
         if (initialized) revert AlreadyInitialized();
         
         initialized = true;
         minted = true;
+        
+        // Set the immutable gene references
+        backGene = genes[0];
+        armGene = genes[1];
+        tailGene = genes[2];
+        earsGene = genes[3];
+        bodyGene = genes[4];
+        faceGene = genes[5];
+        mouthGene = genes[6];
+        miscGene = genes[7];
         
         // Mint to self - the Aminal owns itself!
         _safeMint(address(this), TOKEN_ID);
@@ -207,6 +267,21 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
+     * @dev Compose the Aminal's appearance from its Genes
+     * @notice DATA FLOW: This is a convenience function that delegates to the renderer
+     *         1. Passes the entire Aminal contract instance (`this`) to renderer.composeAminal()
+     *         2. The renderer accesses gene references and traits from this contract
+     *         3. Returns the fully composed SVG string
+     * @dev This separation allows the Aminal contract to remain focused on core NFT logic
+     *      while the renderer handles all visual composition complexity
+     * @return The composed SVG as a string
+     */
+    function composeAminal() public view returns (string memory) {
+        // Delegate to renderer for composition
+        return renderer.composeAminal(this);
+    }
+
+    /**
      * @dev Check if a token exists
      * @param tokenId The token ID to check
      * @return True if the token exists, false otherwise
@@ -223,14 +298,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         return traits;
     }
 
-    /**
-     * @dev Override tokenURI to return the full URI for a token
-     * @param tokenId The token ID to get the URI for
-     * @return The complete URI for the token
-     */
-    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
 
     /**
      * @dev Override _baseURI to return the base URI
@@ -417,6 +484,33 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
+     * @dev Override tokenURI to use the renderer for metadata generation
+     * @notice DATA FLOW: When tokenURI is called (e.g., by OpenSea or wallets):
+     *         1. This function passes the entire Aminal contract instance (`this`) to the renderer
+     *         2. The renderer can then access all public state variables and functions:
+     *            - name(), energy(), totalLove() for metadata description
+     *            - getTraits() to determine positioning logic
+     *            - Gene references (backGene, armGene, etc.) to fetch SVGs from Gene contracts
+     *         3. The renderer composes the SVG and generates OpenSea-compatible metadata
+     *         4. Returns a base64-encoded data URI containing the complete metadata JSON
+     * @param tokenId The token ID (always 1 for Aminals)
+     * @return The complete data URI with metadata
+     */
+    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+        if (!_exists(tokenId)) revert InvalidParameters();
+        return renderer.tokenURI(this, tokenId);
+    }
+
+    /**
+     * @dev Check if a token exists
+     * @param tokenId The token ID to check
+     * @return True if the token exists
+     */
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return tokenId == TOKEN_ID && minted;
+    }
+
+    /**
      * @dev Override supportsInterface to support ERC721, ERC721URIStorage, and ERC721Receiver
      * @param interfaceId The interface ID to check
      * @return True if the interface is supported
@@ -424,4 +518,5 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage) returns (bool) {
         return interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
+    
 }

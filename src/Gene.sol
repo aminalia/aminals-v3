@@ -5,28 +5,40 @@ import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.s
 import {ERC721URIStorage} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ERC721Enumerable} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {LibString} from "solady/utils/LibString.sol";
+import {Base64} from "solady/utils/Base64.sol";
 import {ITraits} from "src/interfaces/ITraits.sol";
+import {GeneRenderer} from "src/GeneRenderer.sol";
 
 /**
- * @title GeneNFT
- * @dev Regular ERC721 NFT contract for trait-based NFTs that represent genetic components
- * @dev GeneNFTs are regular NFTs with standard ID schemes (1, 2, 3, etc.)
+ * @title Gene
+ * @dev Fully onchain ERC721 NFT contract for trait-based NFTs with SVG generation
+ * @dev Each NFT represents a genetic trait that can be composed into larger Aminals
+ * @notice Features dual output: raw SVG for composability and OpenSea-compatible metadata
  */
-contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
+contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
+    using LibString for uint256;
+    using LibString for string;
     /// @dev Base URI for token metadata
     string public baseTokenURI;
 
     /// @dev Current token ID counter
     uint256 public currentTokenId;
 
-    /// @dev Mapping from token ID to trait type (e.g., "BACK", "ARM", "TAIL")
+    /// @dev Mapping from token ID to trait type (e.g., "back", "arm", "tail")
     mapping(uint256 => string) public tokenTraitType;
 
     /// @dev Mapping from token ID to trait value (e.g., "Dragon Wings", "Fire Tail")
     mapping(uint256 => string) public tokenTraitValue;
 
-    /// @dev Event emitted when a GeneNFT is created
-    event GeneNFTCreated(uint256 indexed tokenId, address indexed owner, string traitType, string traitValue, string tokenURI);
+    /// @dev Mapping from token ID to raw SVG data for the trait
+    mapping(uint256 => string) public gene;
+
+    /// @dev Mapping from token ID to trait description
+    mapping(uint256 => string) public tokenDescription;
+
+    /// @dev Event emitted when a Gene is created
+    event GeneCreated(uint256 indexed tokenId, address indexed owner, string traitType, string traitValue, string tokenURI);
 
     /// @dev Event emitted when base URI is updated
     event BaseURIUpdated(string newBaseURI);
@@ -37,8 +49,8 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     /**
      * @dev Constructor sets the collection details
      * @param owner The address that will own the contract
-     * @param name The name of this GeneNFT collection
-     * @param symbol The symbol for this GeneNFT collection
+     * @param name The name of this Gene collection
+     * @param symbol The symbol for this Gene collection
      * @param baseURI The base URI for token metadata
      */
     constructor(
@@ -52,56 +64,63 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     }
 
     /**
-     * @notice Mint a GeneNFT to the specified address with trait information
-     * @dev Anyone can mint GeneNFTs. Traits are permanent and cannot be modified after minting.
+     * @notice Mint a Gene with onchain SVG data
+     * @dev Anyone can mint Genes. Traits are permanent and cannot be modified after minting.
      * @param to The address that will receive the NFT
-     * @param traitType The trait type this NFT represents (e.g., "BACK", "ARM")
+     * @param traitType The trait type this NFT represents (e.g., "back", "arm")
      * @param traitValue The specific trait value (e.g., "Dragon Wings", "Fire Tail")
-     * @param uri The URI for the token's metadata
+     * @param svg The raw SVG data for this trait (without outer <svg> tags for composability)
+     * @param description Description of the trait
      * @return tokenId The ID of the newly minted token
      */
     function mint(
         address to,
         string memory traitType,
         string memory traitValue,
-        string memory uri
+        string memory svg,
+        string memory description
     ) external returns (uint256) {
         if (to == address(0)) revert InvalidParameters();
         if (bytes(traitType).length == 0) revert InvalidParameters();
         if (bytes(traitValue).length == 0) revert InvalidParameters();
+        if (bytes(svg).length == 0) revert InvalidParameters();
         
         currentTokenId++;
         uint256 tokenId = currentTokenId;
         
         tokenTraitType[tokenId] = traitType;
         tokenTraitValue[tokenId] = traitValue;
+        gene[tokenId] = svg;
+        tokenDescription[tokenId] = description;
         
         _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
         
-        emit GeneNFTCreated(tokenId, to, traitType, traitValue, uri);
+        emit GeneCreated(tokenId, to, traitType, traitValue, "");
         
         return tokenId;
     }
 
     /**
-     * @notice Batch mint multiple GeneNFTs to specified addresses
-     * @dev Anyone can mint GeneNFTs. Traits are permanent and cannot be modified after minting.
+     * @notice Batch mint multiple Genes to specified addresses
+     * @dev Anyone can mint Genes. Traits are permanent and cannot be modified after minting.
      * @param recipients Array of addresses that will receive the NFTs
      * @param traitTypes Array of trait types for each NFT
      * @param traitValues Array of trait values for each NFT
-     * @param uris Array of URIs for the tokens' metadata
+     * @param svgs Array of SVG data for each NFT
+     * @param descriptions Array of descriptions for each NFT
      * @return tokenIds Array of IDs of the newly minted tokens
      */
     function batchMint(
         address[] memory recipients,
         string[] memory traitTypes,
         string[] memory traitValues,
-        string[] memory uris
+        string[] memory svgs,
+        string[] memory descriptions
     ) external returns (uint256[] memory) {
         if (recipients.length != traitTypes.length || 
             recipients.length != traitValues.length ||
-            recipients.length != uris.length || 
+            recipients.length != svgs.length ||
+            recipients.length != descriptions.length || 
             recipients.length == 0) {
             revert InvalidParameters();
         }
@@ -112,18 +131,20 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
             if (recipients[i] == address(0)) revert InvalidParameters();
             if (bytes(traitTypes[i]).length == 0) revert InvalidParameters();
             if (bytes(traitValues[i]).length == 0) revert InvalidParameters();
+            if (bytes(svgs[i]).length == 0) revert InvalidParameters();
             
             currentTokenId++;
             uint256 tokenId = currentTokenId;
             
             tokenTraitType[tokenId] = traitTypes[i];
             tokenTraitValue[tokenId] = traitValues[i];
+            gene[tokenId] = svgs[i];
+            tokenDescription[tokenId] = descriptions[i];
             
             _safeMint(recipients[i], tokenId);
-            _setTokenURI(tokenId, uris[i]);
             
             tokenIds[i] = tokenId;
-            emit GeneNFTCreated(tokenId, recipients[i], traitTypes[i], traitValues[i], uris[i]);
+            emit GeneCreated(tokenId, recipients[i], traitTypes[i], traitValues[i], "");
         }
 
         return tokenIds;
@@ -143,10 +164,34 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
      * @param tokenId The token ID to query
      * @return traitType The trait type
      * @return traitValue The trait value
+     * @return svg The raw SVG data
+     * @return description The trait description
      */
-    function getTokenTraits(uint256 tokenId) external view returns (string memory traitType, string memory traitValue) {
+    function getTokenTraits(uint256 tokenId) external view returns (
+        string memory traitType, 
+        string memory traitValue,
+        string memory svg,
+        string memory description
+    ) {
         if (!_exists(tokenId)) revert InvalidParameters();
-        return (tokenTraitType[tokenId], tokenTraitValue[tokenId]);
+        return (tokenTraitType[tokenId], tokenTraitValue[tokenId], gene[tokenId], tokenDescription[tokenId]);
+    }
+
+    /**
+     * @notice Generate a standalone SVG image for viewing the gene NFT
+     * @dev Wraps the raw gene SVG in a proper SVG container with background
+     * @param tokenId The token ID to generate the image for
+     * @return The complete SVG image as a string
+     */
+    function generateStandaloneSVG(uint256 tokenId) public view returns (string memory) {
+        if (!_exists(tokenId)) revert InvalidParameters();
+        
+        // Use GeneRenderer for efficient SVG generation
+        return GeneRenderer.generateStandaloneGeneSVG(
+            tokenTraitType[tokenId],
+            tokenTraitValue[tokenId],
+            gene[tokenId]
+        );
     }
 
     /**
@@ -209,12 +254,30 @@ contract GeneNFT is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     }
 
     /**
-     * @dev Override tokenURI to return the full URI for a token
+     * @dev Override tokenURI to return onchain metadata with SVG
      * @param tokenId The token ID to get the URI for
-     * @return The complete URI for the token
+     * @return The complete data URI with metadata
      */
     function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
+        if (!_exists(tokenId)) revert InvalidParameters();
+        
+        // Use the raw gene SVG for the image
+        string memory svgImage = gene[tokenId];
+        
+        // Create the metadata using GeneRenderer
+        string memory name = string.concat(tokenTraitType[tokenId], ': ', tokenTraitValue[tokenId]);
+        string memory imageDataURI = GeneRenderer.svgToBase64DataURI(svgImage);
+        
+        string memory json = GeneRenderer.generateMetadata(
+            name,
+            tokenDescription[tokenId],
+            imageDataURI,
+            tokenTraitType[tokenId],
+            tokenTraitValue[tokenId]
+        );
+        
+        // Return as base64-encoded data URI
+        return GeneRenderer.jsonToBase64DataURI(json);
     }
 
     /**

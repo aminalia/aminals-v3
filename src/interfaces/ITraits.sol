@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title ITraits
- * @dev Interface defining the common trait structure for Aminals and GeneNFTs
+ * @dev Interface defining the common trait structure for Aminals and Genes
  * @dev This interface standardizes trait representation across the ecosystem
  */
 interface ITraits {

@@ -56,6 +56,10 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     ///      users are unlikely to create thousands of Aminals
     mapping(address => address[]) public createdByAddress;
 
+    /// @dev Registry of valid Aminal contracts (address => true if valid)
+    /// @notice Only Aminals in this registry can breed
+    mapping(address => bool) public isValidAminal;
+
     /// @dev Event emitted when a new Aminal is created
     event AminalFactoryCreated(
         address indexed aminalContract,
@@ -71,6 +75,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     /// @dev Event emitted when the factory is paused/unpaused
     event FactoryPaused(bool paused);
 
+    /// @dev Event emitted when two Aminals breed
+    event AminalsBred(
+        address indexed parent1,
+        address indexed parent2,
+        address indexed child,
+        uint256 childId
+    );
+
     /// @dev Flag to pause/unpause the factory
     bool public paused;
 
@@ -82,6 +94,15 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
     /// @dev Error thrown when providing invalid parameters
     error InvalidParameters();
+
+    /// @dev Error thrown when non-Aminal tries to breed
+    error OnlyAminalsCanBreed();
+
+    /// @dev Error thrown when trying to breed with non-Aminal
+    error InvalidBreedingPartner();
+
+    /// @dev Error thrown when Aminal tries to breed with itself
+    error CannotBreedWithSelf();
 
     /// @dev Modifier to check if factory is not paused
     modifier whenNotPaused() {
@@ -117,7 +138,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * Each Aminal is guaranteed to be unique based on the combination of
      * name, symbol, description, and tokenURI. Duplicate combinations are rejected.
      * 
-     * @param to The address that will receive the NFT (note: Aminal will own itself) (note: the Aminal will own itself)
      * @param name The name of the Aminal (used for contract name)
      * @param symbol The symbol for the Aminal (used for contract symbol)
      * @param description A description of the Aminal (used for uniqueness)
@@ -126,14 +146,13 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function createAminal(
-        address to,
         string memory name,
         string memory symbol,
         string memory description,
         string memory tokenURI,
         ITraits.Traits memory traits
-    ) external onlyOwner whenNotPaused nonReentrant returns (address) {
-        return _createAminal(to, name, symbol, description, tokenURI, traits);
+    ) external whenNotPaused nonReentrant returns (address) {
+        return _createAminal(name, symbol, description, tokenURI, traits);
     }
 
     /**
@@ -156,7 +175,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * - Gas costs are distributed across deployments rather than centralized
      * - Enables true composability with other protocols
      * 
-     * @param to The address that will receive the NFT (note: Aminal will own itself)
      * @param name The name of the Aminal
      * @param symbol The symbol for the Aminal
      * @param description A description of the Aminal
@@ -165,14 +183,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function _createAminal(
-        address to,
         string memory name,
         string memory symbol,
         string memory description,
         string memory tokenURI,
         ITraits.Traits memory traits
     ) internal returns (address) {
-        if (to == address(0) || bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
+        // Note: 'to' is ignored since Aminals always own themselves
+        if (bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
             revert InvalidParameters();
         }
 
@@ -199,6 +217,9 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         totalAminals++;
         aminalById[totalAminals] = address(newAminal);
         createdByAddress[msg.sender].push(address(newAminal));
+        
+        // Register the Aminal as valid for breeding
+        isValidAminal[address(newAminal)] = true;
 
         emit AminalFactoryCreated(address(newAminal), msg.sender, address(newAminal), totalAminals, name, symbol, description, tokenURI);
 
@@ -216,7 +237,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * - Maintains uniqueness guarantees across the batch
      * - Each Aminal still gets its own contract instance and address
      * 
-     * @param recipients Array of addresses that will receive the NFTs
      * @param names Array of names for the Aminals
      * @param symbols Array of symbols for the Aminals
      * @param descriptions Array of descriptions for the Aminals
@@ -225,26 +245,24 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContracts Array of addresses of the newly deployed Aminal contracts
      */
     function batchCreateAminals(
-        address[] memory recipients,
         string[] memory names,
         string[] memory symbols,
         string[] memory descriptions,
         string[] memory tokenURIs,
         ITraits.Traits[] memory traitsArray
-    ) external onlyOwner whenNotPaused nonReentrant returns (address[] memory) {
-        if (recipients.length != names.length || 
-            recipients.length != symbols.length ||
-            recipients.length != descriptions.length || 
-            recipients.length != tokenURIs.length ||
-            recipients.length != traitsArray.length ||
-            recipients.length == 0) {
+    ) external whenNotPaused nonReentrant returns (address[] memory) {
+        if (names.length != symbols.length ||
+            names.length != descriptions.length || 
+            names.length != tokenURIs.length ||
+            names.length != traitsArray.length ||
+            names.length == 0) {
             revert InvalidParameters();
         }
 
-        address[] memory aminalContracts = new address[](recipients.length);
+        address[] memory aminalContracts = new address[](names.length);
 
-        for (uint256 i = 0; i < recipients.length; i++) {
-            aminalContracts[i] = _createAminal(recipients[i], names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
+        for (uint256 i = 0; i < names.length; i++) {
+            aminalContracts[i] = _createAminal(names[i], symbols[i], descriptions[i], tokenURIs[i], traitsArray[i]);
         }
 
         return aminalContracts;
@@ -304,6 +322,71 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      */
     function getCreatedByAddress(address creator) external view returns (address[] memory) {
         return createdByAddress[creator];
+    }
+
+    /**
+     * @notice Allows two Aminals to breed and create a child Aminal
+     * @dev BREEDING MECHANICS:
+     * - Only valid Aminals (in the registry) can call this function
+     * - The caller (msg.sender) must be a valid Aminal
+     * - The partner must also be a valid Aminal
+     * - Aminals cannot breed with themselves
+     * - Child traits alternate between parents (parent1's back, parent2's arm, etc.)
+     * - Child gets a unique name and symbol based on parent names
+     * 
+     * @param partner The address of the other Aminal to breed with
+     * @param childDescription Description for the child Aminal
+     * @param childTokenURI Token URI for the child Aminal
+     * @return childContract The address of the newly created child Aminal
+     */
+    function breed(
+        address partner,
+        string memory childDescription,
+        string memory childTokenURI
+    ) external whenNotPaused nonReentrant returns (address) {
+        // Only Aminals can breed
+        if (!isValidAminal[msg.sender]) revert OnlyAminalsCanBreed();
+        if (!isValidAminal[partner]) revert InvalidBreedingPartner();
+        if (msg.sender == partner) revert CannotBreedWithSelf();
+
+        // Get parent Aminals
+        Aminal parent1 = Aminal(payable(msg.sender));
+        Aminal parent2 = Aminal(payable(partner));
+
+        // Get parent traits
+        ITraits.Traits memory traits1 = parent1.getTraits();
+        ITraits.Traits memory traits2 = parent2.getTraits();
+
+        // Create child traits by alternating between parents
+        ITraits.Traits memory childTraits = ITraits.Traits({
+            back: traits1.back,      // From parent1
+            arm: traits2.arm,        // From parent2
+            tail: traits1.tail,      // From parent1
+            ears: traits2.ears,      // From parent2
+            body: traits1.body,      // From parent1
+            face: traits2.face,      // From parent2
+            mouth: traits1.mouth,    // From parent1
+            misc: traits2.misc       // From parent2
+        });
+
+        // Generate child name and symbol from parent names
+        string memory parent1Name = parent1.name();
+        string memory parent2Name = parent2.name();
+        string memory childName = string.concat(parent1Name, "-", parent2Name, "-Child");
+        string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
+
+        // Create the child Aminal
+        address childContract = _createAminal(
+            childName,
+            childSymbol,
+            childDescription,
+            childTokenURI,
+            childTraits
+        );
+
+        emit AminalsBred(msg.sender, partner, childContract, totalAminals);
+
+        return childContract;
     }
 
     /**
