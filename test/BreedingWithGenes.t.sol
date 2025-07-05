@@ -199,7 +199,7 @@ contract BreedingWithGenesTest is Test {
         
         // Try to propose arm gene for back trait
         vm.prank(geneProposer);
-        vm.expectRevert("Gene trait type mismatch");
+        vm.expectRevert("Gene type mismatch");
         breedingVote.proposeGene(
             ticketId,
             AminalBreedingVote.GeneType.BACK,
@@ -223,6 +223,9 @@ contract BreedingWithGenesTest is Test {
             address(geneContract),
             1 // Rainbow Wings
         );
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Voter1 feeds parents and votes for the gene
         vm.prank(voter1);
@@ -251,12 +254,12 @@ contract BreedingWithGenesTest is Test {
     function test_GeneWinsVoting() public {
         uint256 ticketId = _createBreedingTicket();
         
-        // Proposer creates multiple gene proposals
+        // Proposer creates gene proposal
         vm.prank(geneProposer);
         (bool success,) = address(parent1).call{value: 0.02 ether}("");
         assertTrue(success);
         
-        // Propose Rainbow Wings and Crystal Wings
+        // Propose Rainbow Wings
         vm.prank(geneProposer);
         breedingVote.proposeGene(
             ticketId,
@@ -265,13 +268,8 @@ contract BreedingWithGenesTest is Test {
             1 // Rainbow Wings
         );
         
-        vm.prank(geneProposer);
-        breedingVote.proposeGene(
-            ticketId,
-            AminalBreedingVote.GeneType.BACK,
-            address(geneContract),
-            2 // Crystal Wings
-        );
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Voter1 votes for parent1 trait
         vm.prank(voter1);
@@ -301,8 +299,8 @@ contract BreedingWithGenesTest is Test {
         vm.prank(voter2);
         breedingVote.voteOnVeto(ticketId, false);
         
-        // Wait for voting to end
-        vm.warp(block.timestamp + 3 days + 1);
+        // Wait for voting to end (voting lasts 4 days)
+        vm.warp(block.timestamp + 4 days + 1);
         
         // Execute breeding
         address childAddress = breedingVote.executeBreeding(ticketId);
@@ -390,6 +388,9 @@ contract BreedingWithGenesTest is Test {
             (bool s2,) = address(parent2).call{value: amounts[i] / 2}("");
             assertTrue(s1 && s2);
         }
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Vote for parent1 trait
         AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);

@@ -122,6 +122,9 @@ contract BreedingVetoTest is Test {
     function test_VetoWinsOnTie() public {
         uint256 ticketId = _createBreedingTicket();
         
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
+        
         // Give voters love in both parents to ensure consistent voting power
         vm.prank(vetoVoter);
         (bool success,) = address(parent1).call{value: 0.1 ether}("");
@@ -183,8 +186,8 @@ contract BreedingVetoTest is Test {
         // Even if not exactly equal due to rounding, veto should win if >= proceed
         assertTrue(wouldBeVetoed, "Veto should win on tie or when greater");
         
-        // Wait for voting to end
-        vm.warp(block.timestamp + 3 days + 1);
+        // Wait for voting to end (voting lasts 4 days)
+        vm.warp(block.timestamp + 4 days + 1);
         
         // Execute breeding - should be vetoed
         address childAddress = breedingVote.executeBreeding(ticketId);
@@ -194,6 +197,9 @@ contract BreedingVetoTest is Test {
     function test_NoVotesResultsInVeto() public {
         uint256 ticketId = _createBreedingTicket();
         
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
+        
         // Nobody votes at all
         
         // Check status
@@ -202,8 +208,8 @@ contract BreedingVetoTest is Test {
         assertEq(proceedVotes, 0, "No proceed votes");
         assertTrue(wouldBeVetoed, "Should be vetoed when no votes");
         
-        // Wait for voting to end
-        vm.warp(block.timestamp + 3 days + 1);
+        // Wait for voting to end (voting lasts 4 days)
+        vm.warp(block.timestamp + 4 days + 1);
         
         // Execute breeding - should be vetoed due to no participation
         address childAddress = breedingVote.executeBreeding(ticketId);
@@ -212,6 +218,9 @@ contract BreedingVetoTest is Test {
     
     function test_ProceedWinsWithMoreVotes() public {
         uint256 ticketId = _createBreedingTicket();
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Give more voting power to proceed voters
         vm.prank(vetoVoter);
@@ -251,8 +260,8 @@ contract BreedingVetoTest is Test {
         vm.prank(proceedVoter1);
         breedingVote.vote(ticketId, geneTypes, votesForParent1);
         
-        // Wait for voting to end
-        vm.warp(block.timestamp + 3 days + 1);
+        // Wait for voting to end (voting lasts 4 days)
+        vm.warp(block.timestamp + 4 days + 1);
         
         // Execute breeding - should succeed
         address childAddress = breedingVote.executeBreeding(ticketId);
@@ -261,6 +270,9 @@ contract BreedingVetoTest is Test {
     
     function test_MixedVotingWithVeto() public {
         uint256 ticketId = _createBreedingTicket();
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Setup voters with different amounts
         address[] memory voters = new address[](5);
@@ -311,6 +323,9 @@ contract BreedingVetoTest is Test {
     function test_VetoDoesNotAffectTraitVoting() public {
         uint256 ticketId = _createBreedingTicket();
         
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
+        
         // Setup voters
         vm.prank(vetoVoter);
         (bool success,) = address(parent1).call{value: 0.1 ether}("");
@@ -353,17 +368,20 @@ contract BreedingVetoTest is Test {
     function test_RevertWhen_VotingOnVetoAfterDeadline() public {
         uint256 ticketId = _createBreedingTicket();
         
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
+        
         // Give voter some love
         vm.prank(vetoVoter);
         (bool success,) = address(parent1).call{value: 0.1 ether}("");
         assertTrue(success);
         
-        // Wait past deadline
-        vm.warp(block.timestamp + 3 days + 1);
+        // Wait past voting deadline (4 days voting duration)
+        vm.warp(block.timestamp + 4 days + 1);
         
         // Try to vote on veto
         vm.prank(vetoVoter);
-        vm.expectRevert(AminalBreedingVote.VotingEnded.selector);
+        vm.expectRevert(abi.encodeWithSelector(AminalBreedingVote.WrongPhase.selector, AminalBreedingVote.Phase.EXECUTION, AminalBreedingVote.Phase.VOTING));
         breedingVote.voteOnVeto(ticketId, true);
     }
     
