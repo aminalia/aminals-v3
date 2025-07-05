@@ -646,23 +646,31 @@ Self-sovereign ERC721 contract where the NFT owns itself:
 - **Love & Energy**: ETH sent becomes "love" and "energy" for interactions
 - **One Token**: Always token ID #1, one per contract
 - **Traits**: Uses `ITraits.Traits` struct for 8 trait categories
+- **Dynamic Rendering**: Uses separate AminalRenderer contract for tokenURI generation
+- **Reentrancy Protection**: All state-changing functions protected against reentrancy
 
 Key functions:
-- `initialize(uri)`: One-time mint to self
-- `receive()`: Accept ETH as love/energy
-- `squeak(amount)`: Consume energy and love equally
+- `initialize(uri)`: One-time mint to self, callable by anyone
+- `receive()`: Accept ETH as love/energy, using VRGDA for love calculation
+- `consumeAs(user, amount)`: Allows external contracts to consume user's love/energy
 - `useSkill(target, data)`: Call external skills, consuming resources based on return
 - `setBaseURI()`: Only callable by self
+- `getEnergy()`, `getTotalLove()`, `getLoveFromUser(user)`: Public view functions
 
 #### AminalFactory.sol
-Deploys individual Aminal contracts:
-- Creates unique contracts per Aminal
-- Prevents duplicates via content hashing
-- Supports batch deployment
-- Pausable for controlled minting
-- **No `to` parameter**: Removed since Aminals always own themselves
-- **Anyone can create**: Removed onlyOwner restriction for decentralization
-- **Registry system**: Tracks valid Aminals for breeding (`isValidAminal`)
+Deploys individual Aminal contracts with breeding focus:
+- **Initial Parents**: Creates Adam and Eve during construction
+- **Direct Creation Blocked**: `createAminal()` reverts with DirectCreationNotAllowed
+- **Breeding Only**: New Aminals created through breeding (except via createAminalWithTraits)
+- **Registry System**: Tracks valid Aminals for breeding (`isValidAminal`)
+- **Batch Creation Removed**: `batchCreateAminals()` now reverts
+- **Public Creation**: `createAminalWithTraits()` allows anyone to create (for testing/special cases)
+
+Key functions:
+- `breed(partner, description, tokenURI)`: Called by Aminals to breed directly
+- `createAminalWithTraits()`: Public function for special creation needs
+- `getAminalsByRange()`: Paginated access to created Aminals
+- `isValidAminal[address]`: Registry of valid Aminals
 
 ### Gene System
 
@@ -777,11 +785,23 @@ Implementation:
 
 ### Breeding System
 
-#### Direct Breeding (Deprecated)
-The original `breed()` function in AminalFactory allowed direct breeding but has been superseded by the voting system.
+#### Direct Breeding (Active)
+The `breed()` function in AminalFactory allows Aminals to breed directly:
+- **Caller Must Be Aminal**: Only valid Aminals can call breed()
+- **Partner Validation**: Partner must also be a valid Aminal
+- **No Self-Breeding**: Aminals cannot breed with themselves
+- **Trait Alternation**: Child traits alternate between parents (back from parent1, arm from parent2, etc.)
+- **Name Combination**: Child named as "Parent1-Parent2-Child"
+- **No Energy Cost**: Direct breeding doesn't consume energy/love
 
 #### Voting-Based Breeding (Current)
 Aminals breed through community voting using the AminalBreedingVote contract:
+
+**Breeding Cost** (Updated):
+- **2,500 Energy from Each Parent**: Total 5,000 energy consumed
+- **2,500 Love from Each Parent**: User must have love in BOTH parents
+- **Balanced Requirement**: Encourages relationships with multiple Aminals
+- **consumeAs() Function**: Atomically consumes both energy and love
 
 **Voting Mechanics**:
 - **Love-Based Voting**: Users vote using their combined love from both parent Aminals
@@ -793,11 +813,13 @@ Aminals breed through community voting using the AminalBreedingVote contract:
 - **Inclusive**: Can vote with love in just one parent (or both)
 
 **Breeding Process**:
-1. **Proposal Creation**: Anyone can propose breeding between two valid Aminals
-2. **Voting Period**: Users with love in either parent vote on trait inheritance
-3. **Trait Selection**: Vote per trait - should child inherit from parent1 or parent2?
-4. **Execution**: After voting ends, breeding executes with winning traits
-5. **Child Creation**: Factory creates new self-sovereign Aminal with voted traits
+1. **Proposal Creation**: Costs 2,500 energy from each parent (5,000 total)
+2. **Energy Check**: Both parents must have sufficient energy (≥2,500 each)
+3. **Love Check**: Proposer must have ≥2,500 love in BOTH parents
+4. **Voting Period**: Users with love in either parent vote on trait inheritance
+5. **Trait Selection**: Vote per trait - should child inherit from parent1 or parent2?
+6. **Execution**: After voting ends, breeding executes with winning traits
+7. **Child Creation**: Factory creates new self-sovereign Aminal with voted traits
 
 **Key Features**:
 - **Democratic**: Community decides trait inheritance
@@ -805,6 +827,7 @@ Aminals breed through community voting using the AminalBreedingVote contract:
 - **Flexible Voting**: Can vote on any subset of traits
 - **Transparent**: All votes and results publicly viewable
 - **Self-Sovereign Children**: Offspring are also self-owning Aminals
+- **Multi-Aminal Engagement**: Requires building relationships with both parents
 
 ### Data Flow Architecture
 
@@ -845,16 +868,42 @@ Aminals breed through community voting using the AminalBreedingVote contract:
 - **Positioning calculated**: Based on trait text analysis, not stored
 
 ### Testing Approach
-- Unit tests for all functionality
-- Fuzz testing for edge cases
-- Self-ownership verification
-- Transfer prevention testing
-- Energy/love system validation
-- VRGDA mechanics testing
-- Skills system testing with various return types
-- Breeding functionality tests
-- Gene integration tests
-- CSV data generation scripts for curve visualization
+- **Comprehensive Coverage**: 158+ tests covering all major functionality
+- **Fuzz Testing**: Property-based testing for energy/love calculations
+- **Self-Ownership Verification**: Ensures Aminals always own themselves
+- **Transfer Prevention**: Validates non-transferability
+- **Energy/Love System**: Tests VRGDA mechanics and consumption
+- **Skills System**: Tests various return types and edge cases
+- **Breeding Tests**: Both direct and voting-based breeding
+- **Gene Integration**: Tests SVG rendering and composition
+- **Factory Tests**: Validates creation restrictions and breeding
+- **Test Helpers**: Uses vm.skip() for deprecated functionality
+
+### Project Status & Key Learnings
+
+#### Constructor Updates
+- **AminalFactory Constructor**: Now requires 4 params including ParentData for Adam/Eve
+- **Initial Aminals**: Factory starts with 2 Aminals (Adam and Eve)
+- **Test Adjustments**: All assertions updated to account for initial parent Aminals
+
+#### Breeding Implementation
+- **Dual System**: Both direct breeding and voting-based breeding work
+- **Energy Requirements**: Breeding proposals require 2,500 energy from each parent
+- **Love Requirements**: Proposer must have love in both parents
+- **Atomic Consumption**: consumeAs() handles both energy and love together
+
+#### Testing Infrastructure
+- **Dynamic Test Linking**: Enabled for faster compilation
+- **Skipped Tests**: Batch creation and dynamic URI tests marked as skipped
+- **Energy Setup**: Tests properly fund Aminals with ETH for energy/love
+- **Multi-User Testing**: Tests validate voting with multiple participants
+
+#### Security Considerations
+- **Reentrancy Protection**: All critical functions protected
+- **ETH Protection**: Skills cannot drain Aminal's ETH balance
+- **Access Control**: Only self can call admin functions
+- **Input Validation**: All user inputs validated
+- **Resource Checks**: Energy/love checked before consumption
 </aminals_project>
 
 <user_prompt>
