@@ -211,7 +211,7 @@ contract BreedingVoteExample is Script {
         console.log("Child would be born with traits based on voting results");
         
         console.log("\n--- SUMMARY ---");
-        console.log("Total Aminals in existence:", factory.totalAminals());
+        // Removed factory.totalAminals() to avoid stack too deep error
         console.log("\nThis example demonstrates the voting mechanics.");
         console.log("In production, breeding starts with BreedingSkill proposal/acceptance.");
     }

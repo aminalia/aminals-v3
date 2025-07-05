@@ -11,7 +11,6 @@ import {ERC165Checker} from "lib/openzeppelin-contracts/contracts/utils/introspe
 import {IGenes} from "src/interfaces/IGenes.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
-import {IGeneStaking} from "src/interfaces/IGeneStaking.sol";
 import {AminalRenderer} from "src/AminalRenderer.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";

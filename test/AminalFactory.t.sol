@@ -187,106 +187,6 @@ contract AminalFactoryTest is Test {
         factory.createAminalWithGenes(name, symbol, description, tokenURI, createSampleTraits("Fire"));
         vm.stopPrank();
     }
-
-    function test_BatchCreateAminals() external {
-        // Skip this test since batch creation is no longer allowed
-        vm.skip(true);
-        return;
-        string[] memory names = new string[](3);
-        names[0] = "Fire Dragon";
-        names[1] = "Ice Phoenix";
-        names[2] = "Earth Golem";
-        
-        string[] memory symbols = new string[](3);
-        symbols[0] = "FDRAGON";
-        symbols[1] = "IPHOENIX";
-        symbols[2] = "EGOLEM";
-        
-        string[] memory descriptions = new string[](3);
-        descriptions[0] = "A fierce dragon";
-        descriptions[1] = "A cold phoenix";
-        descriptions[2] = "A sturdy golem";
-        
-        string[] memory tokenURIs = new string[](3);
-        tokenURIs[0] = "firedragon.json";
-        tokenURIs[1] = "icephoenix.json";
-        tokenURIs[2] = "earthgolem.json";
-        
-        IGenes.Genes[] memory traitsArray = new IGenes.Genes[](3);
-        traitsArray[0] = createSampleTraits("Fire");
-        traitsArray[1] = createSampleTraits("Ice");
-        traitsArray[2] = createSampleTraits("Earth");
-        
-        vm.prank(owner);
-        address[] memory aminalContracts = factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
-        
-        assertEq(aminalContracts.length, 3);
-        assertEq(factory.totalAminals(), 5); // 2 initial + 3 new
-        
-        for (uint256 i = 0; i < aminalContracts.length; i++) {
-            Aminal aminal = Aminal(payable(aminalContracts[i]));
-            assertEq(aminal.ownerOf(1), aminalContracts[i]); // Each Aminal owns itself!
-            assertEq(aminal.name(), names[i]);
-            assertEq(aminal.symbol(), symbols[i]);
-            assertTrue(aminal.isMinted());
-            assertTrue(aminal.initialized());
-            assertTrue(factory.checkAminalExists(names[i], symbols[i], descriptions[i], tokenURIs[i]));
-        }
-        
-        // Check getAminalsByRange
-        address[] memory allAminals = factory.getAminalsByRange(3, 5); // Skip Adam and Eve
-        assertEq(allAminals.length, 3);
-        for (uint256 i = 0; i < 3; i++) {
-            assertEq(allAminals[i], aminalContracts[i]);
-        }
-    }
-
-    function test_RevertWhen_BatchCreateWithMismatchedArrays() external {
-        // Skip this test since batch creation is no longer allowed
-        vm.skip(true);
-        return;
-        string[] memory names = new string[](3);
-        names[0] = "Dragon";
-        names[1] = "Phoenix";
-        names[2] = "Golem";
-        
-        string[] memory symbols = new string[](2);
-        symbols[0] = "DRAGON";
-        symbols[1] = "PHOENIX";
-        
-        string[] memory descriptions = new string[](2);
-        descriptions[0] = "A dragon";
-        descriptions[1] = "A phoenix";
-        
-        string[] memory tokenURIs = new string[](2);
-        tokenURIs[0] = "dragon.json";
-        tokenURIs[1] = "phoenix.json";
-        
-        IGenes.Genes[] memory traitsArray = new IGenes.Genes[](2);
-        traitsArray[0] = createSampleTraits("Dragon");
-        traitsArray[1] = createSampleTraits("Phoenix");
-        
-        vm.prank(owner);
-        vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
-    }
-
-    function test_RevertWhen_BatchCreateWithEmptyArrays() external {
-        // Skip this test since batch creation is no longer allowed
-        vm.skip(true);
-        return;
-        string[] memory names = new string[](0);
-        string[] memory symbols = new string[](0);
-        string[] memory descriptions = new string[](0);
-        string[] memory tokenURIs = new string[](0);
-        
-        IGenes.Genes[] memory traitsArray = new IGenes.Genes[](0);
-        
-        vm.prank(owner);
-        vm.expectRevert(AminalFactory.InvalidParameters.selector);
-        factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
-    }
-
     function test_SetPaused() external {
         assertFalse(factory.paused());
         
@@ -319,31 +219,6 @@ contract AminalFactoryTest is Test {
         vm.expectRevert(AminalFactory.FactoryIsPaused.selector);
         factory.createAminalWithGenes("Dragon", "DRAGON", "A dragon", "dragon.json", createSampleTraits("Dragon"));
     }
-
-    function test_RevertWhen_BatchCreateWhilePaused() external {
-        // Skip this test since batch creation is no longer allowed
-        vm.skip(true);
-        return;
-        vm.prank(owner);
-        factory.setPaused(true);
-        
-        string[] memory names = new string[](1);
-        names[0] = "Dragon";
-        string[] memory symbols = new string[](1);
-        symbols[0] = "DRAGON";
-        string[] memory descriptions = new string[](1);
-        descriptions[0] = "A dragon";
-        string[] memory tokenURIs = new string[](1);
-        tokenURIs[0] = "dragon.json";
-        
-        IGenes.Genes[] memory traitsArray = new IGenes.Genes[](1);
-        traitsArray[0] = createSampleTraits("Dragon");
-        
-        vm.prank(owner);
-        vm.expectRevert(AminalFactory.FactoryIsPaused.selector);
-        factory.batchCreateAminals(names, symbols, descriptions, tokenURIs, traitsArray);
-    }
-
     function test_SetBaseURI() external {
         string memory newBaseURI = "https://newapi.aminals.com/metadata/";
         
