@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {Gene} from "src/Gene.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 contract AminalDynamicPositioningTest is Test {
     Gene public gene;
@@ -34,7 +34,7 @@ contract AminalDynamicPositioningTest is Test {
         uint256 tailId = gene.mint(user, "tail", "Dragon Tail", DRAGON_TAIL, "A long dragon tail");
         
         // Create a tall Aminal
-        ITraits.Traits memory tallTraits = ITraits.Traits({
+        IGenes.Genes memory tallTraits = IGenes.Genes({
             back: "",
             arm: "",
             tail: "Dragon Tail",
@@ -81,7 +81,7 @@ contract AminalDynamicPositioningTest is Test {
         uint256 tailId = gene.mint(user, "tail", "Dragon Tail", DRAGON_TAIL, "A long dragon tail");
         
         // Create a chubby Aminal
-        ITraits.Traits memory chubbyTraits = ITraits.Traits({
+        IGenes.Genes memory chubbyTraits = IGenes.Genes({
             back: "",
             arm: "",
             tail: "Dragon Tail",
@@ -144,7 +144,7 @@ contract AminalDynamicPositioningTest is Test {
         uint256 faceId = gene.mint(user, "face", "Cute Face", CUTE_FACE, "A cute face");
         
         // Create traits
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "",
             arm: "",
             tail: "",

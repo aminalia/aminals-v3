@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Aminal} from "./Aminal.sol";
-import {ITraits} from "./interfaces/ITraits.sol";
+import {IGenes} from "./interfaces/ITraits.sol";
 
 /**
  * @title AminalFactory
@@ -119,7 +119,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string symbol;
         string description;
         string tokenURI;
-        ITraits.Traits traits;
+        IGenes.Genes genes;
     }
     
     /// @dev Address of the first parent Aminal (Adam)
@@ -150,14 +150,14 @@ contract AminalFactory is Ownable, ReentrancyGuard {
             firstParentData.symbol, 
             firstParentData.description, 
             firstParentData.tokenURI, 
-            firstParentData.traits
+            firstParentData.genes
         );
         secondParent = _createAminal(
             secondParentData.name,
             secondParentData.symbol,
             secondParentData.description,
             secondParentData.tokenURI,
-            secondParentData.traits
+            secondParentData.genes
         );
     }
 
@@ -191,7 +191,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory symbol,
         string memory description,
         string memory tokenURI,
-        ITraits.Traits memory traits
+        IGenes.Genes memory traits
     ) external whenNotPaused nonReentrant returns (address) {
         revert DirectCreationNotAllowed();
     }
@@ -228,7 +228,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory symbol,
         string memory description,
         string memory tokenURI,
-        ITraits.Traits memory traits
+        IGenes.Genes memory traits
     ) internal returns (address) {
         // Note: 'to' is ignored since Aminals always own themselves
         if (bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
@@ -290,7 +290,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string[] memory symbols,
         string[] memory descriptions,
         string[] memory tokenURIs,
-        ITraits.Traits[] memory traitsArray
+        IGenes.Genes[] memory traitsArray
     ) external whenNotPaused nonReentrant returns (address[] memory) {
         revert DirectCreationNotAllowed();
     }
@@ -310,7 +310,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         string memory symbol,
         string memory description,
         string memory tokenURI,
-        ITraits.Traits memory traits
+        IGenes.Genes memory traits
     ) external whenNotPaused nonReentrant returns (address) {
         return _createAminal(name, symbol, description, tokenURI, traits);
     }
@@ -401,11 +401,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         Aminal parent2 = Aminal(payable(partner));
 
         // Get parent traits
-        ITraits.Traits memory traits1 = parent1.getTraits();
-        ITraits.Traits memory traits2 = parent2.getTraits();
+        IGenes.Genes memory traits1 = parent1.getTraits();
+        IGenes.Genes memory traits2 = parent2.getTraits();
 
         // Create child traits by alternating between parents
-        ITraits.Traits memory childTraits = ITraits.Traits({
+        IGenes.Genes memory childTraits = IGenes.Genes({
             back: traits1.back,      // From parent1
             arm: traits2.arm,        // From parent2
             tail: traits1.tail,      // From parent1

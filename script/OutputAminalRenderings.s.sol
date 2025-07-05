@@ -6,7 +6,7 @@ import {AminalRenderer} from "src/AminalRenderer.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
 import {Aminal} from "src/Aminal.sol";
 import {Gene} from "src/Gene.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
 

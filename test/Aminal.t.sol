@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "lib/forge-std/src/Test.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {SqueakSkill} from "src/skills/SqueakSkill.sol";
 
 contract AminalTest is Test {
@@ -31,7 +31,7 @@ contract AminalTest is Test {
         squeakSkill = new SqueakSkill();
         
         // Create sample traits
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Scaled Arms",
             tail: "Fire Tail",
@@ -56,7 +56,7 @@ contract AminalTest is Test {
     }
 
     function test_ConstructorSelfSovereign() external {
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Scaled Arms",
             tail: "Fire Tail",
@@ -263,7 +263,7 @@ contract AminalTest is Test {
 
     function test_Traits() external {
         // Test getTraits function
-        ITraits.Traits memory traits = aminal.getTraits();
+        IGenes.Genes memory traits = aminal.getTraits();
         assertEq(traits.back, "Dragon Wings");
         assertEq(traits.arm, "Scaled Arms");
         assertEq(traits.tail, "Fire Tail");

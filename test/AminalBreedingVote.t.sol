@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 contract AminalBreedingVoteTest is Test {
     // NOTE: This test uses the old direct API. See BreedingAuction.t.sol for the new flow
@@ -58,7 +58,7 @@ contract AminalBreedingVoteTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -75,7 +75,7 @@ contract AminalBreedingVoteTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -93,7 +93,7 @@ contract AminalBreedingVoteTest is Test {
         breedingVote = new AminalBreedingVote(address(factory), address(0x123)); // Placeholder
         
         // Create two parent Aminals
-        ITraits.Traits memory geneTypes1 = ITraits.Traits({
+        IGenes.Genes memory geneTypes1 = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Strong Arms",
             tail: "Fire Tail",
@@ -104,7 +104,7 @@ contract AminalBreedingVoteTest is Test {
             misc: "Glowing Eyes"
         });
         
-        ITraits.Traits memory geneTypes2 = ITraits.Traits({
+        IGenes.Genes memory geneTypes2 = IGenes.Genes({
             back: "Angel Wings",
             arm: "Gentle Arms",
             tail: "Fluffy Tail",
@@ -258,7 +258,7 @@ contract AminalBreedingVoteTest is Test {
             "LOW1",
             "A low energy parent",
             "low1.json",
-            ITraits.Traits({
+            IGenes.Genes({
                 back: "Weak Wings",
                 arm: "Tired Arms",
                 tail: "Droopy Tail",
@@ -275,7 +275,7 @@ contract AminalBreedingVoteTest is Test {
             "LOW2",
             "Another low energy parent",
             "low2.json",
-            ITraits.Traits({
+            IGenes.Genes({
                 back: "Weak Wings 2",
                 arm: "Tired Arms 2",
                 tail: "Droopy Tail 2",
@@ -536,9 +536,9 @@ contract AminalBreedingVoteTest is Test {
         
         // Verify child geneTypes based on voting
         Aminal child = Aminal(payable(childContract));
-        ITraits.Traits memory childTraits = child.getTraits();
-        ITraits.Traits memory geneTypes1 = parent1.getTraits();
-        ITraits.Traits memory geneTypes2 = parent2.getTraits();
+        IGenes.Genes memory childTraits = child.getTraits();
+        IGenes.Genes memory geneTypes1 = parent1.getTraits();
+        IGenes.Genes memory geneTypes2 = parent2.getTraits();
         
         // Based on voting power:
         // voter1 has more total voting power, so parent1 wins the geneTypes voter1 voted for
@@ -618,8 +618,8 @@ contract AminalBreedingVoteTest is Test {
         
         // In a tie, parent1 should win
         Aminal child = Aminal(payable(childContract));
-        ITraits.Traits memory childTraits = child.getTraits();
-        ITraits.Traits memory geneTypes1 = parent1.getTraits();
+        IGenes.Genes memory childTraits = child.getTraits();
+        IGenes.Genes memory geneTypes1 = parent1.getTraits();
         
         assertEq(childTraits.back, geneTypes1.back); // parent1 wins tie
     }
@@ -649,9 +649,9 @@ contract AminalBreedingVoteTest is Test {
         address childContract = breedingVote.executeBreeding(proposalId);
         
         Aminal child = Aminal(payable(childContract));
-        ITraits.Traits memory childTraits = child.getTraits();
-        ITraits.Traits memory geneTypes1 = parent1.getTraits();
-        ITraits.Traits memory geneTypes2 = parent2.getTraits();
+        IGenes.Genes memory childTraits = child.getTraits();
+        IGenes.Genes memory geneTypes1 = parent1.getTraits();
+        IGenes.Genes memory geneTypes2 = parent2.getTraits();
         
         // Voted geneTypes should follow votes
         assertEq(childTraits.back, geneTypes2.back);  // voted parent2

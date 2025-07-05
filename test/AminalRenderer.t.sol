@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {AminalRenderer} from "src/AminalRenderer.sol";
 import {Aminal} from "src/Aminal.sol";
 import {Gene} from "src/Gene.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 contract AminalRendererTest is Test {
     AminalRenderer public renderer;
@@ -32,7 +32,7 @@ contract AminalRendererTest is Test {
         uint256 tailId = gene.mint(user, "tail", "Fire Tail", FIRE_TAIL, "A blazing fire tail");
         
         // Create an Aminal
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "Dragon Wings",
             arm: "",
             tail: "Fire Tail",

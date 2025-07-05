@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 contract AminalFactoryBreedingOnlyTest is Test {
     AminalFactory public factory;
@@ -17,7 +17,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
     string constant BASE_URI = "https://api.aminals.com/metadata/";
     
     // First parent traits (Adam)
-    ITraits.Traits public adamTraits = ITraits.Traits({
+    IGenes.Genes public adamTraits = IGenes.Genes({
         back: "Original Wings",
         arm: "Strong Arms",
         tail: "Lion Tail",
@@ -29,7 +29,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
     });
     
     // Second parent traits (Eve)
-    ITraits.Traits public eveTraits = ITraits.Traits({
+    IGenes.Genes public eveTraits = IGenes.Genes({
         back: "Graceful Wings",
         arm: "Gentle Arms",
         tail: "Flowing Tail",
@@ -91,17 +91,17 @@ contract AminalFactoryBreedingOnlyTest is Test {
         Aminal adamAminal = Aminal(payable(adam));
         Aminal eveAminal = Aminal(payable(eve));
         
-        ITraits.Traits memory adamActualTraits = adamAminal.getTraits();
+        IGenes.Genes memory adamActualTraits = adamAminal.getTraits();
         assertEq(adamActualTraits.back, adamTraits.back);
         assertEq(adamActualTraits.body, adamTraits.body);
         
-        ITraits.Traits memory eveActualTraits = eveAminal.getTraits();
+        IGenes.Genes memory eveActualTraits = eveAminal.getTraits();
         assertEq(eveActualTraits.back, eveTraits.back);
         assertEq(eveActualTraits.body, eveTraits.body);
     }
     
     function testSkip_RevertWhen_DirectCreation() public {
-        ITraits.Traits memory newTraits = ITraits.Traits({
+        IGenes.Genes memory newTraits = IGenes.Genes({
             back: "New Wings",
             arm: "New Arms",
             tail: "New Tail",
@@ -122,7 +122,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
         string[] memory symbols = new string[](1);
         string[] memory descriptions = new string[](1);
         string[] memory uris = new string[](1);
-        ITraits.Traits[] memory traits = new ITraits.Traits[](1);
+        IGenes.Genes[] memory traits = new IGenes.Genes[](1);
         
         names[0] = "Test";
         symbols[0] = "TST";
@@ -172,7 +172,7 @@ contract AminalFactoryBreedingOnlyTest is Test {
     
     function testSkip_CreateAminalWithTraitsStillWorks() public {
         // This function should still work as it's used by the breeding system
-        ITraits.Traits memory childTraits = ITraits.Traits({
+        IGenes.Genes memory childTraits = IGenes.Genes({
             back: adamTraits.back,
             arm: eveTraits.arm,
             tail: adamTraits.tail,

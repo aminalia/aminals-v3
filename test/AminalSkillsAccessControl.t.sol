@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
 import {Skill} from "src/Skill.sol";
 
@@ -26,7 +26,7 @@ contract AminalSkillsAccessControlTest is Test {
     
     function setUp() public {
         // Create test traits
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "wings",
             arm: "claws", 
             tail: "fluffy",
@@ -66,7 +66,7 @@ contract AminalSkillsAccessControlTest is Test {
         aminal.useSkill(address(restrictedSkill), abi.encodeWithSelector(RestrictedSkill.onlyAllowedAminals.selector));
         
         // Create another Aminal
-        ITraits.Traits memory traits2 = ITraits.Traits({
+        IGenes.Genes memory traits2 = IGenes.Genes({
             back: "scales",
             arm: "fins", 
             tail: "long",

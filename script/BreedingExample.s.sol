@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Script, console} from "forge-std/Script.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 /**
  * @title BreedingExample
@@ -23,7 +23,7 @@ contract BreedingExample is Script {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -40,7 +40,7 @@ contract BreedingExample is Script {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -63,7 +63,7 @@ contract BreedingExample is Script {
         console.log("Factory deployed at:", address(factory));
         
         // Create first parent Aminal
-        ITraits.Traits memory dragonTraits = ITraits.Traits({
+        IGenes.Genes memory dragonTraits = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Clawed Arms",
             tail: "Fire Tail",
@@ -85,7 +85,7 @@ contract BreedingExample is Script {
         console.log("First parent (Dragon) created at:", dragon);
         
         // Create second parent Aminal
-        ITraits.Traits memory bunnyTraits = ITraits.Traits({
+        IGenes.Genes memory bunnyTraits = IGenes.Genes({
             back: "Angel Wings",
             arm: "Soft Arms",
             tail: "Cotton Tail",
@@ -129,7 +129,7 @@ contract BreedingExample is Script {
         console.log("Owner:", childAminal.ownerOf(1));
         
         // Display child traits
-        ITraits.Traits memory childTraits = childAminal.getTraits();
+        IGenes.Genes memory childTraits = childAminal.getTraits();
         console.log("\n--- CHILD TRAITS (Alternating from parents) ---");
         console.log("Back:", childTraits.back, "(from Dragon)");
         console.log("Arm:", childTraits.arm, "(from Bunny)");

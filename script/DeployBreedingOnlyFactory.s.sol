@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 /**
  * @title DeployBreedingOnlyFactory
@@ -18,7 +18,7 @@ contract DeployBreedingOnlyFactory is Script {
         console.log("Deploying AminalFactory with initial parents with deployer:", deployer);
         
         // Define traits for the first parent (Adam)
-        ITraits.Traits memory adamTraits = ITraits.Traits({
+        IGenes.Genes memory adamTraits = IGenes.Genes({
             back: "Primordial Wings",
             arm: "Strong Arms",
             tail: "Lion Tail",
@@ -30,7 +30,7 @@ contract DeployBreedingOnlyFactory is Script {
         });
         
         // Define traits for the second parent (Eve)
-        ITraits.Traits memory eveTraits = ITraits.Traits({
+        IGenes.Genes memory eveTraits = IGenes.Genes({
             back: "Ethereal Wings",
             arm: "Graceful Arms",
             tail: "Phoenix Tail",

@@ -6,7 +6,7 @@ import {BreedingSkill} from "src/skills/BreedingSkill.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {MockGene} from "./mocks/MockGene.sol";
 
 contract BreedingWithGenesTest is Test {
@@ -44,7 +44,7 @@ contract BreedingWithGenesTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -61,7 +61,7 @@ contract BreedingWithGenesTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -89,7 +89,7 @@ contract BreedingWithGenesTest is Test {
         geneContract.createTestGenes();
         
         // Create parent Aminals
-        ITraits.Traits memory traits1 = ITraits.Traits({
+        IGenes.Genes memory traits1 = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Strong Arms",
             tail: "Fire Tail",
@@ -100,7 +100,7 @@ contract BreedingWithGenesTest is Test {
             misc: "Glowing Eyes"
         });
         
-        ITraits.Traits memory traits2 = ITraits.Traits({
+        IGenes.Genes memory traits2 = IGenes.Genes({
             back: "Angel Wings",
             arm: "Gentle Arms",
             tail: "Fluffy Tail",
@@ -309,7 +309,7 @@ contract BreedingWithGenesTest is Test {
         Aminal child = Aminal(payable(childAddress));
         
         // Verify the gene trait won
-        ITraits.Traits memory childTraits = child.getTraits();
+        IGenes.Genes memory childTraits = child.getTraits();
         assertEq(childTraits.back, "Rainbow Wings", "Gene should have won the vote");
     }
     

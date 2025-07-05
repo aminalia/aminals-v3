@@ -8,7 +8,7 @@ import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ERC165Checker} from "lib/openzeppelin-contracts/contracts/utils/introspection/ERC165Checker.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
 import {IGeneStaking} from "src/interfaces/IGeneStaking.sol";
@@ -69,7 +69,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /// @notice These traits are set once during construction and cannot be changed
     /// @dev While not immutable due to Solidity limitations, they are effectively immutable
     ///      as the contract has no functions to modify them
-    ITraits.Traits public traits;
+    IGenes.Genes public traits;
 
     /// @dev Structure to store a Gene reference
     struct GeneReference {
@@ -171,7 +171,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         string memory name,
         string memory symbol,
         string memory baseURI,
-        ITraits.Traits memory _traits
+        IGenes.Genes memory _traits
     ) ERC721(name, symbol) {
         baseTokenURI = baseURI;
         
@@ -294,7 +294,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @dev Get all traits for this Aminal
      * @return The complete traits struct for this Aminal
      */
-    function getTraits() external view returns (ITraits.Traits memory) {
+    function getTraits() external view returns (IGenes.Genes memory) {
         return traits;
     }
 

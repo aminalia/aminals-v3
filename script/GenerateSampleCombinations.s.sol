@@ -63,7 +63,7 @@ contract GenerateSampleCombinations is Script {
         console.log("    .aminal-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }");
         console.log("    .aminal-svg { width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; }");
         console.log("    .aminal-name { font-weight: bold; margin-top: 10px; text-align: center; }");
-        console.log("    .traits { font-size: 12px; color: #666; margin-top: 5px; }");
+        console.log("    .genes { font-size: 12px; color: #666; margin-top: 5px; }");
         console.log("    h1 { text-align: center; color: #333; }");
         console.log("    .section { margin: 40px 0; }");
         console.log("    h2 { color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px; }");

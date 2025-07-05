@@ -5,7 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 /**
  * @title SimpleBreedingVoteExample
@@ -24,7 +24,7 @@ contract SimpleBreedingVoteExample is Script {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -41,7 +41,7 @@ contract SimpleBreedingVoteExample is Script {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            traits: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -61,7 +61,7 @@ contract SimpleBreedingVoteExample is Script {
         console.log("Deployed contracts");
         
         // Create parents
-        ITraits.Traits memory traits1 = ITraits.Traits({
+        IGenes.Genes memory traits1 = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Clawed Arms", 
             tail: "Fire Tail",
@@ -74,7 +74,7 @@ contract SimpleBreedingVoteExample is Script {
         
         address parent1 = factory.createAminal("Dragon", "DRAG", "Dragon", "dragon.json", traits1);
         
-        ITraits.Traits memory traits2 = ITraits.Traits({
+        IGenes.Genes memory traits2 = IGenes.Genes({
             back: "Angel Wings",
             arm: "Soft Arms",
             tail: "Cotton Tail", 

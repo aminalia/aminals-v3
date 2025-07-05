@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {SqueakSkill} from "src/skills/SqueakSkill.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {ISkill} from "src/interfaces/ISkill.sol";
 
 contract SqueakSkillTest is Test {
@@ -21,7 +21,7 @@ contract SqueakSkillTest is Test {
     
     function setUp() public {
         // Create test traits
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "wings",
             arm: "claws", 
             tail: "fluffy",
