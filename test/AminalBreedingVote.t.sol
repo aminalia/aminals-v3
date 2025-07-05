@@ -50,12 +50,7 @@ contract AminalBreedingVoteTest is Test {
         voter3 = makeAddr("voter3");
         nonVoter = makeAddr("nonVoter");
         
-        // Deploy factory and breeding vote contract
-        vm.prank(owner);
-        factory = new AminalFactory(owner, BASE_URI);
-        breedingVote = new AminalBreedingVote(address(factory));
-        
-        // Create two parent Aminals
+        // Create parent data for factory constructor
         ITraits.Traits memory traits1 = ITraits.Traits({
             back: "Dragon Wings",
             arm: "Strong Arms",
@@ -78,25 +73,36 @@ contract AminalBreedingVoteTest is Test {
             misc: "Sparkles"
         });
         
-        vm.prank(voter1);
-        address parent1Address = factory.createAminal(
-            "FireDragon",
-            "FIRE",
-            "A fierce dragon",
-            "dragon.json",
-            traits1
-        );
-        parent1 = Aminal(payable(parent1Address));
+        // Deploy factory with two parent Aminals
+        AminalFactory.ParentData memory parentData1 = AminalFactory.ParentData({
+            name: "FireDragon",
+            symbol: "FIRE",
+            description: "A fierce dragon",
+            tokenURI: "dragon.json",
+            traits: traits1
+        });
         
+        AminalFactory.ParentData memory parentData2 = AminalFactory.ParentData({
+            name: "AngelBunny",
+            symbol: "ANGEL",
+            description: "A gentle bunny",
+            tokenURI: "bunny.json",
+            traits: traits2
+        });
+        
+        vm.prank(owner);
+        factory = new AminalFactory(owner, BASE_URI, parentData1, parentData2);
+        breedingVote = new AminalBreedingVote(address(factory));
+        
+        // Get parent addresses from factory
+        parent1 = Aminal(payable(factory.firstParent()));
+        parent2 = Aminal(payable(factory.secondParent()));
+        
+        // Initialize the parents
+        vm.prank(voter1);
+        parent1.initialize("dragon.json");
         vm.prank(voter2);
-        address parent2Address = factory.createAminal(
-            "AngelBunny",
-            "ANGEL",
-            "A gentle bunny",
-            "bunny.json",
-            traits2
-        );
-        parent2 = Aminal(payable(parent2Address));
+        parent2.initialize("bunny.json");
         
         // Give voters different amounts of love to each parent
         // voter1: 100 love to parent1, 50 love to parent2 (voting power = 150)
@@ -179,6 +185,19 @@ contract AminalBreedingVoteTest is Test {
         assertEq(deadline, block.timestamp + VOTING_DURATION);
         assertFalse(executed);
         assertEq(child, address(0));
+    }
+    
+    function test_RevertWhen_InsufficientLoveForProposal() public {
+        // nonVoter has no love in either parent
+        vm.prank(nonVoter);
+        vm.expectRevert(AminalBreedingVote.InsufficientLoveAndEnergy.selector);
+        breedingVote.createProposal(
+            address(parent1),
+            address(parent2),
+            "A magical hybrid",
+            "hybrid.json",
+            VOTING_DURATION
+        );
     }
     
     function test_VotingPower() public {
