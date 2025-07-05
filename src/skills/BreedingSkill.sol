@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ISkill} from "../interfaces/ISkill.sol";
+import {Skill} from "../Skill.sol";
 import {Aminal} from "../Aminal.sol";
 import {AminalFactory} from "../AminalFactory.sol";
 import {ITraits} from "../interfaces/ITraits.sol";
@@ -13,7 +13,7 @@ import {ITraits} from "../interfaces/ITraits.sol";
  *      1. Create proposal: Costs 2,500 energy + love from proposer
  *      2. Accept proposal: Costs 2,500 energy + love from acceptor
  */
-contract BreedingSkill is ISkill {
+contract BreedingSkill is Skill {
 
     /// @dev Structure to store breeding proposals
     struct Proposal {
@@ -260,10 +260,4 @@ contract BreedingSkill is ISkill {
         }
     }
 
-    /**
-     * @dev Required by ISkill interface
-     */
-    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
-        return interfaceId == type(ISkill).interfaceId;
-    }
 }
