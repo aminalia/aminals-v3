@@ -511,6 +511,28 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
+     * @notice Pay gene owners after breeding (10% of balance)
+     * @dev Only callable by the Aminal itself through a skill
+     * @param breedingVoteContract The breeding vote contract address
+     * @param ticketId The breeding ticket ID
+     */
+    function payGeneOwnersForBreeding(address breedingVoteContract, uint256 ticketId) external {
+        // Only the Aminal itself can call this function
+        require(msg.sender == address(this), "Only self can call");
+        
+        // Calculate 10% of balance
+        uint256 paymentAmount = address(this).balance / 10;
+        
+        if (paymentAmount > 0) {
+            // Call the breeding vote contract to distribute payment
+            (bool success,) = breedingVoteContract.call{value: paymentAmount}(
+                abi.encodeWithSignature("payGeneOwners(uint256)", ticketId)
+            );
+            require(success, "Payment failed");
+        }
+    }
+    
+    /**
      * @dev Override supportsInterface to support ERC721, ERC721URIStorage, and ERC721Receiver
      * @param interfaceId The interface ID to check
      * @return True if the interface is supported

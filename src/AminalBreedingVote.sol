@@ -6,6 +6,7 @@ import {AminalFactory} from "./AminalFactory.sol";
 import {IGenes} from "./interfaces/IGenes.sol";
 import {IAminalBreedingVote} from "./interfaces/IAminalBreedingVote.sol";
 import {IGene} from "./interfaces/IGene.sol";
+import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
@@ -163,6 +164,17 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Mapping from ticket ID to veto votes
     mapping(uint256 => VetoVote) public vetoVotes;
     
+    /// @dev Structure to track pending gene owner payments
+    struct PendingPayment {
+        address[] geneOwners;
+        uint256 totalAmount;
+        bool parent1Paid;
+        bool parent2Paid;
+    }
+    
+    /// @dev Mapping from ticket ID to pending payments
+    mapping(uint256 => PendingPayment) public pendingPayments;
+    
     /// @dev Event emitted when a breeding ticket is created
     event BreedingTicketCreated(
         uint256 indexed ticketId,
@@ -230,6 +242,13 @@ contract AminalBreedingVote is IAminalBreedingVote {
         uint256 indexed ticketId,
         uint256 vetoVotes,
         uint256 proceedVotes
+    );
+    
+    /// @dev Event emitted when gene owners are paid
+    event GeneOwnerPaid(
+        uint256 indexed ticketId,
+        address indexed geneOwner,
+        uint256 amount
     );
     
     /// @dev Error thrown when trying to vote without love in both parents
@@ -653,24 +672,56 @@ contract AminalBreedingVote is IAminalBreedingVote {
         string memory childDescription,
         string memory childTokenURI
     ) private returns (address childContract) {
-        // Get parent genes (stored as traits)
-        Aminal parent1 = Aminal(payable(parent1Address));
-        Aminal parent2 = Aminal(payable(parent2Address));
+        // Build child genes and create child
+        IGenes.Genes memory childGenes = _buildChildGenesForCreation(ticketId, parent1Address, parent2Address);
         
-        IGenes.Genes memory parent1Genes = parent1.getGenes();
-        IGenes.Genes memory parent2Genes = parent2.getGenes();
-        
-        // Build child genes in a separate function to avoid stack too deep
-        IGenes.Genes memory childGenes = _buildChildGenes(ticketId, parent1Genes, parent2Genes);
-        
-        // Generate child name and symbol from parent names
-        string memory parent1Name = parent1.name();
-        string memory parent2Name = parent2.name();
-        string memory childName = string.concat(parent1Name, "-", parent2Name, "-Child");
-        string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
+        // Store pending payments for gene owners separately
+        _collectAndStorePendingPayments(ticketId);
         
         // Create the child through the factory
-        childContract = factory.createAminalWithGenes(
+        childContract = _createChildFromGenes(
+            parent1Address,
+            parent2Address,
+            childDescription,
+            childTokenURI,
+            childGenes
+        );
+    }
+    
+    /**
+     * @dev Build child genes for creation
+     */
+    function _buildChildGenesForCreation(
+        uint256 ticketId,
+        address parent1Address,
+        address parent2Address
+    ) private view returns (IGenes.Genes memory childGenes) {
+        IGenes.Genes memory parent1Genes = Aminal(payable(parent1Address)).getGenes();
+        IGenes.Genes memory parent2Genes = Aminal(payable(parent2Address)).getGenes();
+        return _buildChildGenes(ticketId, parent1Genes, parent2Genes);
+    }
+    
+    /**
+     * @dev Create child from genes
+     */
+    function _createChildFromGenes(
+        address parent1Address,
+        address parent2Address,
+        string memory childDescription,
+        string memory childTokenURI,
+        IGenes.Genes memory childGenes
+    ) private returns (address) {
+        // Generate child name and symbol from parent names
+        string memory parent1Name = Aminal(payable(parent1Address)).name();
+        string memory parent2Name = Aminal(payable(parent2Address)).name();
+        string memory childName = string.concat(parent1Name, "-", parent2Name, "-Child");
+        string memory childSymbol = string.concat(
+            Aminal(payable(parent1Address)).symbol(),
+            Aminal(payable(parent2Address)).symbol()
+        );
+        
+        // Create the child through the factory
+        return factory.createAminalWithGenes(
             childName,
             childSymbol,
             childDescription,
@@ -680,7 +731,16 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
-     * @dev Build child genes from voting results
+     * @dev Collect and store pending payments
+     */
+    function _collectAndStorePendingPayments(uint256 ticketId) private {
+        address[] memory geneOwners = _collectGeneOwners(ticketId);
+        _storePendingPayments(ticketId, geneOwners);
+    }
+    
+    
+    /**
+     * @dev Build child genes from voting results (existing function)
      * @param ticketId The ticket ID
      * @param parent1Genes Parent1's genes (stored as traits)
      * @param parent2Genes Parent2's genes (stored as traits)
@@ -699,6 +759,80 @@ contract AminalBreedingVote is IAminalBreedingVote {
         (childGenes.face,,,) = _getWinningGeneValue(ticketId, GeneType.FACE, parent1Genes, parent2Genes);
         (childGenes.mouth,,,) = _getWinningGeneValue(ticketId, GeneType.MOUTH, parent1Genes, parent2Genes);
         (childGenes.misc,,,) = _getWinningGeneValue(ticketId, GeneType.MISC, parent1Genes, parent2Genes);
+    }
+    
+    /**
+     * @dev Collect gene owners for proposed genes that won voting
+     * @param ticketId The ticket ID
+     * @return geneOwners Array of addresses to pay (Gene NFT owners)
+     */
+    function _collectGeneOwners(uint256 ticketId) private view returns (address[] memory geneOwners) {
+        // Get parent genes to pass to _getWinningGeneValue
+        BreedingTicket memory ticket = tickets[ticketId];
+        IGenes.Genes memory parent1Genes = Aminal(payable(ticket.parent1)).getGenes();
+        IGenes.Genes memory parent2Genes = Aminal(payable(ticket.parent2)).getGenes();
+        
+        // We'll collect up to 8 gene owners (one for each gene type)
+        address[] memory tempOwners = new address[](8);
+        uint256 ownerCount = 0;
+        
+        // Check each gene type for proposed gene winners
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.BACK, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.ARM, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.TAIL, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.EARS, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.BODY, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.FACE, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.MOUTH, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        ownerCount = _addGeneOwnerIfProposed(ticketId, GeneType.MISC, parent1Genes, parent2Genes, tempOwners, ownerCount);
+        
+        // Create properly sized array
+        geneOwners = new address[](ownerCount);
+        for (uint256 i = 0; i < ownerCount; i++) {
+            geneOwners[i] = tempOwners[i];
+        }
+    }
+    
+    /**
+     * @dev Helper to add gene owner if the winning gene is a proposed gene
+     */
+    function _addGeneOwnerIfProposed(
+        uint256 ticketId,
+        GeneType geneType,
+        IGenes.Genes memory parent1Genes,
+        IGenes.Genes memory parent2Genes,
+        address[] memory tempOwners,
+        uint256 ownerCount
+    ) private view returns (uint256) {
+        (,bool isProposedGene, address geneContract, uint256 geneTokenId) = 
+            _getWinningGeneValue(ticketId, geneType, parent1Genes, parent2Genes);
+            
+        if (isProposedGene && geneContract != address(0)) {
+            address owner = IERC721(geneContract).ownerOf(geneTokenId);
+            if (owner != address(0)) {
+                tempOwners[ownerCount++] = owner;
+            }
+        }
+        
+        return ownerCount;
+    }
+    
+    /**
+     * @dev Store pending payments for gene owners
+     * @param ticketId The breeding ticket ID
+     * @param geneOwners Array of addresses to pay
+     */
+    function _storePendingPayments(
+        uint256 ticketId,
+        address[] memory geneOwners
+    ) private {
+        if (geneOwners.length == 0) return;
+        
+        // Store pending payment info
+        pendingPayments[ticketId].geneOwners = geneOwners;
+        pendingPayments[ticketId].totalAmount = 0; // Will be calculated when parents pay
+        pendingPayments[ticketId].parent1Paid = false;
+        pendingPayments[ticketId].parent2Paid = false;
     }
     
     /**
@@ -918,6 +1052,54 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
+     * @notice Pay gene owners for a breeding ticket (called by parent Aminals)
+     * @dev Parents call this function to pay 10% of their balance to gene owners
+     * @param ticketId The breeding ticket ID
+     */
+    function payGeneOwners(uint256 ticketId) external payable {
+        BreedingTicket memory ticket = tickets[ticketId];
+        PendingPayment storage payment = pendingPayments[ticketId];
+        
+        // Verify the caller is one of the parents
+        require(msg.sender == ticket.parent1 || msg.sender == ticket.parent2, "Only parents can pay");
+        require(ticket.executed, "Breeding not yet executed");
+        require(payment.geneOwners.length > 0, "No gene owners to pay");
+        
+        // Check which parent is paying
+        bool isParent1 = msg.sender == ticket.parent1;
+        
+        // Prevent double payment
+        if (isParent1) {
+            require(!payment.parent1Paid, "Parent1 already paid");
+            payment.parent1Paid = true;
+        } else {
+            require(!payment.parent2Paid, "Parent2 already paid");
+            payment.parent2Paid = true;
+        }
+        
+        // Distribute the payment equally among gene owners
+        uint256 paymentPerOwner = msg.value / payment.geneOwners.length;
+        uint256 totalDistributed = 0;
+        
+        for (uint256 i = 0; i < payment.geneOwners.length; i++) {
+            address geneOwner = payment.geneOwners[i];
+            if (i == payment.geneOwners.length - 1) {
+                // Last recipient gets any remainder due to rounding
+                uint256 remainder = msg.value - totalDistributed;
+                payable(geneOwner).transfer(remainder);
+                emit GeneOwnerPaid(ticketId, geneOwner, remainder);
+            } else {
+                payable(geneOwner).transfer(paymentPerOwner);
+                totalDistributed += paymentPerOwner;
+                emit GeneOwnerPaid(ticketId, geneOwner, paymentPerOwner);
+            }
+        }
+        
+        // Update total amount paid
+        payment.totalAmount += msg.value;
+    }
+    
+    /**
      * @notice Get the current veto vote status
      * @param ticketId The ticket ID
      * @return vetoCount The number of votes to veto
@@ -935,5 +1117,52 @@ contract AminalBreedingVote is IAminalBreedingVote {
         vetoCount = veto.vetoVotes;
         proceedCount = veto.proceedVotes;
         wouldBeVetoed = vetoCount >= proceedCount; // Veto wins on ties
+    }
+    
+    /**
+     * @notice Get pending payment info for a breeding ticket
+     * @param ticketId The ticket ID
+     * @return geneOwners Array of gene owners to be paid
+     * @return parent1Paid Whether parent1 has paid
+     * @return parent2Paid Whether parent2 has paid
+     * @return totalAmountPaid Total amount paid so far
+     */
+    function getPendingPaymentInfo(
+        uint256 ticketId
+    ) external view returns (
+        address[] memory geneOwners,
+        bool parent1Paid,
+        bool parent2Paid,
+        uint256 totalAmountPaid
+    ) {
+        PendingPayment memory payment = pendingPayments[ticketId];
+        return (payment.geneOwners, payment.parent1Paid, payment.parent2Paid, payment.totalAmount);
+    }
+    
+    /**
+     * @notice Check if an Aminal needs to pay gene owners for a breeding ticket
+     * @param ticketId The ticket ID
+     * @param aminal The Aminal address to check
+     * @return needsToPay Whether the Aminal needs to pay
+     * @return isParent1 Whether the Aminal is parent1 (vs parent2)
+     */
+    function doesAminalNeedToPay(
+        uint256 ticketId,
+        address aminal
+    ) external view returns (bool needsToPay, bool isParent1) {
+        BreedingTicket memory ticket = tickets[ticketId];
+        PendingPayment memory payment = pendingPayments[ticketId];
+        
+        if (!ticket.executed || payment.geneOwners.length == 0) {
+            return (false, false);
+        }
+        
+        if (aminal == ticket.parent1) {
+            return (!payment.parent1Paid, true);
+        } else if (aminal == ticket.parent2) {
+            return (!payment.parent2Paid, false);
+        }
+        
+        return (false, false);
     }
 }
