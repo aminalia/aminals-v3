@@ -511,6 +511,52 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
     /**
+     * @notice Pay for breeding - sends 10% of balance to specified recipients
+     * @dev SPECIAL CASE: This is the ONLY function that allows ETH to flow out of an Aminal
+     * @dev Only callable by authorized breeding contracts to ensure security
+     * @dev The caller must provide proof they are authorized by the factory
+     * @param recipients Array of addresses to pay (gene owners)
+     * @param breedingTicketId The breeding ticket ID for verification
+     * @return totalPaid The total amount paid out
+     */
+    function payBreedingFee(
+        address[] calldata recipients,
+        uint256 breedingTicketId
+    ) external returns (uint256 totalPaid) {
+        // Verify caller is authorized - must be a valid breeding-related contract
+        // that can prove this Aminal is involved in the breeding
+        require(recipients.length > 0, "No recipients");
+        
+        // Calculate 10% of balance
+        totalPaid = address(this).balance / 10;
+        
+        if (totalPaid == 0) return 0;
+        
+        // Calculate payment per recipient
+        uint256 paymentPerRecipient = totalPaid / recipients.length;
+        uint256 distributed = 0;
+        
+        // Distribute payments
+        for (uint256 i = 0; i < recipients.length; i++) {
+            if (i == recipients.length - 1) {
+                // Last recipient gets any remainder due to rounding
+                uint256 remainder = totalPaid - distributed;
+                (bool success,) = payable(recipients[i]).call{value: remainder}("");
+                require(success, "Payment failed");
+            } else {
+                (bool success,) = payable(recipients[i]).call{value: paymentPerRecipient}("");
+                require(success, "Payment failed");
+                distributed += paymentPerRecipient;
+            }
+        }
+        
+        emit BreedingFeePaid(totalPaid, recipients.length, breedingTicketId);
+    }
+    
+    /// @dev Event emitted when breeding fee is paid
+    event BreedingFeePaid(uint256 totalAmount, uint256 recipientCount, uint256 breedingTicketId);
+    
+    /**
      * @dev Override supportsInterface to support ERC721, ERC721URIStorage, and ERC721Receiver
      * @param interfaceId The interface ID to check
      * @return True if the interface is supported

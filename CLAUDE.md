@@ -956,8 +956,13 @@ function testFuzz_Example(uint96 amount) public {
 - **State Assertions**: Include assertions within handler functions to catch issues early
 
 ### Testing
-- **Comprehensive Coverage**: 158+ tests covering all major functionality
+- **Comprehensive Coverage**: 225+ tests across 29 test suites
 - **Fuzz Testing**: Property-based testing for energy/love calculations
+- **Test Organization**: Tests organized by domain in unit/, integration/, invariant/, gas/ directories
+- **Common Pitfalls**: 
+  - Use `vm.startPrank`/`vm.stopPrank` for multiple calls from same address
+  - Breeding requires voting to proceed (veto wins on 0-0 tie)
+  - Users need love in BOTH parents to propose genes (min 100 combined)
 - **Dynamic Test Linking**: Enabled for faster compilation
 </aminals_project>
 
