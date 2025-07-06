@@ -48,8 +48,8 @@ contract AminalDynamicPositioningTest is Test {
         Aminal tallAminal = new Aminal(
             "Tall Bunny Dragon",
             "TBD",
-            "",
-            tallTraits
+            tallTraits,
+            address(this)
         );
         
         // Initialize with genes
@@ -95,8 +95,8 @@ contract AminalDynamicPositioningTest is Test {
         Aminal chubbyAminal = new Aminal(
             "Chubby Bunny Dragon",
             "CBD",
-            "",
-            chubbyTraits
+            chubbyTraits,
+            address(this)
         );
         
         // Initialize with genes
@@ -159,8 +159,8 @@ contract AminalDynamicPositioningTest is Test {
         Aminal aminal = new Aminal(
             string.concat(bodyType, " Test"),
             "TEST",
-            "",
-            traits
+            traits,
+            address(this)
         );
         
         // Initialize with genes

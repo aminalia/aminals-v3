@@ -38,7 +38,7 @@ contract AminalSkillsAccessControlTest is Test {
         });
         
         // Deploy contracts
-        aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits);
+        aminal = new Aminal("TestAminal", "TAMINAL", traits, address(this));
         aminal.initialize("test-uri");
         
         // Deploy skills with owner
@@ -77,7 +77,7 @@ contract AminalSkillsAccessControlTest is Test {
             misc: "glitter"
         });
         
-        Aminal aminal2 = new Aminal("TestAminal2", "TAMINAL2", "https://test2.com/", traits2);
+        Aminal aminal2 = new Aminal("TestAminal2", "TAMINAL2", traits2, address(this));
         aminal2.initialize("test-uri-2");
         
         // Fund and try to use skill from non-allowed Aminal

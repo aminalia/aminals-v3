@@ -75,7 +75,7 @@ contract BreedingWithGenesTest is Test {
         
         // Deploy contracts
         vm.prank(owner);
-        factory = new AminalFactory(owner, "https://api.aminals.com/", firstParentData, secondParentData);
+        factory = new AminalFactory(owner, firstParentData, secondParentData);
         
         // Predict addresses for circular dependency
         uint256 nonce = vm.getNonce(address(this));

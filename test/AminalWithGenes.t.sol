@@ -48,8 +48,8 @@ contract AminalWithGenesTest is Test {
         Aminal aminal = new Aminal(
             "Fire Dragon Bunny",
             "FDB",
-            "",
-            traits
+            traits,
+            address(this)
         );
         
         // Create gene references
@@ -98,8 +98,8 @@ contract AminalWithGenesTest is Test {
         Aminal aminal = new Aminal(
             "Plain Aminal",
             "PLAIN",
-            "",
-            traits
+            traits,
+            address(this)
         );
         
         // Initialize with empty gene references
@@ -137,8 +137,8 @@ contract AminalWithGenesTest is Test {
         Aminal aminal = new Aminal(
             "Partial Aminal",
             "PART",
-            "",
-            traits
+            traits,
+            address(this)
         );
         
         // Create gene references with only some genes

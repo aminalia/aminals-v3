@@ -14,8 +14,6 @@ contract AminalFactoryBreedingOnlyTest is Test {
     address public owner;
     address public user;
     
-    string constant BASE_URI = "https://api.aminals.com/metadata/";
-    
     // First parent traits (Adam)
     IGenes.Genes public adamTraits = IGenes.Genes({
         back: "Original Wings",
@@ -64,7 +62,6 @@ contract AminalFactoryBreedingOnlyTest is Test {
         vm.prank(owner);
         factory = new AminalFactory(
             owner,
-            BASE_URI,
             adamData,
             eveData
         );

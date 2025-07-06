@@ -18,8 +18,8 @@ interface IAminalBreedingVote {
     function createBreedingTicket(
         address parent1,
         address parent2,
-        string memory childDescription,
-        string memory childTokenURI
+        string calldata childDescription,
+        string calldata childTokenURI
     ) external returns (uint256 ticketId);
     
     /**

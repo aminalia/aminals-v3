@@ -68,35 +68,35 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
      * @notice Mint a Gene with onchain SVG data
      * @dev Anyone can mint Genes. Traits are permanent and cannot be modified after minting.
      * @param to The address that will receive the NFT
-     * @param traitType The trait type this NFT represents (e.g., "back", "arm")
-     * @param traitValue The specific trait value (e.g., "Dragon Wings", "Fire Tail")
+     * @param _traitType The trait type this NFT represents (e.g., "back", "arm")
+     * @param _traitValue The specific trait value (e.g., "Dragon Wings", "Fire Tail")
      * @param svg The raw SVG data for this trait (without outer <svg> tags for composability)
      * @param description Description of the trait
      * @return tokenId The ID of the newly minted token
      */
     function mint(
         address to,
-        string memory traitType,
-        string memory traitValue,
-        string memory svg,
-        string memory description
+        string calldata _traitType,
+        string calldata _traitValue,
+        string calldata svg,
+        string calldata description
     ) external returns (uint256) {
         if (to == address(0)) revert InvalidParameters();
-        if (bytes(traitType).length == 0) revert InvalidParameters();
-        if (bytes(traitValue).length == 0) revert InvalidParameters();
+        if (bytes(_traitType).length == 0) revert InvalidParameters();
+        if (bytes(_traitValue).length == 0) revert InvalidParameters();
         if (bytes(svg).length == 0) revert InvalidParameters();
         
         currentTokenId++;
         uint256 tokenId = currentTokenId;
         
-        tokenTraitType[tokenId] = traitType;
-        tokenTraitValue[tokenId] = traitValue;
+        tokenTraitType[tokenId] = _traitType;
+        tokenTraitValue[tokenId] = _traitValue;
         gene[tokenId] = svg;
         tokenDescription[tokenId] = description;
         
         _safeMint(to, tokenId);
         
-        emit GeneCreated(tokenId, to, traitType, traitValue, "");
+        emit GeneCreated(tokenId, to, _traitType, _traitValue, "");
         
         return tokenId;
     }
@@ -112,11 +112,11 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
      * @return tokenIds Array of IDs of the newly minted tokens
      */
     function batchMint(
-        address[] memory recipients,
-        string[] memory traitTypes,
-        string[] memory traitValues,
-        string[] memory svgs,
-        string[] memory descriptions
+        address[] calldata recipients,
+        string[] calldata traitTypes,
+        string[] calldata traitValues,
+        string[] calldata svgs,
+        string[] calldata descriptions
     ) external returns (uint256[] memory) {
         if (recipients.length != traitTypes.length || 
             recipients.length != traitValues.length ||
@@ -163,14 +163,14 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
     /**
      * @dev Get the trait information for a specific token
      * @param tokenId The token ID to query
-     * @return traitType The trait type
-     * @return traitValue The trait value
+     * @return _traitType The trait type
+     * @return _traitValue The trait value
      * @return svg The raw SVG data
      * @return description The trait description
      */
     function getTokenTraits(uint256 tokenId) external view returns (
-        string memory traitType, 
-        string memory traitValue,
+        string memory _traitType, 
+        string memory _traitValue,
         string memory svg,
         string memory description
     ) {
@@ -197,15 +197,15 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
 
     /**
      * @dev Get all tokens with a specific trait type
-     * @param traitType The trait type to search for
+     * @param _traitType The trait type to search for
      * @return tokenIds Array of token IDs with the specified trait type
      */
-    function getTokensByTraitType(string memory traitType) external view returns (uint256[] memory) {
+    function getTokensByTraitType(string calldata _traitType) external view returns (uint256[] memory) {
         uint256[] memory matchingTokens = new uint256[](totalSupply());
         uint256 matchCount = 0;
         
         for (uint256 i = 1; i <= currentTokenId; i++) {
-            if (_exists(i) && keccak256(abi.encodePacked(tokenTraitType[i])) == keccak256(abi.encodePacked(traitType))) {
+            if (_exists(i) && keccak256(abi.encodePacked(tokenTraitType[i])) == keccak256(abi.encodePacked(_traitType))) {
                 matchingTokens[matchCount] = i;
                 matchCount++;
             }
@@ -222,15 +222,15 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
 
     /**
      * @dev Get all tokens with a specific trait value
-     * @param traitValue The trait value to search for
+     * @param _traitValue The trait value to search for
      * @return tokenIds Array of token IDs with the specified trait value
      */
-    function getTokensByTraitValue(string memory traitValue) external view returns (uint256[] memory) {
+    function getTokensByTraitValue(string calldata _traitValue) external view returns (uint256[] memory) {
         uint256[] memory matchingTokens = new uint256[](totalSupply());
         uint256 matchCount = 0;
         
         for (uint256 i = 1; i <= currentTokenId; i++) {
-            if (_exists(i) && keccak256(abi.encodePacked(tokenTraitValue[i])) == keccak256(abi.encodePacked(traitValue))) {
+            if (_exists(i) && keccak256(abi.encodePacked(tokenTraitValue[i])) == keccak256(abi.encodePacked(_traitValue))) {
                 matchingTokens[matchCount] = i;
                 matchCount++;
             }

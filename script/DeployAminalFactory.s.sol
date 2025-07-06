@@ -57,7 +57,6 @@ contract DeployAminalFactory is Script {
         // Deploy AminalFactory
         AminalFactory factory = new AminalFactory(
             deployer,  // owner
-            "https://api.aminals.com/metadata/",  // baseURI
             firstParentData,
             secondParentData
         );

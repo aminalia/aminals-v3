@@ -63,7 +63,6 @@ contract DeployBreedingOnlyFactory is Script {
         // Deploy AminalFactory with the two initial parents
         AminalFactory factory = new AminalFactory(
             deployer,  // owner
-            "https://api.aminals.com/metadata/",  // baseURI
             adamData,
             eveData
         );

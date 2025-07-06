@@ -45,7 +45,7 @@ contract GasBenchmarks is BreedingTestBase {
     }
     
     function test_Gas_AminalInitialization() public {
-        Aminal aminal = new Aminal("GasTest", "GAS", BASE_URI, TestHelpers.dragonTraits());
+        Aminal aminal = new Aminal("GasTest", "GAS", TestHelpers.dragonTraits(), address(this));
         
         uint256 gasBefore = gasleft();
         aminal.initialize("gas-test.json");

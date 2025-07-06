@@ -23,7 +23,6 @@ abstract contract AminalTestBase is Test, TestAssertions {
     address public user3;
     
     // Constants
-    string constant BASE_URI = "https://api.aminals.com/metadata/";
     string constant DEFAULT_NAME = "TestAminal";
     string constant DEFAULT_SYMBOL = "TEST";
     
@@ -53,7 +52,7 @@ abstract contract AminalTestBase is Test, TestAssertions {
     ) internal returns (Aminal) {
         // Pass address(this) as factory for test Aminals
         // In these tests, breeding is not used so factory validation won't be triggered
-        return new Aminal(name, symbol, BASE_URI, traits, address(this));
+        return new Aminal(name, symbol, traits, address(this));
     }
     
     function _initializeAminal(Aminal targetAminal, string memory tokenURI) internal returns (uint256) {

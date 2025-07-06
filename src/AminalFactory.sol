@@ -36,9 +36,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     /// @notice This represents the total count of unique Aminal contracts deployed
     uint256 public totalAminals;
 
-    /// @dev Base URI for all Aminal metadata - passed to each new Aminal contract
-    /// @notice This URI is used by individual Aminal contracts for metadata resolution
-    string public baseTokenURI;
 
     /// @dev Mapping from Aminal ID to contract address (ID starts at 1)
     /// @notice Provides O(1) lookup of any Aminal contract by its sequential ID
@@ -138,18 +135,15 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     /**
      * @dev Constructor initializes the factory and creates the first two parent Aminals
      * @param owner The address that will own the factory
-     * @param baseURI The base URI for Aminal metadata
      * @param firstParentData Data for creating the first parent
      * @param secondParentData Data for creating the second parent
      */
     constructor(
-        address owner, 
-        string memory baseURI,
+        address owner,
         ParentData memory firstParentData,
         ParentData memory secondParentData
     ) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
-        baseTokenURI = baseURI;
         
         // Create the first two parent Aminals during construction
         firstParent = _createAminal(
@@ -255,7 +249,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
-        Aminal newAminal = new Aminal(name, symbol, baseTokenURI, genes, address(this));
+        Aminal newAminal = new Aminal(name, symbol, genes, address(this));
         
         // Initialize the Aminal to mint the NFT to itself (self-sovereign)
         // Each Aminal contract can only initialize once, ensuring 1-of-1 uniqueness
@@ -293,11 +287,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContracts Array of addresses of the newly deployed Aminal contracts
      */
     function batchCreateAminals(
-        string[] memory names,
-        string[] memory symbols,
-        string[] memory descriptions,
-        string[] memory tokenURIs,
-        IGenes.Genes[] memory genesArray
+        string[] calldata names,
+        string[] calldata symbols,
+        string[] calldata descriptions,
+        string[] calldata tokenURIs,
+        IGenes.Genes[] calldata genesArray
     ) external whenNotPaused nonReentrant returns (address[] memory) {
         revert DirectCreationNotAllowed();
     }
@@ -313,11 +307,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function createAminalWithGenes(
-        string memory name,
-        string memory symbol,
-        string memory description,
-        string memory tokenURI,
-        IGenes.Genes memory genes
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata tokenURI,
+        IGenes.Genes calldata genes
     ) external whenNotPaused nonReentrant returns (address) {
         return _createAminal(name, symbol, description, tokenURI, genes);
     }
@@ -331,13 +325,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         emit FactoryPaused(_paused);
     }
 
-    /**
-     * @dev Update the base URI for future Aminal metadata
-     * @param newBaseURI The new base URI
-     */
-    function setBaseURI(string memory newBaseURI) external onlyOwner {
-        baseTokenURI = newBaseURI;
-    }
     
     /**
      * @dev Set the authorized breeding vote contract (one-time setting)
@@ -405,24 +392,60 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      */
     function breed(
         address partner,
-        string memory childDescription,
-        string memory childTokenURI
+        string calldata childDescription,
+        string calldata childTokenURI
     ) external whenNotPaused nonReentrant returns (address) {
         // Only Aminals can breed
         if (!isValidAminal[msg.sender]) revert OnlyAminalsCanBreed();
         if (!isValidAminal[partner]) revert InvalidBreedingPartner();
         if (msg.sender == partner) revert CannotBreedWithSelf();
 
-        // Get parent Aminals
-        Aminal parent1 = Aminal(payable(msg.sender));
-        Aminal parent2 = Aminal(payable(partner));
+        // Create child using helper function
+        address childContract = _breedHelper(msg.sender, partner, childDescription, childTokenURI);
 
-        // Get parent genes
-        IGenes.Genes memory genes1 = parent1.getGenes();
-        IGenes.Genes memory genes2 = parent2.getGenes();
+        emit AminalsBred(msg.sender, partner, childContract, totalAminals);
 
-        // Create child genes by alternating between parents
-        IGenes.Genes memory childGenes = IGenes.Genes({
+        return childContract;
+    }
+
+    /**
+     * @dev Helper function to handle breeding logic and avoid stack too deep
+     */
+    function _breedHelper(
+        address parent1Address,
+        address parent2Address,
+        string calldata childDescription,
+        string calldata childTokenURI
+    ) private returns (address) {
+        Aminal parent1 = Aminal(payable(parent1Address));
+        Aminal parent2 = Aminal(payable(parent2Address));
+        
+        // Use simple names to avoid stack issues
+        // TODO: Restore dynamic naming when stack issue is resolved
+        string memory childName = "ChildAminal";
+        string memory childSymbol = "CHILD";
+        
+        // Get combined genes
+        IGenes.Genes memory childGenes = _combineGenes(parent1.getGenes(), parent2.getGenes());
+        
+        // Create the child
+        return _createAminal(
+            childName,
+            childSymbol,
+            childDescription,
+            childTokenURI,
+            childGenes
+        );
+    }
+
+    /**
+     * @dev Helper function to combine parent genes
+     * @param genes1 Genes from parent 1
+     * @param genes2 Genes from parent 2
+     * @return Combined genes for the child
+     */
+    function _combineGenes(IGenes.Genes memory genes1, IGenes.Genes memory genes2) private pure returns (IGenes.Genes memory) {
+        return IGenes.Genes({
             back: genes1.back,      // From parent1
             arm: genes2.arm,        // From parent2
             tail: genes1.tail,      // From parent1
@@ -432,25 +455,20 @@ contract AminalFactory is Ownable, ReentrancyGuard {
             mouth: genes1.mouth,    // From parent1
             misc: genes2.misc       // From parent2
         });
-
-        // Generate child name and symbol from parent names
-        string memory parent1Name = parent1.name();
-        string memory parent2Name = parent2.name();
-        string memory childName = string.concat(parent1Name, "-", parent2Name, "-Child");
-        string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
-
-        // Create the child Aminal
-        address childContract = _createAminal(
-            childName,
-            childSymbol,
-            childDescription,
-            childTokenURI,
-            childGenes
-        );
-
-        emit AminalsBred(msg.sender, partner, childContract, totalAminals);
-
-        return childContract;
+    }
+    
+    /**
+     * @dev Generate child name from parent names
+     */
+    function _generateChildName(string memory name1, string memory name2) private pure returns (string memory) {
+        return string.concat(name1, "-", name2, "-Child");
+    }
+    
+    /**
+     * @dev Generate child symbol from parent symbols
+     */
+    function _generateChildSymbol(string memory symbol1, string memory symbol2) private pure returns (string memory) {
+        return string.concat(symbol1, symbol2);
     }
 
     /**

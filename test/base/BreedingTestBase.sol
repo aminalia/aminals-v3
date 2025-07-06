@@ -36,8 +36,6 @@ abstract contract BreedingTestBase is Test {
     uint256 constant GENE_PROPOSAL_DURATION = 3 days;
     uint256 constant VOTING_DURATION = 4 days;
     
-    string constant BASE_URI = "https://api.aminals.com/metadata/";
-    
     // Standard parent data
     AminalFactory.ParentData public adamData = AminalFactory.ParentData({
         name: "Adam",
@@ -117,7 +115,7 @@ abstract contract BreedingTestBase is Test {
     
     function _deployContracts() internal {
         vm.prank(owner);
-        factory = new AminalFactory(owner, BASE_URI, adamData, eveData);
+        factory = new AminalFactory(owner, adamData, eveData);
         
         // Resolve circular dependency
         uint256 nonce = vm.getNonce(address(this));

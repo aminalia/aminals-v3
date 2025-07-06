@@ -105,7 +105,7 @@ contract AminalSkillsERC165CheckerTest is Test {
         });
         
         // Deploy contracts
-        aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits);
+        aminal = new Aminal("TestAminal", "TAMINAL", traits, address(this));
         aminal.initialize("test-uri");
         
         properSkill = new ProperSkillWithERC165Checker();

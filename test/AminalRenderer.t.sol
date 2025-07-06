@@ -46,8 +46,8 @@ contract AminalRendererTest is Test {
         Aminal aminal = new Aminal(
             "Test Dragon",
             "DRAGON",
-            "",
-            traits
+            traits,
+            address(this)
         );
         
         // Initialize with genes

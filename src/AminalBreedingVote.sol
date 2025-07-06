@@ -320,8 +320,8 @@ contract AminalBreedingVote is IAminalBreedingVote {
     function createBreedingTicket(
         address parent1,
         address parent2,
-        string memory childDescription,
-        string memory childTokenURI
+        string calldata childDescription,
+        string calldata childTokenURI
     ) external returns (uint256 ticketId) {
         // Only the authorized BreedingSkill can create tickets
         if (msg.sender != breedingSkill) revert NotAuthorized();

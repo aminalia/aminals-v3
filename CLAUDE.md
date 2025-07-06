@@ -841,6 +841,9 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 - **Parameter Tuning**: Lower decay (1%), asymptote (30), and higher time scale (30) create gradual transitions
 - **Thresholds**: Hard boundaries at 0.001 and 100 ETH prevent VRGDA calculation edge cases
 - **Energy Scaling**: Non-linear scaling (varying divisors by range) spreads curve evenly across 0.001-100 ETH
+- **Factory Pattern**: Each Aminal requires factory address in constructor for security validation
+- **Breeding Restrictions**: Direct creation disabled; new Aminals only through breeding (except createAminalWithGenes)
+- **Security Critical**: payBreedingFee is the ONLY function allowing ETH outflow, heavily protected
 
 **Key Incentives**:
 - **Discovery Rewards**: Players actively search for hungry Aminals to maximize returns
@@ -957,7 +960,7 @@ The community can prevent breeding through veto voting:
 - **Positioning calculated**: Based on trait text analysis, not stored
 
 ### Testing Approach
-- **Comprehensive Coverage**: 158+ tests covering all major functionality
+- **Comprehensive Coverage**: 229 tests across 33 test suites
 - **Fuzz Testing**: Property-based testing for energy/love calculations
 - **Self-Ownership Verification**: Ensures Aminals always own themselves
 - **Transfer Prevention**: Validates non-transferability
@@ -966,7 +969,7 @@ The community can prevent breeding through veto voting:
 - **Breeding Tests**: Both direct and voting-based breeding
 - **Gene Integration**: Tests SVG rendering and composition
 - **Factory Tests**: Validates creation restrictions and breeding
-- **Test Helpers**: Uses vm.skip() for deprecated functionality
+- **Security Tests**: Validates all critical security measures work correctly
 
 
 ### Security Considerations
@@ -982,6 +985,20 @@ The community can prevent breeding through veto voting:
 - **Replaced Proposals**: Marked with `proposer = address(0)` and cannot win voting
 - **Active Proposal Tracking**: `getActiveGeneProposals()` filters out replaced proposals
 - **Vote Prevention**: Attempting to vote for replaced genes reverts with "Gene proposal was replaced"
+
+### Compilation & Gas Optimization
+
+#### Stack Depth Management
+- **Via IR Required**: Project requires `via_ir = true` in foundry.toml due to stack depth
+- **Helper Functions**: Extract complex logic into helper functions to avoid stack too deep
+- **Parameter Types**: Use `calldata` instead of `memory` for external function parameters
+- **Compilation Time**: Via IR compilation takes ~10 minutes for full project
+
+#### Gas Optimizations
+- **Calldata Parameters**: All external functions use `calldata` for string/array parameters
+- **Storage Access**: Minimize storage reads by caching values in memory
+- **Function Modifiers**: `nonReentrant` only on functions that transfer ETH
+- **Batch Operations**: Removed batch creation functions that encourage wasteful gas usage
 
 ### Test Organization & Best Practices
 
@@ -1039,14 +1056,14 @@ function testFuzz_Example(uint96 amount) public {
 - **State Assertions**: Include assertions within handler functions to catch issues early
 
 ### Testing
-- **Comprehensive Coverage**: 225+ tests across 29 test suites
+- **Comprehensive Coverage**: 229 tests across 33 test suites
 - **Fuzz Testing**: Property-based testing for energy/love calculations
 - **Test Organization**: Tests organized by domain in unit/, integration/, invariant/, gas/ directories
 - **Common Pitfalls**: 
   - Use `vm.startPrank`/`vm.stopPrank` for multiple calls from same address
   - Breeding requires voting to proceed (veto wins on 0-0 tie)
   - Users need love in BOTH parents to propose genes (min 100 combined)
-- **Dynamic Test Linking**: Enabled for faster compilation
+- **Compilation**: Requires `via_ir = true` due to stack depth in breeding functions
 </aminals_project>
 
 <user_prompt>

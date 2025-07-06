@@ -53,7 +53,7 @@ contract SimpleBreedingVoteExample is Script {
             })
         });
         
-        AminalFactory factory = new AminalFactory(deployer, "https://api.aminals.com/", firstParentData, secondParentData);
+        AminalFactory factory = new AminalFactory(deployer, firstParentData, secondParentData);
         AminalBreedingVote breedingVote = new AminalBreedingVote(address(factory), address(0x123)); // Placeholder breeding skill
         
         vm.stopPrank();

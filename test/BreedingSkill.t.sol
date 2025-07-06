@@ -21,7 +21,6 @@ contract BreedingSkillTest is Test {
     address public user1;
     address public user2;
     
-    string constant BASE_URI = "https://api.aminals.com/metadata/";
     uint256 constant BREEDING_COST = 2500;
     
     event ProposalCreated(
@@ -81,7 +80,7 @@ contract BreedingSkillTest is Test {
         
         // Deploy factory
         vm.prank(owner);
-        factory = new AminalFactory(owner, BASE_URI, firstParentData, secondParentData);
+        factory = new AminalFactory(owner, firstParentData, secondParentData);
         
         // Deploy breeding contracts with circular dependency resolution
         uint256 nonce = vm.getNonce(address(this));
