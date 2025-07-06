@@ -11,6 +11,12 @@ contract PayBreedingFeeSecurityTest is AminalTestBase {
     address public attacker = makeAddr("attacker");
     address public innocent = makeAddr("innocent");
     
+    // Mock the breedingVoteContract function that Aminal.payBreedingFee will call
+    function breedingVoteContract() external pure returns (address) {
+        // Return a different address so the attacker's call will fail
+        return address(0xDEADBEEF);
+    }
+    
     function setUp() public override {
         super.setUp();
         
@@ -37,36 +43,18 @@ contract PayBreedingFeeSecurityTest is AminalTestBase {
         address[] memory recipients = new address[](1);
         recipients[0] = attacker;
         
-        // First drain - 10% of balance
-        uint256 firstDrain = aminal.payBreedingFee(recipients, 12345); // Random ticket ID
-        console2.log("First drain amount:", firstDrain);
-        
-        // Second drain - 10% of remaining balance
-        uint256 secondDrain = aminal.payBreedingFee(recipients, 67890); // Another random ID
-        console2.log("Second drain amount:", secondDrain);
-        
-        // Third drain - 10% of remaining balance
-        uint256 thirdDrain = aminal.payBreedingFee(recipients, 99999); // Yet another ID
-        console2.log("Third drain amount:", thirdDrain);
+        // Should revert - only authorized breeding vote contract can call
+        vm.expectRevert(bytes("Only authorized breeding vote contract"));
+        aminal.payBreedingFee(recipients, 12345); // Random ticket ID
         
         vm.stopPrank();
         
-        // Calculate total stolen
-        uint256 totalStolen = firstDrain + secondDrain + thirdDrain;
+        // Verify the security worked - no funds were stolen
         uint256 aminalBalanceAfter = address(aminal).balance;
         uint256 attackerBalanceAfter = attacker.balance;
         
-        console2.log("Total stolen:", totalStolen);
-        console2.log("Aminal balance after:", aminalBalanceAfter);
-        console2.log("Attacker balance after:", attackerBalanceAfter);
-        
-        // Verify the attack succeeded
-        assertEq(aminalBalanceAfter, aminalBalanceBefore - totalStolen);
-        assertGt(attackerBalanceAfter, attackerBalanceBefore); // Attacker gained ETH
-        assertGt(totalStolen, 0); // Attack actually drained funds
-        
-        // Show that attacker can continue draining
-        assertTrue(aminalBalanceAfter > 0, "Aminal still has funds that can be drained");
+        assertEq(aminalBalanceAfter, aminalBalanceBefore);
+        assertEq(attackerBalanceAfter, attackerBalanceBefore); // Attacker gained no ETH
     }
     
     function test_SecurityVulnerability_MultipleRecipientsDrain() public {
@@ -81,18 +69,16 @@ contract PayBreedingFeeSecurityTest is AminalTestBase {
         recipients[1] = attacker2;
         recipients[2] = attacker3;
         
+        // Should revert - only authorized breeding vote contract can call
         vm.prank(attacker);
-        uint256 drained = aminal.payBreedingFee(recipients, 1);
+        vm.expectRevert(bytes("Only authorized breeding vote contract"));
+        aminal.payBreedingFee(recipients, 1);
         
-        // Each recipient gets equal share
-        uint256 expectedPerRecipient = drained / 3;
-        assertEq(attacker.balance, expectedPerRecipient);
-        assertEq(attacker2.balance, expectedPerRecipient);
-        // attacker3 gets remainder due to rounding
-        assertEq(attacker3.balance, drained - (expectedPerRecipient * 2));
-        
-        // Total drained is 10% of original balance
-        assertEq(drained, aminalBalanceBefore / 10);
+        // Verify no funds were stolen
+        assertEq(address(aminal).balance, aminalBalanceBefore);
+        assertEq(attacker.balance, 10 ether); // Initial balance
+        assertEq(attacker2.balance, 0);
+        assertEq(attacker3.balance, 0);
     }
     
     function test_SecurityVulnerability_NoTicketValidation() public {
@@ -102,17 +88,17 @@ contract PayBreedingFeeSecurityTest is AminalTestBase {
         
         vm.startPrank(attacker);
         
-        // Use completely random ticket IDs
-        uint256 drain1 = aminal.payBreedingFee(recipients, 0);
-        uint256 drain2 = aminal.payBreedingFee(recipients, type(uint256).max);
-        uint256 drain3 = aminal.payBreedingFee(recipients, 424242424242);
+        // All attempts should fail - only authorized breeding vote contract can call
+        vm.expectRevert(bytes("Only authorized breeding vote contract"));
+        aminal.payBreedingFee(recipients, 0);
+        
+        vm.expectRevert(bytes("Only authorized breeding vote contract"));
+        aminal.payBreedingFee(recipients, type(uint256).max);
+        
+        vm.expectRevert(bytes("Only authorized breeding vote contract"));
+        aminal.payBreedingFee(recipients, 424242424242);
         
         vm.stopPrank();
-        
-        // All calls succeed regardless of ticket ID validity
-        assertGt(drain1, 0);
-        assertGt(drain2, 0);
-        assertGt(drain3, 0);
     }
     
     function test_SecurityVulnerability_ReentrancyAttack() public {
@@ -132,21 +118,20 @@ contract PayBreedingFeeSecurityTest is AminalTestBase {
         recipients[0] = address(malicious);
         
         vm.prank(attacker);
+        vm.expectRevert(bytes("Only authorized breeding vote contract"));
         aminal.payBreedingFee(recipients, 1);
         
-        uint256 balanceAfter = address(aminal).balance;
-        uint256 maliciousBalance = address(malicious).balance;
-        
-        console2.log("Aminal balance after:", balanceAfter);
-        console2.log("Malicious contract balance:", maliciousBalance);
-        console2.log("Reentrancy attempts:", malicious.reentrancyAttempts());
-        
-        // The attack can attempt multiple reentries
-        assertGt(malicious.reentrancyAttempts(), 0);
+        // Verify no reentrancy occurred
+        assertEq(address(aminal).balance, balanceBefore);
+        assertEq(address(malicious).balance, 0);
+        assertEq(malicious.reentrancyAttempts(), 0);
     }
     
     function testFuzz_DrainAmountCalculation(uint256 balance) public {
         balance = bound(balance, 1 ether, 1000 ether);
+        
+        // Record initial balance
+        uint256 initialBalance = address(aminal).balance;
         
         // Fund an Aminal
         vm.deal(address(this), balance);
@@ -156,14 +141,13 @@ contract PayBreedingFeeSecurityTest is AminalTestBase {
         address[] memory recipients = new address[](1);
         recipients[0] = attacker;
         
-        // Calculate expected drain (10%)
-        uint256 expectedDrain = balance / 10;
-        
+        // Should revert - only authorized breeding vote contract can call
         vm.prank(attacker);
-        uint256 actualDrain = aminal.payBreedingFee(recipients, 1);
+        vm.expectRevert(bytes("Only authorized breeding vote contract"));
+        aminal.payBreedingFee(recipients, 1);
         
-        assertEq(actualDrain, expectedDrain);
-        assertEq(address(aminal).balance, balance - expectedDrain);
+        // Verify balance unchanged
+        assertEq(address(aminal).balance, initialBalance + balance);
     }
 }
 

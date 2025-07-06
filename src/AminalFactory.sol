@@ -434,6 +434,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         Aminal parent2 = Aminal(payable(parent2Address));
         
         // Use simple names to avoid stack issues
+        // TODO: Restore dynamic naming when stack issue is resolved
         string memory childName = "ChildAminal";
         string memory childSymbol = "CHILD";
         
@@ -467,6 +468,20 @@ contract AminalFactory is Ownable, ReentrancyGuard {
             mouth: genes1.mouth,    // From parent1
             misc: genes2.misc       // From parent2
         });
+    }
+    
+    /**
+     * @dev Generate child name from parent names
+     */
+    function _generateChildName(string memory name1, string memory name2) private pure returns (string memory) {
+        return string.concat(name1, "-", name2, "-Child");
+    }
+    
+    /**
+     * @dev Generate child symbol from parent symbols
+     */
+    function _generateChildSymbol(string memory symbol1, string memory symbol2) private pure returns (string memory) {
+        return string.concat(symbol1, symbol2);
     }
 
     /**
