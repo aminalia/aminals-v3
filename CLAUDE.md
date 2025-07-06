@@ -908,6 +908,7 @@ After proposal acceptance, a 4-day voting period begins:
 Community members can propose Gene NFTs as alternative genes:
 - **Minimum Love**: 100 combined love in both parents (spam prevention)
 - **Type Matching**: Gene must match the gene type
+- **Position Data**: Each proposal includes x, y, width, height for positioning
 - **One Proposal Per User**: Each user can only have one active gene proposal per breeding ticket
 - **Proposal Replacement**: Users can replace their own proposal during gene proposal phase
 
@@ -927,15 +928,15 @@ The community can prevent breeding through veto voting:
 - **Separation of Concerns**: Core NFT logic in Aminal, rendering in AminalRenderer
 - **Delegation Pattern**: `tokenURI()` passes `this` to renderer
 - **Data Access**: Renderer reads all public state from Aminal instance
-- **Dynamic Composition**: Traits determine positioning logic at render time
-- **No Storage**: Positioning data calculated on-demand, never stored
+- **Position Storage**: Positions stored in Aminal, read by renderer
+- **Static Composition**: All positions predetermined and immutable
 
 #### Rendering Pipeline
 1. External call → `Aminal.tokenURI(1)`
 2. Aminal delegates → `renderer.tokenURI(this, 1)`
-3. Renderer accesses Aminal's public state
+3. Renderer accesses Aminal's public state and stored positions
 4. Renderer fetches Gene SVGs from references
-5. Composes final SVG with dynamic positioning
+5. Composes final SVG using stored positions
 6. Returns base64-encoded metadata JSON
 
 ### Gene-Aminal Integration
@@ -946,9 +947,17 @@ The community can prevent breeding through veto voting:
 - **Optional Genes**: Aminals can have zero or more genes assigned
 - **Immutable References**: Set during initialization, cannot be changed
 
+#### Gene Positioning System
+- **Immutable Positions**: Each gene has x, y, width, height stored in Aminal contract
+- **Position Structure**: `GenePosition { int16 x; int16 y; uint16 width; uint16 height; }`
+- **Position Source**: From gene proposals during breeding (includes position data)
+- **Default Positions**: Parent genes and direct creation use predefined defaults
+- **No Dynamic Positioning**: All positions stored, no trait-based calculations
+
 #### Rendering with Genes
 - **GeneRenderer Library**: Provides SVG utilities (rect, text, svg, svgImage)
-- **Dynamic Fetching**: AminalRenderer calls `Gene(geneContract).gene(tokenId)` 
+- **Position Fetching**: AminalRenderer reads stored positions via `genePositions(geneType)`
+- **SVG Fetching**: AminalRenderer calls `Gene(geneContract).gene(tokenId)` 
 - **Layered Composition**: Genes rendered in specific order for proper overlapping
 - **Error Handling**: Returns empty string if gene cannot be read
 - **Base64 Encoding**: SVGs embedded as data URIs in final composition
@@ -956,8 +965,8 @@ The community can prevent breeding through veto voting:
 #### Data Storage Model
 - **Genes store raw SVG**: Complete SVG with viewBox, ready for embedding
 - **Aminals store references**: Only addresses and token IDs, not actual SVGs
+- **Aminals store positions**: X, Y, width, height for each gene type
 - **Renderer fetches on-demand**: No SVG data duplicated or cached
-- **Positioning calculated**: Based on trait text analysis, not stored
 
 ### Testing Approach
 - **Comprehensive Coverage**: 229 tests across 33 test suites
@@ -1077,6 +1086,7 @@ function testFuzz_Example(uint96 amount) public {
   - Use `vm.startPrank`/`vm.stopPrank` for multiple calls from same address
   - Breeding requires voting to proceed (veto wins on 0-0 tie)
   - Users need love in BOTH parents to propose genes (min 100 combined)
+  - Gene proposals now require 8 parameters (includes x, y, width, height)
 - **Compilation**: Requires `via_ir = true` due to stack depth in breeding functions
 </aminals_project>
 
