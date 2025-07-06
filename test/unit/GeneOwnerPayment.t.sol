@@ -5,14 +5,12 @@ import {Test, console2} from "forge-std/Test.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {BreedingSkill} from "src/skills/BreedingSkill.sol";
-import {BreedingPaymentSkill} from "src/skills/BreedingPaymentSkill.sol";
 import {Aminal} from "src/Aminal.sol";
 import {Gene} from "src/Gene.sol";
 import {IGenes} from "src/interfaces/IGenes.sol";
 import {BreedingTestBase} from "../base/BreedingTestBase.sol";
 
 contract GeneOwnerPaymentTest is BreedingTestBase {
-    BreedingPaymentSkill public paymentSkill;
     Gene public geneContract;
     
     address public geneOwner1 = makeAddr("geneOwner1");
@@ -24,8 +22,6 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
     function setUp() public override {
         super.setUp();
         
-        // Deploy payment skill
-        paymentSkill = new BreedingPaymentSkill(address(breedingVote));
         
         // Deploy gene contract
         geneContract = new Gene(address(this), "TestGene", "GENE", "");
@@ -48,8 +44,11 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
         );
         
         // Feed parents to give them energy and love
-        _feedAminal(breederA, address(parent1), 10 ether);
-        _feedAminal(breederB, address(parent2), 10 ether);
+        // Each breeder needs love in BOTH parents to propose genes
+        _feedAminal(breederA, address(parent1), 5 ether);
+        _feedAminal(breederA, address(parent2), 5 ether);
+        _feedAminal(breederB, address(parent1), 5 ether);
+        _feedAminal(breederB, address(parent2), 5 ether);
         
         // Give breeders more funds for testing
         vm.deal(breederA, 100 ether);
@@ -59,13 +58,7 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
     function test_GeneOwnerPayment_FullFlow() public {
         // Create breeding proposal
         uint256 ticketId = _createBreedingTicketForTest();
-        console2.log("Breeding ticket ID:", ticketId);
         
-        // Check if ticket exists
-        (address p1, address p2,,,,,bool executed,,) = breedingVote.tickets(ticketId);
-        console2.log("Parent1:", p1);
-        console2.log("Parent2:", p2);
-        console2.log("Executed:", executed);
         
         // Propose genes
         _proposeGenes(ticketId);
@@ -73,45 +66,29 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
         // Vote for proposed genes
         _voteForProposedGenes(ticketId);
         
-        // Execute breeding
-        _executeBreeding(ticketId);
-        
-        // Verify gene owners need to be paid
-        (address[] memory geneOwners, bool parent1Paid, bool parent2Paid,) = 
-            breedingVote.getPendingPaymentInfo(ticketId);
-        
-        assertEq(geneOwners.length, 2);
-        assertFalse(parent1Paid);
-        assertFalse(parent2Paid);
-        
         // Record initial balances
         uint256 geneOwner1BalanceBefore = geneOwner1.balance;
         uint256 geneOwner2BalanceBefore = geneOwner2.balance;
         uint256 parent1BalanceBefore = address(parent1).balance;
         uint256 parent2BalanceBefore = address(parent2).balance;
         
-        // Parent1 pays gene owners using skill
-        vm.prank(breederA);
-        bytes memory paymentData = abi.encode(ticketId);
-        parent1.useSkill(address(paymentSkill), paymentData);
+        // Execute breeding - this should automatically pay gene owners
+        _executeBreeding(ticketId);
         
-        // Verify parent1 paid
-        (,parent1Paid,,) = breedingVote.getPendingPaymentInfo(ticketId);
-        assertTrue(parent1Paid);
+        // Verify balances changed correctly
+        // Each parent should have paid 10% of their balance
+        uint256 parent1Payment = parent1BalanceBefore / 10;
+        uint256 parent2Payment = parent2BalanceBefore / 10;
+        uint256 totalPayment = parent1Payment + parent2Payment;
+        uint256 expectedPaymentPerOwner = totalPayment / 2;
         
-        // Verify balances changed correctly (10% of parent1's balance split between 2 gene owners)
-        uint256 expectedPaymentPerOwner = (parent1BalanceBefore / 10) / 2;
+        // Gene owners should have received payments
         assertEq(geneOwner1.balance, geneOwner1BalanceBefore + expectedPaymentPerOwner);
         assertEq(geneOwner2.balance, geneOwner2BalanceBefore + expectedPaymentPerOwner);
         
-        // Parent2 pays gene owners
-        vm.prank(breederB);
-        parent2.useSkill(address(paymentSkill), paymentData);
-        
-        // Verify both parents have paid
-        (,parent1Paid, parent2Paid,) = breedingVote.getPendingPaymentInfo(ticketId);
-        assertTrue(parent1Paid);
-        assertTrue(parent2Paid);
+        // Parents should have paid 10% each
+        assertEq(address(parent1).balance, parent1BalanceBefore - parent1Payment);
+        assertEq(address(parent2).balance, parent2BalanceBefore - parent2Payment);
     }
     
     function test_GeneOwnerPayment_NoGeneOwners() public {
@@ -131,46 +108,49 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
         votesForParent1[1] = false;
         breedingVote.vote(ticketId, geneTypes, votesForParent1);
         
+        // Record balances before breeding
+        uint256 parent1BalanceBefore = address(parent1).balance;
+        uint256 parent2BalanceBefore = address(parent2).balance;
+        
         // Execute breeding
         vm.warp(block.timestamp + 4 days + 1);
         breedingVote.executeBreeding(ticketId);
         
-        // Verify no gene owners to pay
-        (address[] memory geneOwners,,,) = breedingVote.getPendingPaymentInfo(ticketId);
-        assertEq(geneOwners.length, 0);
-        
-        // Payment should succeed but do nothing
-        vm.prank(breederA);
-        bytes memory paymentData = abi.encode(ticketId);
-        parent1.useSkill(address(paymentSkill), paymentData);
+        // Verify no payments were made (balances unchanged)
+        assertEq(address(parent1).balance, parent1BalanceBefore);
+        assertEq(address(parent2).balance, parent2BalanceBefore);
     }
     
-    function test_GeneOwnerPayment_OnlyParentsCanPay() public {
+    function test_GeneOwnerPayment_InsufficientBalance() public {
+        // Create breeding proposal
         uint256 ticketId = _createBreedingTicketForTest();
-        _executeBreedingWithProposedGenes(ticketId);
         
-        // Non-parent tries to pay
-        address nonParent = makeAddr("nonParent");
-        vm.deal(nonParent, 10 ether);
+        // Propose genes
+        _proposeGenes(ticketId);
         
-        vm.prank(nonParent);
-        vm.expectRevert("Only parents can pay");
-        breedingVote.payGeneOwners{value: 1 ether}(ticketId);
-    }
-    
-    function test_GeneOwnerPayment_PreventDoublePaying() public {
-        uint256 ticketId = _createBreedingTicketForTest();
-        _executeBreedingWithProposedGenes(ticketId);
+        // Vote for proposed genes
+        _voteForProposedGenes(ticketId);
         
-        // Parent1 pays first time
-        vm.prank(breederA);
-        bytes memory paymentData = abi.encode(ticketId);
-        parent1.useSkill(address(paymentSkill), paymentData);
+        // Drain parent1's balance
+        vm.prank(address(parent1));
+        payable(breederA).transfer(address(parent1).balance);
         
-        // Parent1 tries to pay again
-        vm.prank(breederA);
-        vm.expectRevert("Payment call failed");
-        parent1.useSkill(address(paymentSkill), paymentData);
+        // Record balances
+        uint256 geneOwner1BalanceBefore = geneOwner1.balance;
+        uint256 geneOwner2BalanceBefore = geneOwner2.balance;
+        uint256 parent2BalanceBefore = address(parent2).balance;
+        
+        // Execute breeding - parent1 payment should fail but parent2 should succeed
+        _executeBreeding(ticketId);
+        
+        // Only parent2 should have paid
+        uint256 parent2Payment = parent2BalanceBefore / 10;
+        uint256 expectedPaymentPerOwner = parent2Payment / 2;
+        
+        assertEq(geneOwner1.balance, geneOwner1BalanceBefore + expectedPaymentPerOwner);
+        assertEq(geneOwner2.balance, geneOwner2BalanceBefore + expectedPaymentPerOwner);
+        assertEq(address(parent2).balance, parent2BalanceBefore - parent2Payment);
+        assertEq(address(parent1).balance, 0); // Parent1 had no balance to pay
     }
     
     // Helper functions
@@ -185,7 +165,7 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
         );
         parent1.useSkill(address(breedingSkill), proposeData);
         
-        // Get the proposal ID (nextProposalId has already been incremented, so it's the current value)
+        // Get the proposal ID (nextProposalId is the current proposal ID after pre-increment)
         uint256 proposalId = breedingSkill.nextProposalId();
         
         // BreederB accepts breeding using acceptProposal function
@@ -196,17 +176,11 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
         );
         parent2.useSkill(address(breedingSkill), acceptData);
         
-        // nextTicketId is incremented after creation, so the current ticket is nextTicketId - 1
-        // But we need to check if nextTicketId is 0 (nothing created yet)
-        uint256 nextId = breedingVote.nextTicketId();
-        require(nextId > 0, "No breeding ticket created");
-        return nextId - 1;
+        // nextTicketId was pre-incremented, so it equals the current ticket ID
+        return breedingVote.nextTicketId();
     }
     
     function _proposeGenes(uint256 ticketId) internal {
-        // Wait for gene proposal phase (not needed since we're already in it)
-        // vm.warp(block.timestamp + 1);
-        
         // Propose gene 1
         vm.prank(breederA);
         breedingVote.proposeGene(
@@ -231,9 +205,12 @@ contract GeneOwnerPaymentTest is BreedingTestBase {
         vm.warp(block.timestamp + 3 days + 1);
         
         // Vote for proposed genes
-        vm.prank(breederA);
+        vm.startPrank(breederA);
         breedingVote.voteForGene(ticketId, AminalBreedingVote.GeneType.BACK, 0);
         breedingVote.voteForGene(ticketId, AminalBreedingVote.GeneType.TAIL, 0);
+        // Vote to proceed with breeding (not veto)
+        breedingVote.voteOnVeto(ticketId, false); // false = proceed
+        vm.stopPrank();
     }
     
     function _executeBreeding(uint256 ticketId) internal {

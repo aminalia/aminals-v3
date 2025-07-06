@@ -164,17 +164,6 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Mapping from ticket ID to veto votes
     mapping(uint256 => VetoVote) public vetoVotes;
     
-    /// @dev Structure to track pending gene owner payments
-    struct PendingPayment {
-        address[] geneOwners;
-        uint256 totalAmount;
-        bool parent1Paid;
-        bool parent2Paid;
-    }
-    
-    /// @dev Mapping from ticket ID to pending payments
-    mapping(uint256 => PendingPayment) public pendingPayments;
-    
     /// @dev Event emitted when a breeding ticket is created
     event BreedingTicketCreated(
         uint256 indexed ticketId,
@@ -249,6 +238,14 @@ contract AminalBreedingVote is IAminalBreedingVote {
         uint256 indexed ticketId,
         address indexed geneOwner,
         uint256 amount
+    );
+    
+    /// @dev Event emitted when gene owners are paid by a parent
+    event GeneOwnersPaidByParent(
+        uint256 indexed ticketId,
+        address indexed parent,
+        uint256 totalAmount,
+        uint256 recipientCount
     );
     
     /// @dev Error thrown when trying to vote without love in both parents
@@ -675,8 +672,9 @@ contract AminalBreedingVote is IAminalBreedingVote {
         // Build child genes and create child
         IGenes.Genes memory childGenes = _buildChildGenesForCreation(ticketId, parent1Address, parent2Address);
         
-        // Store pending payments for gene owners separately
-        _collectAndStorePendingPayments(ticketId);
+        // Collect gene owners and pay them immediately from both parents
+        address[] memory geneOwners = _collectGeneOwners(ticketId);
+        _payGeneOwnersFromParents(parent1Address, parent2Address, geneOwners, ticketId);
         
         // Create the child through the factory
         childContract = _createChildFromGenes(
@@ -731,11 +729,37 @@ contract AminalBreedingVote is IAminalBreedingVote {
     }
     
     /**
-     * @dev Collect and store pending payments
+     * @dev Pay gene owners directly from parent Aminals
+     * @param parent1Address Address of first parent
+     * @param parent2Address Address of second parent
+     * @param geneOwners Array of gene owner addresses to pay
+     * @param ticketId The breeding ticket ID
      */
-    function _collectAndStorePendingPayments(uint256 ticketId) private {
-        address[] memory geneOwners = _collectGeneOwners(ticketId);
-        _storePendingPayments(ticketId, geneOwners);
+    function _payGeneOwnersFromParents(
+        address parent1Address,
+        address parent2Address,
+        address[] memory geneOwners,
+        uint256 ticketId
+    ) private {
+        if (geneOwners.length == 0) return;
+        
+        // Try to pay from parent1 (10% of its balance)
+        try Aminal(payable(parent1Address)).payBreedingFee(geneOwners, ticketId) returns (uint256 paid) {
+            if (paid > 0) {
+                emit GeneOwnersPaidByParent(ticketId, parent1Address, paid, geneOwners.length);
+            }
+        } catch {
+            // Payment failed, but we continue with parent2
+        }
+        
+        // Try to pay from parent2 (10% of its balance)
+        try Aminal(payable(parent2Address)).payBreedingFee(geneOwners, ticketId) returns (uint256 paid) {
+            if (paid > 0) {
+                emit GeneOwnersPaidByParent(ticketId, parent2Address, paid, geneOwners.length);
+            }
+        } catch {
+            // Payment failed, but breeding continues
+        }
     }
     
     
@@ -815,24 +839,6 @@ contract AminalBreedingVote is IAminalBreedingVote {
         }
         
         return ownerCount;
-    }
-    
-    /**
-     * @dev Store pending payments for gene owners
-     * @param ticketId The breeding ticket ID
-     * @param geneOwners Array of addresses to pay
-     */
-    function _storePendingPayments(
-        uint256 ticketId,
-        address[] memory geneOwners
-    ) private {
-        if (geneOwners.length == 0) return;
-        
-        // Store pending payment info
-        pendingPayments[ticketId].geneOwners = geneOwners;
-        pendingPayments[ticketId].totalAmount = 0; // Will be calculated when parents pay
-        pendingPayments[ticketId].parent1Paid = false;
-        pendingPayments[ticketId].parent2Paid = false;
     }
     
     /**
@@ -1051,53 +1057,6 @@ contract AminalBreedingVote is IAminalBreedingVote {
         return geneVotes[ticketId][geneType].proposedGeneVotes[proposalId];
     }
     
-    /**
-     * @notice Pay gene owners for a breeding ticket (called by parent Aminals)
-     * @dev Parents call this function to pay 10% of their balance to gene owners
-     * @param ticketId The breeding ticket ID
-     */
-    function payGeneOwners(uint256 ticketId) external payable {
-        BreedingTicket memory ticket = tickets[ticketId];
-        PendingPayment storage payment = pendingPayments[ticketId];
-        
-        // Verify the caller is one of the parents
-        require(msg.sender == ticket.parent1 || msg.sender == ticket.parent2, "Only parents can pay");
-        require(ticket.executed, "Breeding not yet executed");
-        require(payment.geneOwners.length > 0, "No gene owners to pay");
-        
-        // Check which parent is paying
-        bool isParent1 = msg.sender == ticket.parent1;
-        
-        // Prevent double payment
-        if (isParent1) {
-            require(!payment.parent1Paid, "Parent1 already paid");
-            payment.parent1Paid = true;
-        } else {
-            require(!payment.parent2Paid, "Parent2 already paid");
-            payment.parent2Paid = true;
-        }
-        
-        // Distribute the payment equally among gene owners
-        uint256 paymentPerOwner = msg.value / payment.geneOwners.length;
-        uint256 totalDistributed = 0;
-        
-        for (uint256 i = 0; i < payment.geneOwners.length; i++) {
-            address geneOwner = payment.geneOwners[i];
-            if (i == payment.geneOwners.length - 1) {
-                // Last recipient gets any remainder due to rounding
-                uint256 remainder = msg.value - totalDistributed;
-                payable(geneOwner).transfer(remainder);
-                emit GeneOwnerPaid(ticketId, geneOwner, remainder);
-            } else {
-                payable(geneOwner).transfer(paymentPerOwner);
-                totalDistributed += paymentPerOwner;
-                emit GeneOwnerPaid(ticketId, geneOwner, paymentPerOwner);
-            }
-        }
-        
-        // Update total amount paid
-        payment.totalAmount += msg.value;
-    }
     
     /**
      * @notice Get the current veto vote status
@@ -1117,52 +1076,5 @@ contract AminalBreedingVote is IAminalBreedingVote {
         vetoCount = veto.vetoVotes;
         proceedCount = veto.proceedVotes;
         wouldBeVetoed = vetoCount >= proceedCount; // Veto wins on ties
-    }
-    
-    /**
-     * @notice Get pending payment info for a breeding ticket
-     * @param ticketId The ticket ID
-     * @return geneOwners Array of gene owners to be paid
-     * @return parent1Paid Whether parent1 has paid
-     * @return parent2Paid Whether parent2 has paid
-     * @return totalAmountPaid Total amount paid so far
-     */
-    function getPendingPaymentInfo(
-        uint256 ticketId
-    ) external view returns (
-        address[] memory geneOwners,
-        bool parent1Paid,
-        bool parent2Paid,
-        uint256 totalAmountPaid
-    ) {
-        PendingPayment memory payment = pendingPayments[ticketId];
-        return (payment.geneOwners, payment.parent1Paid, payment.parent2Paid, payment.totalAmount);
-    }
-    
-    /**
-     * @notice Check if an Aminal needs to pay gene owners for a breeding ticket
-     * @param ticketId The ticket ID
-     * @param aminal The Aminal address to check
-     * @return needsToPay Whether the Aminal needs to pay
-     * @return isParent1 Whether the Aminal is parent1 (vs parent2)
-     */
-    function doesAminalNeedToPay(
-        uint256 ticketId,
-        address aminal
-    ) external view returns (bool needsToPay, bool isParent1) {
-        BreedingTicket memory ticket = tickets[ticketId];
-        PendingPayment memory payment = pendingPayments[ticketId];
-        
-        if (!ticket.executed || payment.geneOwners.length == 0) {
-            return (false, false);
-        }
-        
-        if (aminal == ticket.parent1) {
-            return (!payment.parent1Paid, true);
-        } else if (aminal == ticket.parent2) {
-            return (!payment.parent2Paid, false);
-        }
-        
-        return (false, false);
     }
 }
