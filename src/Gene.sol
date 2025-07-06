@@ -7,7 +7,8 @@ import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ERC721Enumerable} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
+import {IGene} from "src/interfaces/IGene.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
 
 /**
@@ -16,7 +17,7 @@ import {GeneRenderer} from "src/GeneRenderer.sol";
  * @dev Each NFT represents a genetic trait that can be composed into larger Aminals
  * @notice Features dual output: raw SVG for composability and OpenSea-compatible metadata
  */
-contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
+contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
     using LibString for uint256;
     using LibString for string;
     /// @dev Base URI for token metadata
@@ -242,6 +243,24 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         }
         
         return result;
+    }
+
+    /**
+     * @notice Get the trait type this gene represents
+     * @param tokenId The token ID of the gene
+     * @return The trait type as a string (e.g., "back", "arm", etc.)
+     */
+    function traitType(uint256 tokenId) external view returns (string memory) {
+        return tokenTraitType[tokenId];
+    }
+    
+    /**
+     * @notice Get the trait value/name for this gene
+     * @param tokenId The token ID of the gene
+     * @return The trait value (e.g., "Dragon Wings", "Fluffy Tail")
+     */
+    function traitValue(uint256 tokenId) external view returns (string memory) {
+        return tokenTraitValue[tokenId];
     }
 
     /**

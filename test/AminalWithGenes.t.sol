@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {Gene} from "src/Gene.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 contract AminalWithGenesTest is Test {
     Gene public gene;
@@ -33,7 +33,7 @@ contract AminalWithGenesTest is Test {
         uint256 miscId = gene.mint(user, "misc", "Sparkles", SPARKLES, "Magical sparkles");
         
         // Create trait data for the Aminal
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "Dragon Wings",
             arm: "",
             tail: "Fire Tail",
@@ -84,7 +84,7 @@ contract AminalWithGenesTest is Test {
     
     function test_AminalWithNoGenes() public {
         // Create an Aminal with no genes (will use default body)
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "",
             arm: "",
             tail: "",
@@ -122,7 +122,7 @@ contract AminalWithGenesTest is Test {
         uint256 earsId = gene.mint(user, "ears", "Bunny Ears", BUNNY_EARS, "Soft bunny ears");
         
         // Create trait data
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "Dragon Wings",
             arm: "",
             tail: "",

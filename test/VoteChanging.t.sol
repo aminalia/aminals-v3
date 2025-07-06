@@ -6,7 +6,7 @@ import {BreedingSkill} from "src/skills/BreedingSkill.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {MockGene} from "./mocks/MockGene.sol";
 
 contract VoteChangingTest is Test {
@@ -36,7 +36,7 @@ contract VoteChangingTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -53,7 +53,7 @@ contract VoteChangingTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -76,7 +76,7 @@ contract VoteChangingTest is Test {
         breedingSkill = new BreedingSkill(address(factory), address(breedingVote));
         
         // Create parent Aminals
-        ITraits.Traits memory traits1 = ITraits.Traits({
+        IGenes.Genes memory traits1 = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Strong Arms",
             tail: "Fire Tail",
@@ -87,7 +87,7 @@ contract VoteChangingTest is Test {
             misc: "Glowing Eyes"
         });
         
-        ITraits.Traits memory traits2 = ITraits.Traits({
+        IGenes.Genes memory traits2 = IGenes.Genes({
             back: "Angel Wings",
             arm: "Gentle Arms",
             tail: "Fluffy Tail",
@@ -99,12 +99,12 @@ contract VoteChangingTest is Test {
         });
         
         vm.prank(owner);
-        parent1 = Aminal(payable(factory.createAminalWithTraits(
+        parent1 = Aminal(payable(factory.createAminalWithGenes(
             "FireDragon", "FIRE", "A fierce dragon", "dragon.json", traits1
         )));
         
         vm.prank(owner);
-        parent2 = Aminal(payable(factory.createAminalWithTraits(
+        parent2 = Aminal(payable(factory.createAminalWithGenes(
             "AngelBunny", "ANGEL", "A gentle bunny", "bunny.json", traits2
         )));
         
@@ -116,6 +116,9 @@ contract VoteChangingTest is Test {
     
     function test_VotingPowerLockedAtFirstVote() public {
         uint256 ticketId = _createBreedingTicket();
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Voter feeds parents to get initial love
         vm.prank(voter);
@@ -159,6 +162,9 @@ contract VoteChangingTest is Test {
     
     function test_CanChangeTraitVotes() public {
         uint256 ticketId = _createBreedingTicket();
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Voter feeds parents
         vm.prank(voter);
@@ -207,6 +213,9 @@ contract VoteChangingTest is Test {
     function test_CanChangeVetoVote() public {
         uint256 ticketId = _createBreedingTicket();
         
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
+        
         // Voter feeds parents
         vm.prank(voter);
         (bool success,) = address(parent1).call{value: 0.2 ether}("");
@@ -249,23 +258,7 @@ contract VoteChangingTest is Test {
         (bool success,) = address(parent1).call{value: 0.1 ether}("");
         assertTrue(success);
         
-        // Vote on trait first to lock power
-        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
-        bool[] memory votes = new bool[](1);
-        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
-        votes[0] = true;
-        
-        vm.prank(voter);
-        breedingVote.vote(ticketId, geneTypes, votes);
-        
-        uint256 lockedPower = breedingVote.voterPower(ticketId, voter);
-        
-        // Feed more to increase actual love
-        vm.prank(voter);
-        (success,) = address(parent1).call{value: 0.5 ether}("");
-        assertTrue(success);
-        
-        // Propose a gene (using someone else who has love)
+        // Propose a gene first (in gene proposal phase)
         vm.prank(breederA);
         (success,) = address(parent1).call{value: 0.02 ether}("");
         assertTrue(success);
@@ -282,6 +275,25 @@ contract VoteChangingTest is Test {
             address(geneContract),
             1
         );
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
+        
+        // Vote on trait first to lock power
+        AminalBreedingVote.GeneType[] memory geneTypes = new AminalBreedingVote.GeneType[](1);
+        bool[] memory votes = new bool[](1);
+        geneTypes[0] = AminalBreedingVote.GeneType.BACK;
+        votes[0] = true;
+        
+        vm.prank(voter);
+        breedingVote.vote(ticketId, geneTypes, votes);
+        
+        uint256 lockedPower = breedingVote.voterPower(ticketId, voter);
+        
+        // Feed more to increase actual love
+        vm.prank(voter);
+        (success,) = address(parent1).call{value: 0.5 ether}("");
+        assertTrue(success);
         
         // Vote for gene - should use locked power, not current
         vm.prank(voter);
@@ -303,6 +315,9 @@ contract VoteChangingTest is Test {
     
     function test_PartialVoting() public {
         uint256 ticketId = _createBreedingTicket();
+        
+        // Warp to voting phase (after 3 days gene proposal phase)
+        vm.warp(block.timestamp + 3 days + 1);
         
         // Voter feeds parents
         vm.prank(voter);

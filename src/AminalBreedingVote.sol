@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Aminal} from "./Aminal.sol";
 import {AminalFactory} from "./AminalFactory.sol";
-import {ITraits} from "./interfaces/ITraits.sol";
+import {IGenes} from "./interfaces/IGenes.sol";
 import {IAminalBreedingVote} from "./interfaces/IAminalBreedingVote.sol";
 import {IGene} from "./interfaces/IGene.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
@@ -657,11 +657,11 @@ contract AminalBreedingVote is IAminalBreedingVote {
         Aminal parent1 = Aminal(payable(parent1Address));
         Aminal parent2 = Aminal(payable(parent2Address));
         
-        ITraits.Traits memory parent1Genes = parent1.getTraits();
-        ITraits.Traits memory parent2Genes = parent2.getTraits();
+        IGenes.Genes memory parent1Genes = parent1.getGenes();
+        IGenes.Genes memory parent2Genes = parent2.getGenes();
         
         // Build child genes in a separate function to avoid stack too deep
-        ITraits.Traits memory childGenes = _buildChildGenes(ticketId, parent1Genes, parent2Genes);
+        IGenes.Genes memory childGenes = _buildChildGenes(ticketId, parent1Genes, parent2Genes);
         
         // Generate child name and symbol from parent names
         string memory parent1Name = parent1.name();
@@ -670,7 +670,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
         string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
         
         // Create the child through the factory
-        childContract = factory.createAminalWithTraits(
+        childContract = factory.createAminalWithGenes(
             childName,
             childSymbol,
             childDescription,
@@ -688,9 +688,9 @@ contract AminalBreedingVote is IAminalBreedingVote {
      */
     function _buildChildGenes(
         uint256 ticketId,
-        ITraits.Traits memory parent1Genes,
-        ITraits.Traits memory parent2Genes
-    ) private view returns (ITraits.Traits memory childGenes) {
+        IGenes.Genes memory parent1Genes,
+        IGenes.Genes memory parent2Genes
+    ) private view returns (IGenes.Genes memory childGenes) {
         (childGenes.back,,,) = _getWinningGeneValue(ticketId, GeneType.BACK, parent1Genes, parent2Genes);
         (childGenes.arm,,,) = _getWinningGeneValue(ticketId, GeneType.ARM, parent1Genes, parent2Genes);
         (childGenes.tail,,,) = _getWinningGeneValue(ticketId, GeneType.TAIL, parent1Genes, parent2Genes);
@@ -715,8 +715,8 @@ contract AminalBreedingVote is IAminalBreedingVote {
     function _getWinningGeneValue(
         uint256 ticketId,
         GeneType geneType,
-        ITraits.Traits memory parent1Genes,
-        ITraits.Traits memory parent2Genes
+        IGenes.Genes memory parent1Genes,
+        IGenes.Genes memory parent2Genes
     ) private view returns (
         string memory winningGene,
         bool isProposedGene,
@@ -767,7 +767,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /**
      * @dev Helper to get gene value by type
      */
-    function _getGeneByType(ITraits.Traits memory genes, GeneType geneType) private pure returns (string memory) {
+    function _getGeneByType(IGenes.Genes memory genes, GeneType geneType) private pure returns (string memory) {
         if (geneType == GeneType.BACK) return genes.back;
         if (geneType == GeneType.ARM) return genes.arm;
         if (geneType == GeneType.TAIL) return genes.tail;

@@ -6,7 +6,7 @@ import {BreedingSkill} from "src/skills/BreedingSkill.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {MockGene} from "./mocks/MockGene.sol";
 
 contract FourPhaseBreedingTest is Test {
@@ -48,7 +48,7 @@ contract FourPhaseBreedingTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -65,7 +65,7 @@ contract FourPhaseBreedingTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -93,7 +93,7 @@ contract FourPhaseBreedingTest is Test {
         geneContract.createTestGenes();
         
         // Create parent Aminals
-        ITraits.Traits memory traits1 = ITraits.Traits({
+        IGenes.Genes memory traits1 = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Strong Arms",
             tail: "Fire Tail",
@@ -104,7 +104,7 @@ contract FourPhaseBreedingTest is Test {
             misc: "Glowing Eyes"
         });
         
-        ITraits.Traits memory traits2 = ITraits.Traits({
+        IGenes.Genes memory traits2 = IGenes.Genes({
             back: "Angel Wings",
             arm: "Gentle Arms",
             tail: "Fluffy Tail",
@@ -116,12 +116,12 @@ contract FourPhaseBreedingTest is Test {
         });
         
         vm.prank(owner);
-        parent1 = Aminal(payable(factory.createAminalWithTraits(
+        parent1 = Aminal(payable(factory.createAminalWithGenes(
             "FireDragon", "FIRE", "A fierce dragon", "dragon.json", traits1
         )));
         
         vm.prank(owner);
-        parent2 = Aminal(payable(factory.createAminalWithTraits(
+        parent2 = Aminal(payable(factory.createAminalWithGenes(
             "AngelBunny", "ANGEL", "A gentle bunny", "bunny.json", traits2
         )));
         
@@ -165,7 +165,7 @@ contract FourPhaseBreedingTest is Test {
         
         // Verify child was created with expected traits
         Aminal child = Aminal(payable(childAddress));
-        ITraits.Traits memory childTraits = child.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
         
         // Based on voting, Rainbow Wings gene should have won for back trait
         assertEq(childTraits.back, "Rainbow Wings");
@@ -374,7 +374,7 @@ contract FourPhaseBreedingTest is Test {
         Aminal child = Aminal(payable(childAddress));
         
         // Verify the replaced gene didn't win despite having votes
-        ITraits.Traits memory childTraits = child.getTraits();
+        IGenes.Genes memory childTraits = child.getGenes();
         assertEq(childTraits.back, "Dragon Wings"); // Parent1's trait wins (no votes)
     }
     

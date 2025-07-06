@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Aminal} from "src/Aminal.sol";
 import {Gene} from "src/Gene.sol";
 import {GeneRenderer} from "src/GeneRenderer.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
 
@@ -299,7 +299,7 @@ contract AminalRenderer {
      */
     function _getTraitPositions(Aminal aminal) private view returns (TraitPositions memory positions) {
         // Get traits from the Aminal
-        ITraits.Traits memory traits = aminal.getTraits();
+        IGenes.Genes memory traits = aminal.getGenes();
         
         // Determine body type characteristics
         bool isTall = _contains(traits.body, "Tall") || _contains(traits.body, "Slim");

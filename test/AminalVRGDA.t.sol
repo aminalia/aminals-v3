@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {Aminal} from "src/Aminal.sol";
 import {AminalVRGDA} from "src/AminalVRGDA.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 import {SqueakSkill} from "src/skills/SqueakSkill.sol";
 
 contract AminalVRGDATest is Test {
@@ -20,7 +20,7 @@ contract AminalVRGDATest is Test {
         squeakSkill = new SqueakSkill();
         
         // Create test traits
-        ITraits.Traits memory traits = ITraits.Traits({
+        IGenes.Genes memory traits = IGenes.Genes({
             back: "wings",
             arm: "claws", 
             tail: "fluffy",

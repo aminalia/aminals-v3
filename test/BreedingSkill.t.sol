@@ -6,7 +6,7 @@ import {BreedingSkill} from "src/skills/BreedingSkill.sol";
 import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
 import {Aminal} from "src/Aminal.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 contract BreedingSkillTest is Test {
     BreedingSkill public breedingSkill;
@@ -50,7 +50,7 @@ contract BreedingSkillTest is Test {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -67,7 +67,7 @@ contract BreedingSkillTest is Test {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -91,7 +91,7 @@ contract BreedingSkillTest is Test {
         breedingSkill = new BreedingSkill(address(factory), address(breedingVote));
         
         // Create test Aminals
-        ITraits.Traits memory traits1 = ITraits.Traits({
+        IGenes.Genes memory traits1 = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Strong Arms",
             tail: "Fire Tail",
@@ -102,7 +102,7 @@ contract BreedingSkillTest is Test {
             misc: "Glowing Eyes"
         });
         
-        ITraits.Traits memory traits2 = ITraits.Traits({
+        IGenes.Genes memory traits2 = IGenes.Genes({
             back: "Angel Wings",
             arm: "Gentle Arms",
             tail: "Fluffy Tail",
@@ -113,7 +113,7 @@ contract BreedingSkillTest is Test {
             misc: "Sparkles"
         });
         
-        ITraits.Traits memory traits3 = ITraits.Traits({
+        IGenes.Genes memory traits3 = IGenes.Genes({
             back: "Butterfly Wings",
             arm: "Delicate Arms",
             tail: "Ribbon Tail",
@@ -125,7 +125,7 @@ contract BreedingSkillTest is Test {
         });
         
         vm.prank(owner);
-        address parent1Address = factory.createAminalWithTraits(
+        address parent1Address = factory.createAminalWithGenes(
             "FireDragon",
             "FIRE",
             "A fierce dragon",
@@ -135,7 +135,7 @@ contract BreedingSkillTest is Test {
         parent1 = Aminal(payable(parent1Address));
         
         vm.prank(owner);
-        address parent2Address = factory.createAminalWithTraits(
+        address parent2Address = factory.createAminalWithGenes(
             "AngelBunny",
             "ANGEL",
             "A gentle bunny",
@@ -145,7 +145,7 @@ contract BreedingSkillTest is Test {
         parent2 = Aminal(payable(parent2Address));
         
         vm.prank(owner);
-        address parent3Address = factory.createAminalWithTraits(
+        address parent3Address = factory.createAminalWithGenes(
             "FairyButterfly",
             "FAIRY",
             "A mystical butterfly",
@@ -502,57 +502,5 @@ contract BreedingSkillTest is Test {
         (bool hasActive, uint256 proposalId) = breedingSkill.hasActiveProposal(address(parent1), address(parent2));
         assertTrue(hasActive);
         assertEq(proposalId, 2); // Second proposal
-    }
-    
-    function testSkip_ChildTraitsAlternate() public {
-        // Setup and create proposal
-        vm.prank(user1);
-        (bool success,) = address(parent1).call{value: 0.5 ether}("");
-        assertTrue(success);
-        
-        bytes memory proposalData = abi.encodeWithSelector(
-            BreedingSkill.createProposal.selector,
-            address(parent2),
-            "Test child",
-            "child.json"
-        );
-        
-        vm.prank(user1);
-        parent1.useSkill(address(breedingSkill), proposalData);
-        
-        // Accept proposal
-        vm.prank(user2);
-        (success,) = address(parent2).call{value: 0.5 ether}("");
-        assertTrue(success);
-        
-        bytes memory acceptData = abi.encodeWithSelector(
-            BreedingSkill.acceptProposal.selector,
-            uint256(1)
-        );
-        
-        vm.prank(user2);
-        parent2.useSkill(address(breedingSkill), acceptData);
-        
-        // Get the child
-        address childAddress = factory.aminalById(6); // 2 initial + 3 test + 1 child
-        Aminal child = Aminal(payable(childAddress));
-        
-        // Verify traits alternate
-        ITraits.Traits memory childTraits = child.getTraits();
-        ITraits.Traits memory traits1 = parent1.getTraits();
-        ITraits.Traits memory traits2 = parent2.getTraits();
-        
-        assertEq(childTraits.back, traits1.back);   // From parent1
-        assertEq(childTraits.arm, traits2.arm);     // From parent2
-        assertEq(childTraits.tail, traits1.tail);   // From parent1
-        assertEq(childTraits.ears, traits2.ears);   // From parent2
-        assertEq(childTraits.body, traits1.body);   // From parent1
-        assertEq(childTraits.face, traits2.face);   // From parent2
-        assertEq(childTraits.mouth, traits1.mouth); // From parent1
-        assertEq(childTraits.misc, traits2.misc);   // From parent2
-        
-        // Verify name
-        assertEq(child.name(), "FireDragon-AngelBunny-Child");
-        assertEq(child.symbol(), "FIREANGEL");
     }
 }

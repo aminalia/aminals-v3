@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
 import {AminalFactory} from "src/AminalFactory.sol";
-import {ITraits} from "src/interfaces/ITraits.sol";
+import {IGenes} from "src/interfaces/IGenes.sol";
 
 /**
  * @title DeployAminalFactory
@@ -25,7 +25,7 @@ contract DeployAminalFactory is Script {
             symbol: "ADAM",
             description: "The first Aminal",
             tokenURI: "ipfs://adam",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Original Wings",
                 arm: "First Arms",
                 tail: "Genesis Tail",
@@ -42,7 +42,7 @@ contract DeployAminalFactory is Script {
             symbol: "EVE",
             description: "The second Aminal",
             tokenURI: "ipfs://eve",
-            traits: ITraits.Traits({
+            genes: IGenes.Genes({
                 back: "Life Wings",
                 arm: "Gentle Arms",
                 tail: "Harmony Tail",
@@ -65,7 +65,7 @@ contract DeployAminalFactory is Script {
         console.log("AminalFactory deployed to:", address(factory));
         
         // Example: Create an Aminal (anyone can do this now, not just owner)
-        ITraits.Traits memory dragonTraits = ITraits.Traits({
+        IGenes.Genes memory dragonTraits = IGenes.Genes({
             back: "Dragon Wings",
             arm: "Clawed Arms",
             tail: "Fire Tail",
