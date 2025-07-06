@@ -1000,6 +1000,20 @@ The community can prevent breeding through veto voting:
 - **Function Modifiers**: `nonReentrant` only on functions that transfer ETH
 - **Batch Operations**: Removed batch creation functions that encourage wasteful gas usage
 
+### Metadata Architecture
+
+#### Fully Onchain Metadata
+- **No External Dependencies**: All metadata generated onchain without API calls
+- **Base64 Data URIs**: Both images and JSON metadata encoded as data URIs
+- **External URL**: Hardcoded as `https://aminals.example` in metadata
+- **No baseTokenURI**: Removed unused baseTokenURI functionality that was confusing
+
+#### Metadata Generation Flow
+1. `Aminal.tokenURI()` delegates to `AminalRenderer.tokenURI()`
+2. Renderer composes SVG from Gene references
+3. Generates JSON metadata with name, description, image, external_url
+4. Returns complete data URI: `data:application/json;base64,...`
+
 ### Test Organization & Best Practices
 
 #### Test Refactoring Learnings
