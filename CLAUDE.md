@@ -629,6 +629,89 @@ forge script script/Deploy.s.sol \
 
 # DO NOT EDIT ANY OF THE ABOVE LINES. ONLY EDIT THE BELOW LINES:
 
+<critical_security_vulnerabilities>
+
+## ⚠️ CRITICAL SECURITY VULNERABILITIES TO WATCH FOR ⚠️
+
+### 1. Unauthorized ETH Drainage via payBreedingFee
+**Severity**: CRITICAL  
+**Location**: `Aminal.sol:payBreedingFee()`  
+**Description**: The `payBreedingFee` function is the ONLY function that allows ETH to flow out of Aminals. It MUST have proper authorization checks.
+
+**Required Security Measures**:
+- ✅ Only callable by authorized breeding vote contract
+- ✅ Verify caller via `factory.breedingVoteContract()`
+- ✅ Validate Aminal is actually part of the breeding ticket
+- ✅ Include `nonReentrant` modifier
+- ✅ Validate recipient addresses (no address(0))
+
+**Attack Vector if Not Secured**:
+```solidity
+// WITHOUT proper checks, anyone could drain funds:
+aminal.payBreedingFee([attacker], anyTicketId); // Steals 10% per call
+```
+
+### 2. Factory Authorization Setup
+**Severity**: HIGH  
+**Location**: `AminalFactory.sol:setBreedingVoteContract()`  
+**Description**: The breeding vote contract MUST be set exactly once and never changed.
+
+**Required Security Measures**:
+- ✅ One-time setting only (revert if already set)
+- ✅ Only owner can set
+- ✅ Cannot be set to address(0)
+
+### 3. Reentrancy in Payment Functions
+**Severity**: HIGH  
+**Location**: Any function using `.call{value:}()`  
+**Description**: Payment functions must be protected against reentrancy.
+
+**Required Security Measures**:
+- ✅ Use `nonReentrant` modifier on all payment functions
+- ✅ Follow checks-effects-interactions pattern
+- ✅ Consider using pull payments for large distributions
+
+### 4. tx.origin Usage
+**Severity**: MEDIUM  
+**Location**: Should NEVER be used  
+**Description**: `tx.origin` breaks composability and can be exploited.
+
+**Required Security Measures**:
+- ✅ Always use `msg.sender` instead
+- ✅ Track actual caller, not transaction originator
+
+### 5. Breeding Ticket Validation
+**Severity**: HIGH  
+**Location**: `AminalBreedingVote.sol:isParentInTicket()`  
+**Description**: Must validate that Aminals are actually involved in breeding.
+
+**Required Security Measures**:
+- ✅ Implement `isParentInTicket()` view function
+- ✅ Check both parent1 and parent2
+- ✅ Called by Aminal to verify involvement
+
+## Security Checklist Before Deployment
+
+- [ ] `payBreedingFee` has authorization check: `msg.sender == factory.breedingVoteContract()`
+- [ ] `payBreedingFee` validates ticket involvement: `isParentInTicket(ticketId, address(this))`
+- [ ] `payBreedingFee` has `nonReentrant` modifier
+- [ ] Factory's `breedingVoteContract` can only be set once
+- [ ] No `tx.origin` usage anywhere in codebase
+- [ ] All payment functions validate recipient != address(0)
+- [ ] Gas griefing protection (recipient limits)
+- [ ] All external calls use specific gas limits or are last in execution
+
+## Testing Security Fixes
+
+Always test these attack vectors:
+1. Unauthorized direct calls to `payBreedingFee`
+2. Reentrancy attacks via malicious recipients
+3. Invalid breeding ticket IDs
+4. Multiple recipient gas griefing
+5. Factory authorization bypass attempts
+
+</critical_security_vulnerabilities>
+
 <aminals_project>
 
 ## Aminals NFT Project
