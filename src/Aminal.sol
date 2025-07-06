@@ -87,6 +87,28 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     GeneReference public mouthGene;
     GeneReference public miscGene;
 
+    /// @dev Structure to store positioning data for a gene
+    struct GenePosition {
+        int16 x;      // X coordinate (can be negative for off-canvas)
+        int16 y;      // Y coordinate (can be negative for off-canvas)
+        uint16 width;  // Width in SVG units
+        uint16 height; // Height in SVG units
+    }
+
+    /// @dev Mapping from gene type to its position data
+    /// @notice Each Aminal has unique positioning for its genes
+    mapping(uint8 => GenePosition) public genePositions;
+
+    /// @dev Gene type constants for position mapping
+    uint8 public constant GENE_BACK = 0;
+    uint8 public constant GENE_ARM = 1;
+    uint8 public constant GENE_TAIL = 2;
+    uint8 public constant GENE_EARS = 3;
+    uint8 public constant GENE_BODY = 4;
+    uint8 public constant GENE_FACE = 5;
+    uint8 public constant GENE_MOUTH = 6;
+    uint8 public constant GENE_MISC = 7;
+
     /// @dev Total love received by this Aminal (in energy units)
     /// @notice Love is tracked per-user to create individual relationships
     uint256 public totalLove;
@@ -237,6 +259,34 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         emit AminalCreated(TOKEN_ID, address(this), uri);
         
         return TOKEN_ID;
+    }
+
+    /**
+     * @dev Initialize with gene references and positions
+     * @param uri The URI for the token's metadata
+     * @param geneRefs Array of gene references
+     * @param positions Array of gene positions in same order as gene types
+     * @return tokenId The ID of the newly minted token (always 1)
+     */
+    function initializeWithPositions(
+        string calldata uri, 
+        GeneReference[8] calldata geneRefs,
+        GenePosition[8] calldata positions
+    ) public returns (uint256) {
+        // First do normal initialization
+        uint256 tokenId = initialize(uri, geneRefs);
+        
+        // Then set all positions
+        genePositions[GENE_BACK] = positions[0];
+        genePositions[GENE_ARM] = positions[1];
+        genePositions[GENE_TAIL] = positions[2];
+        genePositions[GENE_EARS] = positions[3];
+        genePositions[GENE_BODY] = positions[4];
+        genePositions[GENE_FACE] = positions[5];
+        genePositions[GENE_MOUTH] = positions[6];
+        genePositions[GENE_MISC] = positions[7];
+        
+        return tokenId;
     }
 
 

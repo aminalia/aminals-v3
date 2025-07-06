@@ -296,7 +296,23 @@ contract AminalRenderer {
      * @return positions The calculated positions for all traits
      */
     function _getTraitPositions(Aminal aminal) private view returns (TraitPositions memory positions) {
-        // Get traits from the Aminal
+        // First check if this Aminal has stored positions
+        (int16 x, int16 y, uint16 width, uint16 height) = aminal.genePositions(aminal.GENE_BODY());
+        
+        // If body position is set (width > 0), use stored positions for all genes
+        if (width > 0) {
+            positions.back = _getStoredPosition(aminal, aminal.GENE_BACK());
+            positions.body = _getStoredPosition(aminal, aminal.GENE_BODY());
+            positions.tail = _getStoredPosition(aminal, aminal.GENE_TAIL());
+            positions.arm = _getStoredPosition(aminal, aminal.GENE_ARM());
+            positions.ears = _getStoredPosition(aminal, aminal.GENE_EARS());
+            positions.face = _getStoredPosition(aminal, aminal.GENE_FACE());
+            positions.mouth = _getStoredPosition(aminal, aminal.GENE_MOUTH());
+            positions.misc = _getStoredPosition(aminal, aminal.GENE_MISC());
+            return positions;
+        }
+        
+        // Otherwise, use trait-based positioning
         IGenes.Genes memory traits = aminal.getGenes();
         
         // Determine body type characteristics
@@ -385,6 +401,22 @@ contract AminalRenderer {
             if (found) return true;
         }
         return false;
+    }
+    
+    /**
+     * @dev Get stored position for a specific gene type
+     * @param aminal The Aminal to get position from
+     * @param geneType The gene type to get position for
+     * @return Position struct with stored coordinates
+     */
+    function _getStoredPosition(Aminal aminal, uint8 geneType) private view returns (Position memory) {
+        (int16 x, int16 y, uint16 width, uint16 height) = aminal.genePositions(geneType);
+        return Position({
+            x: x,
+            y: y,
+            width: width,
+            height: height
+        });
     }
     
     /**
