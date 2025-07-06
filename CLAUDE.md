@@ -651,7 +651,7 @@ Self-sovereign ERC721 contract where the NFT owns itself:
 - **One Token**: Always token ID #1, one per contract
 - **Genes**: Uses `IGenes.Genes` struct for 8 gene categories
 - **Dynamic Rendering**: Uses separate AminalRenderer contract for tokenURI generation
-- **Reentrancy Protection**: All state-changing functions protected against reentrancy
+- **Reentrancy Protection**: All state-changing functions protected
 
 Key functions:
 - `initialize(uri)`: One-time mint to self, callable by anyone
@@ -664,7 +664,7 @@ Key functions:
 Deploys individual Aminal contracts with breeding focus:
 - **Initial Parents**: Creates Adam and Eve during construction
 - **Direct Creation Blocked**: `createAminal()` reverts with DirectCreationNotAllowed
-- **Breeding Only**: New Aminals created through breeding (except via createAminalWithTraits)
+- **Breeding Only**: New Aminals created through breeding (except via createAminalWithGenes)
 - **Registry System**: Tracks valid Aminals for breeding (`isValidAminal`)
 - **Batch Creation Removed**: `batchCreateAminals()` now reverts
 - **Public Creation**: `createAminalWithTraits()` allows anyone to create (for testing/special cases)
@@ -686,15 +686,15 @@ Fully onchain ERC721 NFTs representing genetic traits with SVG rendering:
 - **Public Minting**: Anyone can mint genes with SVG data
 - **Query Functions**: Filter by trait type or value
 - **No Factory Needed**: Genes are regular ERC721s, not 1-of-1 contracts like Aminals
+- **Query Functions**: Filter by gene type or value
 
 ### Key Design Principles
 
 1. **Self-Sovereignty**: Contract owns itself, no external control
 2. **Non-Transferable**: Ensures permanent autonomy
 3. **Permissionless**: Anyone can initialize or interact
-4. **Transparent**: All variables public
-5. **Economic**: Love/energy creates community value
-6. **Individual Relationships**: Love is tracked per-user to maintain personal bonds with each Aminal, while energy is global to represent overall vitality. This prevents free-riding since users can only squeak using their own love contributions.
+4. **Economic**: Love/energy creates community value
+5. **Individual Relationships**: Love is tracked per-user to maintain personal bonds with each Aminal
 
 ## Technical Details
 
@@ -759,40 +759,33 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 - **Thresholds**: Hard boundaries at 0.001 and 100 ETH prevent VRGDA calculation edge cases
 - **Energy Scaling**: Non-linear scaling (varying divisors by range) spreads curve evenly across 0.001-100 ETH
 
+**Key Incentives**:
+- **Discovery Rewards**: Players actively search for hungry Aminals to maximize returns
+- **Anti-Whale Protection**: Whales get poor returns feeding already-wealthy Aminals
+- **Natural Distribution**: Creates equilibrium where most Aminals maintain 1-10 ETH
+
 ### Skills System
 
 Aminals can use skills by calling external functions and consuming energy/love:
 - **Flexible Design**: Any external contract can be a skill provider
 - **Dynamic Cost**: Skills return their energy cost as uint256
 - **Automatic Consumption**: Energy and love consumed equally based on returned cost
-- **Fallback Behavior**: Defaults to 1 energy/love if no cost returned or zero cost
-- **Safety**: Reverts if skill call fails or insufficient resources
-- **Per-User Love**: Only the caller's love can be consumed, maintaining individual relationships
-- **Reentrancy Protection**: Uses OpenZeppelin's ReentrancyGuard to prevent exploitation
 - **ETH Protection**: Skills CANNOT spend the Aminal's ETH - all calls are made with 0 value
 
 Implementation:
 - `useSkill(address target, bytes calldata data)`: Execute skill with raw calldata
-- Skill contracts should return energy cost as uint256
-- **Intelligent Parsing**: AminalSkillParser detects return types and defaults non-uint256 to 1:
-  - Dynamic types (strings, arrays, bytes): Default to 1
-  - Addresses and negative numbers: Default to 1
-  - Multiple return values: Default to 1 (safety)
-  - Booleans: 0→1, 1→1
-  - Reasonable uint256 (1-1,000,000): Used as cost
 - Events track skill usage: `SkillUsed(user, target, cost, selector)`
 - **CRITICAL SECURITY**: All skill calls use `{value: 0}` to prevent ETH drainage
 - **Safety Cap**: Energy costs are capped at min(10000, available energy) to prevent accidents
 - **Minimum Cost**: Always requires at least 1 energy/love to prevent free execution
-- Exception: Breeding skills will have a separate, controlled mechanism (future feature)
 
 ### Breeding System
 
 #### Overview
-The breeding system has evolved to be secure, community-driven, and flexible:
+The breeding system is secure, community-driven, and flexible:
 1. **Secure Skill-Based Initiation**: Uses BreedingSkill for proposal/acceptance
-2. **Love Auction for Traits**: Community votes on which traits the child inherits
-3. **Gene Proposals**: Community can propose new traits via Gene NFTs
+2. **Love Auction for Genes**: Community votes on which genes the child inherits
+3. **Gene Proposals**: Community can propose new genes via Gene NFTs
 4. **Veto Mechanism**: Community can prevent unwanted breeding
 
 #### Skill-Based Breeding Initiation
@@ -803,104 +796,34 @@ Breeding starts with a two-step process using the BreedingSkill contract:
 2. **Accept Proposal**: User B with 2,500 love in Aminal B accepts the proposal, creating a breeding ticket
 
 **Key Security Features**:
-- **No consumeAs()**: Removed dangerous function that allowed anyone to drain others' resources
 - **Standard Skill Pattern**: Uses existing secure useSkill() mechanism
 - **User Control**: Only the user who owns love can spend it
 - **Proposal System**: Allows coordination without requiring both parents simultaneously
 - **Non-cancellable**: Proposals cannot be cancelled (prevents front-running), expire after 7 days
 
-**Breeding Initiation Flow**:
-```solidity
-// Step 1: User A (with 2,500+ love in Aminal A) creates proposal
-vm.prank(userA);
-aminalA.useSkill(breedingSkill, abi.encodeCall(
-    BreedingSkill.createProposal, 
-    (aminalB, "description", "uri")
-));
-// This consumes 2,500 energy + 2,500 love from Aminal A
-
-// Step 2: User B (with 2,500+ love in Aminal B) accepts proposal
-vm.prank(userB);
-aminalB.useSkill(breedingSkill, abi.encodeCall(
-    BreedingSkill.acceptProposal,
-    (proposalId)
-));
-// This consumes 2,500 energy + 2,500 love from Aminal B
-// Creates a breeding ticket in AminalBreedingVote for trait voting
-```
 
 #### Love Auction Mechanics (AminalBreedingVote)
-After proposal acceptance, a 3-day voting period begins where the community determines traits:
+After proposal acceptance, a 4-day voting period begins:
 
 **Voting System**:
 - **Voting Power**: Combined love from both parents (loveInParent1 + loveInParent2)
-- **Vote Locking**: Voting power is locked at first vote time (love amount doesn't update)
-- **Vote Changing**: Users can change their votes at any time during the voting period
-- **Trait Independence**: Each trait (back, arm, tail, etc.) is voted on independently
-- **Default Winner**: Parent1's trait wins ties
+- **Vote Locking**: Voting power is locked at first vote time
+- **Vote Changing**: Users can change their votes during the voting period
+- **Gene Independence**: Each gene (back, arm, tail, etc.) is voted on independently
+- **Default Winner**: Parent1's gene wins ties
 
 **Vote Types**:
-1. **Trait Voting**: Choose between parent1 or parent2 for each trait
-2. **Gene Voting**: Vote for community-proposed gene alternatives (additive, cannot be changed)
+1. **Gene Voting**: Choose between parent1 or parent2 for each gene
+2. **Proposed Gene Voting**: Vote for community-proposed gene alternatives (additive only)
 3. **Veto Voting**: Vote to prevent breeding entirely
 
-**Voting Implementation**:
-```solidity
-// Users can vote and change votes freely
-function vote(ticketId, traits[], votesForParent1[]) {
-    // First vote locks voting power
-    if (voterPower[ticketId][msg.sender] == 0) {
-        voterPower[ticketId][msg.sender] = calculateLove();
-    }
-    // Remove previous votes and apply new ones
-    for each trait:
-        if (hasVotedOnTrait[ticketId][msg.sender][trait]) {
-            // Remove old vote
-        }
-        // Apply new vote
-}
-
-// Veto votes can also be changed
-function voteOnVeto(ticketId, voteForVeto) {
-    // Similar pattern - lock power on first vote, allow changes
-}
-
-// Gene votes are additive only (cannot be changed)
-function voteForGene(ticketId, traitType, geneId) {
-    // Uses locked voting power
-    geneVotes[geneId] += voterPower[ticketId][msg.sender];
-}
-```
 
 #### Gene Proposal System
-Community members can propose Gene NFTs as alternative traits:
-
-**Requirements**:
+Community members can propose Gene NFTs as alternative genes:
 - **Minimum Love**: 100 combined love in both parents (spam prevention)
-- **Type Matching**: Gene must match the trait type (e.g., "back" gene for back trait)
-- **No Revisions**: Gene proposals cannot be modified or cancelled
-
-**Gene Voting**:
-- Uses same locked voting power as trait voting
-- Gene votes are additive (cannot be changed/removed like trait votes)
-- Genes compete with parent traits and other proposed genes
-- Highest vote total wins
-
-**Implementation**:
-```solidity
-// Propose a gene
-function proposeGene(ticketId, traitType, geneContract, tokenId) {
-    require(combinedLove >= 100);
-    require(IGene(geneContract).traitType(tokenId) == traitTypeToString(traitType));
-    // Create proposal
-}
-
-// Vote for gene (additive only)
-function voteForGene(ticketId, traitType, geneId) {
-    // Uses locked voting power
-    geneVotes[geneId] += voterPower[ticketId][msg.sender];
-}
-```
+- **Type Matching**: Gene must match the gene type
+- **One Proposal Per User**: Each user can only have one active gene proposal per breeding ticket
+- **Proposal Replacement**: Users can replace their own proposal during gene proposal phase
 
 #### Veto Mechanism
 The community can prevent breeding through veto voting:
@@ -911,23 +834,6 @@ The community can prevent breeding through veto voting:
 - **Vote Changing**: Users can switch between veto/proceed during voting period
 - **Independent**: Veto voting is separate from trait voting
 
-**Veto Flow**:
-```solidity
-function executeBreeding(ticketId) {
-    // Check veto first
-    if (vetoVotes >= proceedVotes) {
-        emit BreedingVetoed(ticketId, vetoVotes, proceedVotes);
-        return address(0); // No child created
-    }
-    // Otherwise proceed with breeding using winning traits
-}
-```
-
-#### Direct Breeding (Legacy)
-The `breed()` function in AminalFactory allows direct breeding but is not recommended:
-- **Caller Must Be Aminal**: Only valid Aminals can call breed()
-- **No Community Input**: Bypasses voting system entirely
-- **No Energy Cost**: Doesn't consume resources
 
 ### Data Flow Architecture
 
@@ -979,46 +885,13 @@ The `breed()` function in AminalFactory allows direct breeding but is not recomm
 - **Factory Tests**: Validates creation restrictions and breeding
 - **Test Helpers**: Uses vm.skip() for deprecated functionality
 
-### Project Status & Key Learnings
 
-#### Constructor Updates
-- **AminalFactory Constructor**: Now requires 4 params including ParentData for Adam/Eve
-- **Initial Aminals**: Factory starts with 2 Aminals (Adam and Eve)
-- **Test Adjustments**: All assertions updated to account for initial parent Aminals
-
-#### Breeding Implementation
-- **Skill-Based System**: Breeding now uses secure BreedingSkill contract
-- **Energy Requirements**: Breeding proposals require 2,500 energy from each parent
-- **Love Requirements**: Users must have love in the Aminal they control
-- **Secure Consumption**: Only users can spend their own love via useSkill()
-- **Four-Phase Process**: Gene Proposal → Voting → Execution → Completed
-- **Phase Durations**: 3 days for gene proposals, 4 days for voting
-- **Vote Locking**: Voting power locked at first vote, doesn't update with new love
-
-#### Testing Infrastructure
-- **Dynamic Test Linking**: Enabled for faster compilation
-- **Skipped Tests**: Batch creation and dynamic URI tests marked as skipped
-- **Energy Setup**: Tests properly fund Aminals with ETH for energy/love
-- **Multi-User Testing**: Tests validate voting with multiple participants
-
-#### Security Considerations
+### Security Considerations
 - **Reentrancy Protection**: All critical functions protected
 - **ETH Protection**: Skills cannot drain Aminal's ETH balance
 - **Access Control**: Only self can call admin functions
-- **Input Validation**: All user inputs validated
-- **Resource Checks**: Energy/love checked before consumption
-- **No consumeAs()**: Removed dangerous function that allowed resource theft
 - **User-Controlled Resources**: Only users can spend their own love
 - **No Front-Running**: Breeding proposals cannot be cancelled, preventing griefing
-
-#### Terminology Refactoring
-- **NEW CODEBASE - NO BACKWARDS COMPATIBILITY NEEDED**: This is a fresh implementation without legacy constraints
-- **Complete Gene Terminology**: Unified all references to use "gene" instead of "trait" throughout
-- **Interface Renamed**: `ITraits` → `IGenes` with `Traits` struct → `Genes` struct
-- **Function Updates**: `getTraits()` → `getGenes()`, `createAminalWithTraits()` → `createAminalWithGenes()`
-- **Storage Variables**: `traits` → `genes` throughout the codebase
-- **Import Paths**: All imports updated from `ITraits.sol` to `IGenes.sol`
-- **Consistent Naming**: All functions, variables, and comments use "gene" terminology exclusively
 
 #### Gene Proposal System Insights
 - **One Proposal Per User**: Each user can only have one active gene proposal per breeding ticket
@@ -1026,13 +899,6 @@ The `breed()` function in AminalFactory allows direct breeding but is not recomm
 - **Replaced Proposals**: Marked with `proposer = address(0)` and cannot win voting
 - **Active Proposal Tracking**: `getActiveGeneProposals()` filters out replaced proposals
 - **Vote Prevention**: Attempting to vote for replaced genes reverts with "Gene proposal was replaced"
-
-#### Breeding Voting Mechanics
-- **Parent Gene Voting**: Users vote for parent1 or parent2 genes, votes can be changed
-- **Proposed Gene Voting**: Votes for proposed genes are additive and cannot be changed
-- **Veto Voting**: Separate from gene voting, can be changed between veto/proceed
-- **Tie Resolution**: Parent1's genes win all ties (including veto ties)
-- **No Default Votes**: Unvoted genes default to parent1 (0-0 tie)
 
 ### Test Organization & Best Practices
 
@@ -1072,6 +938,7 @@ function test_EventEmission() public {
     emit SkillUsed(user1, 100, address(skill), selector);
     _useSkill(user1, aminal, address(skill), data);
 }
+- **No Front-Running**: Breeding proposals cannot be cancelled
 
 // Fuzz test with proper bounds
 function testFuzz_Example(uint96 amount) public {
@@ -1088,11 +955,10 @@ function testFuzz_Example(uint96 amount) public {
 - **Bounded Inputs**: Use bound() to keep inputs within reasonable ranges
 - **State Assertions**: Include assertions within handler functions to catch issues early
 
-#### Gas Benchmarking
-- **Isolated Operations**: Test individual operations in isolation for accurate measurements
-- **Warm vs Cold Storage**: Be aware of storage access patterns affecting gas costs
-- **Batch Operations**: Test both single and batch operations to understand scaling
-- **Record Results**: Store gas measurements for regression testing
+### Testing
+- **Comprehensive Coverage**: 158+ tests covering all major functionality
+- **Fuzz Testing**: Property-based testing for energy/love calculations
+- **Dynamic Test Linking**: Enabled for faster compilation
 </aminals_project>
 
 <user_prompt>
