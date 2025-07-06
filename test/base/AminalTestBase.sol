@@ -51,7 +51,9 @@ abstract contract AminalTestBase is Test, TestAssertions {
         string memory symbol,
         IGenes.Genes memory traits
     ) internal returns (Aminal) {
-        return new Aminal(name, symbol, BASE_URI, traits);
+        // Pass address(this) as factory for test Aminals
+        // In these tests, breeding is not used so factory validation won't be triggered
+        return new Aminal(name, symbol, BASE_URI, traits, address(this));
     }
     
     function _initializeAminal(Aminal targetAminal, string memory tokenURI) internal returns (uint256) {
