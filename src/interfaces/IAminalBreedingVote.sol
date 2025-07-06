@@ -21,4 +21,13 @@ interface IAminalBreedingVote {
         string memory childDescription,
         string memory childTokenURI
     ) external returns (uint256 ticketId);
+    
+    /**
+     * @notice Check if an address is a parent in a breeding ticket
+     * @dev Used by Aminals to verify they're involved in the breeding
+     * @param ticketId The breeding ticket ID
+     * @param parent The address to check
+     * @return True if the address is parent1 or parent2 in the ticket
+     */
+    function isParentInTicket(uint256 ticketId, address parent) external view returns (bool);
 }

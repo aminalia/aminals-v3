@@ -347,7 +347,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
             votingDeadline: votingEnd,
             executed: false,
             childContract: address(0),
-            creator: tx.origin // Track the original user who initiated breeding
+            creator: msg.sender // Track the breeding skill contract (removed tx.origin for security)
         });
         
         emit BreedingTicketCreated(ticketId, parent1, parent2, geneProposalEnd, votingStart, votingEnd);
@@ -647,12 +647,8 @@ contract AminalBreedingVote is IAminalBreedingVote {
             return address(0);
         }
         
-        // Extract parent addresses first
-        address parent1Address = ticket.parent1;
-        address parent2Address = ticket.parent2;
-        
         // Build child and create
-        childContract = _createChild(ticketId, parent1Address, parent2Address, ticket.childDescription, ticket.childTokenURI);
+        childContract = _createChild(ticketId, ticket.parent1, ticket.parent2, ticket.childDescription, ticket.childTokenURI);
         
         ticket.childContract = childContract;
         
@@ -672,11 +668,7 @@ contract AminalBreedingVote is IAminalBreedingVote {
         // Build child genes and create child
         IGenes.Genes memory childGenes = _buildChildGenesForCreation(ticketId, parent1Address, parent2Address);
         
-        // Collect gene owners and pay them immediately from both parents
-        address[] memory geneOwners = _collectGeneOwners(ticketId);
-        _payGeneOwnersFromParents(parent1Address, parent2Address, geneOwners, ticketId);
-        
-        // Create the child through the factory
+        // Create the child first
         childContract = _createChildFromGenes(
             parent1Address,
             parent2Address,
@@ -684,6 +676,10 @@ contract AminalBreedingVote is IAminalBreedingVote {
             childTokenURI,
             childGenes
         );
+        
+        // Then collect gene owners and pay them from both parents
+        address[] memory geneOwners = _collectGeneOwners(ticketId);
+        _payGeneOwnersFromParents(parent1Address, parent2Address, geneOwners, ticketId);
     }
     
     /**
@@ -1076,5 +1072,17 @@ contract AminalBreedingVote is IAminalBreedingVote {
         vetoCount = veto.vetoVotes;
         proceedCount = veto.proceedVotes;
         wouldBeVetoed = vetoCount >= proceedCount; // Veto wins on ties
+    }
+    
+    /**
+     * @notice Check if an address is a parent in a breeding ticket
+     * @dev Used by Aminals to verify they're involved in the breeding
+     * @param ticketId The breeding ticket ID
+     * @param parent The address to check
+     * @return True if the address is parent1 or parent2 in the ticket
+     */
+    function isParentInTicket(uint256 ticketId, address parent) external view returns (bool) {
+        BreedingTicket memory ticket = tickets[ticketId];
+        return ticket.parent1 == parent || ticket.parent2 == parent;
     }
 }

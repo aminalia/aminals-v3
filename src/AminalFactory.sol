@@ -59,6 +59,10 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     /// @dev Registry of valid Aminal contracts (address => true if valid)
     /// @notice Only Aminals in this registry can breed
     mapping(address => bool) public isValidAminal;
+    
+    /// @dev The authorized breeding vote contract
+    /// @notice This is the only contract allowed to manage breeding votes
+    address public breedingVoteContract;
 
     /// @dev Event emitted when a new Aminal is created
     event AminalFactoryCreated(
@@ -106,6 +110,9 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     
     /// @dev Error thrown when trying to create Aminals directly (only breeding allowed)
     error DirectCreationNotAllowed();
+    
+    /// @dev Error thrown when breeding vote contract already set
+    error BreedingVoteAlreadySet();
 
     /// @dev Modifier to check if factory is not paused
     modifier whenNotPaused() {
@@ -248,7 +255,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
-        Aminal newAminal = new Aminal(name, symbol, baseTokenURI, genes);
+        Aminal newAminal = new Aminal(name, symbol, baseTokenURI, genes, address(this));
         
         // Initialize the Aminal to mint the NFT to itself (self-sovereign)
         // Each Aminal contract can only initialize once, ensuring 1-of-1 uniqueness
@@ -330,6 +337,16 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      */
     function setBaseURI(string memory newBaseURI) external onlyOwner {
         baseTokenURI = newBaseURI;
+    }
+    
+    /**
+     * @dev Set the authorized breeding vote contract (one-time setting)
+     * @param _breedingVoteContract The address of the breeding vote contract
+     */
+    function setBreedingVoteContract(address _breedingVoteContract) external onlyOwner {
+        if (breedingVoteContract != address(0)) revert BreedingVoteAlreadySet();
+        if (_breedingVoteContract == address(0)) revert InvalidParameters();
+        breedingVoteContract = _breedingVoteContract;
     }
 
 

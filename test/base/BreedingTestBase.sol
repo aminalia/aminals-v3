@@ -125,6 +125,10 @@ abstract contract BreedingTestBase is Test {
         
         breedingVote = new AminalBreedingVote(address(factory), predictedBreedingSkill);
         breedingSkill = new BreedingSkill(address(factory), address(breedingVote));
+        
+        // Set the breeding vote contract in factory
+        vm.prank(owner);
+        factory.setBreedingVoteContract(address(breedingVote));
     }
     
     function _createStandardParents() internal {

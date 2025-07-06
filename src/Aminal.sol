@@ -14,6 +14,8 @@ import {ISkill} from "src/interfaces/ISkill.sol";
 import {AminalRenderer} from "src/AminalRenderer.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {Base64} from "solady/utils/Base64.sol";
+import {AminalFactory} from "src/AminalFactory.sol";
+import {IAminalBreedingVote} from "src/interfaces/IAminalBreedingVote.sol";
 
 /**
  * @title Aminal
@@ -105,6 +107,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     
     /// @dev Renderer contract for generating metadata
     AminalRenderer public immutable renderer;
+    
+    /// @dev Factory contract that created this Aminal
+    address public immutable factory;
 
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
@@ -165,14 +170,17 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @param symbol The symbol for this specific Aminal
      * @param baseURI The base URI for token metadata
      * @param _genes The immutable genes for this Aminal
+     * @param _factory The factory contract that deployed this Aminal
      */
     constructor(
         string memory name,
         string memory symbol,
         string memory baseURI,
-        IGenes.Genes memory _genes
+        IGenes.Genes memory _genes,
+        address _factory
     ) ERC721(name, symbol) {
         baseTokenURI = baseURI;
+        factory = _factory;
         
         // Set the genes struct
         genes = _genes;
@@ -522,10 +530,22 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     function payBreedingFee(
         address[] calldata recipients,
         uint256 breedingTicketId
-    ) external returns (uint256 totalPaid) {
-        // Verify caller is authorized - must be a valid breeding-related contract
-        // that can prove this Aminal is involved in the breeding
+    ) external nonReentrant returns (uint256 totalPaid) {
+        // SECURITY: Verify caller is the authorized breeding vote contract
+        address breedingVoteContract = AminalFactory(factory).breedingVoteContract();
+        require(
+            msg.sender == breedingVoteContract,
+            "Only authorized breeding vote contract"
+        );
+        
+        // SECURITY: Verify this Aminal is actually part of the breeding ticket
+        require(
+            IAminalBreedingVote(breedingVoteContract).isParentInTicket(breedingTicketId, address(this)),
+            "Aminal not part of this breeding"
+        );
+        
         require(recipients.length > 0, "No recipients");
+        require(recipients.length <= 50, "Too many recipients"); // Prevent gas griefing
         
         // Calculate 10% of balance
         totalPaid = address(this).balance / 10;
@@ -538,6 +558,9 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         
         // Distribute payments
         for (uint256 i = 0; i < recipients.length; i++) {
+            // SECURITY: Validate recipient address
+            require(recipients[i] != address(0), "Invalid recipient");
+            
             if (i == recipients.length - 1) {
                 // Last recipient gets any remainder due to rounding
                 uint256 remainder = totalPaid - distributed;
