@@ -296,86 +296,15 @@ contract AminalRenderer {
      * @return positions The calculated positions for all traits
      */
     function _getTraitPositions(Aminal aminal) private view returns (TraitPositions memory positions) {
-        // First check if this Aminal has stored positions
-        (int16 x, int16 y, uint16 width, uint16 height) = aminal.genePositions(aminal.GENE_BODY());
-        
-        // If body position is set (width > 0), use stored positions for all genes
-        if (width > 0) {
-            positions.back = _getStoredPosition(aminal, aminal.GENE_BACK());
-            positions.body = _getStoredPosition(aminal, aminal.GENE_BODY());
-            positions.tail = _getStoredPosition(aminal, aminal.GENE_TAIL());
-            positions.arm = _getStoredPosition(aminal, aminal.GENE_ARM());
-            positions.ears = _getStoredPosition(aminal, aminal.GENE_EARS());
-            positions.face = _getStoredPosition(aminal, aminal.GENE_FACE());
-            positions.mouth = _getStoredPosition(aminal, aminal.GENE_MOUTH());
-            positions.misc = _getStoredPosition(aminal, aminal.GENE_MISC());
-            return positions;
-        }
-        
-        // Otherwise, use trait-based positioning
-        IGenes.Genes memory traits = aminal.getGenes();
-        
-        // Determine body type characteristics
-        bool isTall = _contains(traits.body, "Tall") || _contains(traits.body, "Slim");
-        bool isShort = _contains(traits.body, "Short") || _contains(traits.body, "Chubby");
-        bool isWide = _contains(traits.body, "Wide") || _contains(traits.body, "Chubby");
-        
-        // Base positions for standard body
-        positions.back = Position({x: 0, y: 0, width: 200, height: 200});
-        positions.body = Position({x: 50, y: 50, width: 100, height: 100});
-        positions.tail = Position({x: 100, y: 100, width: 60, height: 80});
-        positions.arm = Position({x: 20, y: 70, width: 160, height: 60});
-        positions.ears = Position({x: 50, y: 0, width: 100, height: 60});
-        positions.face = Position({x: 60, y: 60, width: 80, height: 80});
-        positions.mouth = Position({x: 70, y: 90, width: 60, height: 40});
-        positions.misc = Position({x: 0, y: 0, width: 200, height: 200});
-        
-        // Adjust for tall bodies
-        if (isTall) {
-            positions.body.y = 40;
-            positions.body.height = 120;
-            positions.ears.y = -10;  // Ears higher
-            positions.face.y = 50;   // Face higher
-            positions.mouth.y = 80;  // Mouth higher
-            positions.arm.y = 65;    // Arms higher
-            positions.tail.y = 110;  // Tail lower
-        }
-        
-        // Adjust for short bodies
-        if (isShort) {
-            positions.body.y = 60;
-            positions.body.height = 80;
-            positions.ears.y = 10;   // Ears lower
-            positions.face.y = 70;   // Face lower
-            positions.mouth.y = 95;  // Mouth lower
-            positions.arm.y = 75;    // Arms lower
-            positions.tail.y = 95;   // Tail higher
-        }
-        
-        // Adjust for wide bodies
-        if (isWide) {
-            positions.body.x = 40;
-            positions.body.width = 120;
-            positions.arm.x = 10;
-            positions.arm.width = 180;
-            positions.face.x = 55;
-            positions.face.width = 90;
-            positions.mouth.x = 65;
-            positions.mouth.width = 70;
-        }
-        
-        // Special adjustments based on specific traits
-        if (_contains(traits.ears, "Long") || _contains(traits.ears, "Bunny")) {
-            positions.ears.height = 80; // Longer ears
-            positions.ears.y = positions.ears.y - 10; // Start higher
-        }
-        
-        if (_contains(traits.tail, "Long") || _contains(traits.tail, "Dragon")) {
-            positions.tail.height = 100; // Longer tail
-            positions.tail.width = 80;
-        }
-        
-        return positions;
+        // Always use stored positions (width is always > 0 as per user requirement)
+        positions.back = _getStoredPosition(aminal, aminal.GENE_BACK());
+        positions.body = _getStoredPosition(aminal, aminal.GENE_BODY());
+        positions.tail = _getStoredPosition(aminal, aminal.GENE_TAIL());
+        positions.arm = _getStoredPosition(aminal, aminal.GENE_ARM());
+        positions.ears = _getStoredPosition(aminal, aminal.GENE_EARS());
+        positions.face = _getStoredPosition(aminal, aminal.GENE_FACE());
+        positions.mouth = _getStoredPosition(aminal, aminal.GENE_MOUTH());
+        positions.misc = _getStoredPosition(aminal, aminal.GENE_MISC());
     }
     
     /**

@@ -251,9 +251,10 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         // This gives each Aminal a unique address and self-sovereign identity
         Aminal newAminal = new Aminal(name, symbol, genes, address(this));
         
-        // Initialize the Aminal to mint the NFT to itself (self-sovereign)
-        // Each Aminal contract can only initialize once, ensuring 1-of-1 uniqueness
-        newAminal.initialize(tokenURI);
+        // Initialize the Aminal with default positions
+        Aminal.GeneReference[8] memory emptyGeneRefs;
+        Aminal.GenePosition[8] memory defaultPositions = _getDefaultPositions();
+        newAminal.initializeWithPositions(tokenURI, emptyGeneRefs, defaultPositions);
 
         // Track creation with efficient mapping-based approach
         totalAminals++;
@@ -261,6 +262,59 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         createdByAddress[msg.sender].push(address(newAminal));
         
         // Register the Aminal as valid for breeding
+        isValidAminal[address(newAminal)] = true;
+
+        emit AminalFactoryCreated(address(newAminal), msg.sender, address(newAminal), totalAminals, name, symbol, description, tokenURI);
+
+        return address(newAminal);
+    }
+
+    /**
+     * @dev Internal function to create an Aminal with positions
+     * @param name The name of the Aminal
+     * @param symbol The symbol for the Aminal
+     * @param description A description of the Aminal
+     * @param tokenURI The URI for the token's metadata
+     * @param genes The immutable genes for this Aminal
+     * @param geneRefs Array of gene references
+     * @param positions Array of gene positions
+     * @return aminalContract The address of the newly deployed Aminal contract
+     */
+    function _createAminalWithPositions(
+        string memory name,
+        string memory symbol,
+        string memory description,
+        string memory tokenURI,
+        IGenes.Genes memory genes,
+        Aminal.GeneReference[8] memory geneRefs,
+        Aminal.GenePosition[8] memory positions
+    ) internal returns (address) {
+        // Validate parameters
+        if (bytes(name).length == 0 || bytes(symbol).length == 0 || bytes(tokenURI).length == 0) {
+            revert InvalidParameters();
+        }
+
+        // Create unique identifier
+        bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
+        
+        if (aminalExists[identifier]) {
+            revert AminalAlreadyExists(identifier);
+        }
+
+        aminalExists[identifier] = true;
+
+        // Deploy new Aminal contract
+        Aminal newAminal = new Aminal(name, symbol, genes, address(this));
+        
+        // Initialize with positions
+        newAminal.initializeWithPositions(tokenURI, geneRefs, positions);
+
+        // Track creation
+        totalAminals++;
+        aminalById[totalAminals] = address(newAminal);
+        createdByAddress[msg.sender].push(address(newAminal));
+        
+        // Register as valid for breeding
         isValidAminal[address(newAminal)] = true;
 
         emit AminalFactoryCreated(address(newAminal), msg.sender, address(newAminal), totalAminals, name, symbol, description, tokenURI);
@@ -314,6 +368,32 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         IGenes.Genes calldata genes
     ) external whenNotPaused nonReentrant returns (address) {
         return _createAminal(name, symbol, description, tokenURI, genes);
+    }
+
+    /**
+     * @notice Create a new Aminal with specific genes and positions
+     * @dev Used by breeding vote contract to create children with positioned genes
+     * @param name The name of the Aminal
+     * @param symbol The symbol for the Aminal
+     * @param description A description of the Aminal
+     * @param tokenURI The URI for the token's metadata
+     * @param genes The specific genes for this Aminal
+     * @param geneRefs Array of gene references
+     * @param positions Array of gene positions
+     * @return aminalContract The address of the newly deployed Aminal contract
+     */
+    function createAminalWithGenesAndPositions(
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata tokenURI,
+        IGenes.Genes calldata genes,
+        Aminal.GeneReference[8] calldata geneRefs,
+        Aminal.GenePosition[8] calldata positions
+    ) external whenNotPaused nonReentrant returns (address) {
+        // Only breeding vote contract can create with positions
+        require(msg.sender == breedingVoteContract, "Only breeding vote contract");
+        return _createAminalWithPositions(name, symbol, description, tokenURI, genes, geneRefs, positions);
     }
 
     /**
@@ -494,6 +574,21 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     ) external view returns (bool) {
         bytes32 identifier = keccak256(abi.encodePacked(name, symbol, description, tokenURI));
         return aminalExists[identifier];
+    }
+
+    /**
+     * @dev Get default positions for all gene types
+     * @return positions Array of default positions
+     */
+    function _getDefaultPositions() private pure returns (Aminal.GenePosition[8] memory positions) {
+        positions[0] = Aminal.GenePosition({x: 0, y: 0, width: 200, height: 200});      // BACK
+        positions[1] = Aminal.GenePosition({x: 20, y: 70, width: 160, height: 60});     // ARM
+        positions[2] = Aminal.GenePosition({x: 100, y: 100, width: 60, height: 80});    // TAIL
+        positions[3] = Aminal.GenePosition({x: 50, y: 0, width: 100, height: 60});      // EARS
+        positions[4] = Aminal.GenePosition({x: 50, y: 50, width: 100, height: 100});    // BODY
+        positions[5] = Aminal.GenePosition({x: 60, y: 60, width: 80, height: 80});      // FACE
+        positions[6] = Aminal.GenePosition({x: 70, y: 90, width: 60, height: 40});      // MOUTH
+        positions[7] = Aminal.GenePosition({x: 0, y: 0, width: 200, height: 200});      // MISC
     }
 
 }

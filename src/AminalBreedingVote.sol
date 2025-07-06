@@ -85,6 +85,11 @@ contract AminalBreedingVote is IAminalBreedingVote {
         uint256 tokenId;
         address proposer;
         uint256 proposalTime;
+        // Position data for this gene
+        int16 x;
+        int16 y;
+        uint16 width;
+        uint16 height;
     }
     
     /// @dev Enum for gene types
@@ -433,12 +438,20 @@ contract AminalBreedingVote is IAminalBreedingVote {
      * @param geneType The gene category for this proposal
      * @param geneContract The Gene NFT contract address
      * @param tokenId The specific gene token ID
+     * @param x X coordinate for this gene
+     * @param y Y coordinate for this gene
+     * @param width Width for this gene
+     * @param height Height for this gene
      */
     function proposeGene(
         uint256 ticketId,
         GeneType geneType,
         address geneContract,
-        uint256 tokenId
+        uint256 tokenId,
+        int16 x,
+        int16 y,
+        uint16 width,
+        uint16 height
     ) external {
         BreedingTicket memory ticket = tickets[ticketId];
         if (ticket.parent1 == address(0)) revert ProposalDoesNotExist();
@@ -485,13 +498,20 @@ contract AminalBreedingVote is IAminalBreedingVote {
             "Gene type mismatch"
         );
         
+        // Validate position parameters
+        require(width > 0 && height > 0, "Invalid dimensions");
+        
         // Create gene proposal
         uint256 proposalId = nextGeneProposalId[ticketId][geneType]++;
         geneProposals[ticketId][geneType][proposalId] = GeneProposal({
             geneContract: geneContract,
             tokenId: tokenId,
             proposer: msg.sender,
-            proposalTime: block.timestamp
+            proposalTime: block.timestamp,
+            x: x,
+            y: y,
+            width: width,
+            height: height
         });
         
         // Update user's active proposal
@@ -668,8 +688,9 @@ contract AminalBreedingVote is IAminalBreedingVote {
         // Build child genes and create child
         IGenes.Genes memory childGenes = _buildChildGenesForCreation(ticketId, parent1Address, parent2Address);
         
-        // Create the child first
-        childContract = _createChildFromGenes(
+        // Create the child with positions
+        childContract = _createChildFromGenesWithPositions(
+            ticketId,
             parent1Address,
             parent2Address,
             childDescription,
@@ -721,6 +742,42 @@ contract AminalBreedingVote is IAminalBreedingVote {
             childDescription,
             childTokenURI,
             childGenes
+        );
+    }
+    
+    /**
+     * @dev Create child from genes with positions
+     */
+    function _createChildFromGenesWithPositions(
+        uint256 ticketId,
+        address parent1Address,
+        address parent2Address,
+        string memory childDescription,
+        string memory childTokenURI,
+        IGenes.Genes memory childGenes
+    ) private returns (address) {
+        // Generate child name and symbol from parent names
+        string memory parent1Name = Aminal(payable(parent1Address)).name();
+        string memory parent2Name = Aminal(payable(parent2Address)).name();
+        string memory childName = string.concat(parent1Name, "-", parent2Name, "-Child");
+        string memory childSymbol = string.concat(
+            Aminal(payable(parent1Address)).symbol(),
+            Aminal(payable(parent2Address)).symbol()
+        );
+        
+        // Get gene references and positions
+        (Aminal.GeneReference[8] memory geneRefs, Aminal.GenePosition[8] memory positions) = 
+            _buildChildGeneRefsAndPositions(ticketId);
+        
+        // Create the child through the factory with positions
+        return factory.createAminalWithGenesAndPositions(
+            childName,
+            childSymbol,
+            childDescription,
+            childTokenURI,
+            childGenes,
+            geneRefs,
+            positions
         );
     }
     
@@ -779,6 +836,29 @@ contract AminalBreedingVote is IAminalBreedingVote {
         (childGenes.face,,,) = _getWinningGeneValue(ticketId, GeneType.FACE, parent1Genes, parent2Genes);
         (childGenes.mouth,,,) = _getWinningGeneValue(ticketId, GeneType.MOUTH, parent1Genes, parent2Genes);
         (childGenes.misc,,,) = _getWinningGeneValue(ticketId, GeneType.MISC, parent1Genes, parent2Genes);
+    }
+    
+    /**
+     * @dev Build child gene references and positions from voting results
+     * @param ticketId The ticket ID
+     * @return geneRefs Array of gene references
+     * @return positions Array of gene positions
+     */
+    function _buildChildGeneRefsAndPositions(
+        uint256 ticketId
+    ) private view returns (
+        Aminal.GeneReference[8] memory geneRefs,
+        Aminal.GenePosition[8] memory positions
+    ) {
+        // Get gene refs and positions for each type
+        (geneRefs[0], positions[0]) = _getWinningGeneRefAndPosition(ticketId, GeneType.BACK);
+        (geneRefs[1], positions[1]) = _getWinningGeneRefAndPosition(ticketId, GeneType.ARM);
+        (geneRefs[2], positions[2]) = _getWinningGeneRefAndPosition(ticketId, GeneType.TAIL);
+        (geneRefs[3], positions[3]) = _getWinningGeneRefAndPosition(ticketId, GeneType.EARS);
+        (geneRefs[4], positions[4]) = _getWinningGeneRefAndPosition(ticketId, GeneType.BODY);
+        (geneRefs[5], positions[5]) = _getWinningGeneRefAndPosition(ticketId, GeneType.FACE);
+        (geneRefs[6], positions[6]) = _getWinningGeneRefAndPosition(ticketId, GeneType.MOUTH);
+        (geneRefs[7], positions[7]) = _getWinningGeneRefAndPosition(ticketId, GeneType.MISC);
     }
     
     /**
@@ -913,6 +993,93 @@ contract AminalBreedingVote is IAminalBreedingVote {
         if (geneType == GeneType.MOUTH) return genes.mouth;
         if (geneType == GeneType.MISC) return genes.misc;
         return "";
+    }
+    
+    /**
+     * @dev Get winning gene reference and position for a specific gene type
+     * @param ticketId The ticket ID
+     * @param geneType The gene type to get
+     * @return geneRef The winning gene reference
+     * @return position The position for this gene
+     */
+    function _getWinningGeneRefAndPosition(
+        uint256 ticketId,
+        GeneType geneType
+    ) private view returns (
+        Aminal.GeneReference memory geneRef,
+        Aminal.GenePosition memory position
+    ) {
+        // Get voting data
+        GeneVote storage votes = geneVotes[ticketId][geneType];
+        
+        // Check if a proposed gene won
+        uint256 winningProposalId;
+        uint256 highestProposedVotes;
+        uint256 totalProposals = nextGeneProposalId[ticketId][geneType];
+        
+        for (uint256 i = 0; i < totalProposals; i++) {
+            // Skip if proposal was replaced (proposer = address(0))
+            if (geneProposals[ticketId][geneType][i].proposer == address(0)) continue;
+            
+            uint256 proposalVotes = votes.proposedGeneVotes[i];
+            if (proposalVotes > highestProposedVotes) {
+                highestProposedVotes = proposalVotes;
+                winningProposalId = i;
+            }
+        }
+        
+        // If proposed gene has more votes than both parents
+        if (highestProposedVotes > votes.parent1Votes && highestProposedVotes > votes.parent2Votes) {
+            GeneProposal memory proposal = geneProposals[ticketId][geneType][winningProposalId];
+            if (proposal.proposer != address(0)) { // Not replaced
+                geneRef = Aminal.GeneReference({
+                    geneContract: proposal.geneContract,
+                    tokenId: proposal.tokenId
+                });
+                position = Aminal.GenePosition({
+                    x: proposal.x,
+                    y: proposal.y,
+                    width: proposal.width,
+                    height: proposal.height
+                });
+                return (geneRef, position);
+            }
+        }
+        
+        // Otherwise, use parent genes with default positions
+        // For parent genes, we'll use default positions based on gene type
+        position = _getDefaultPosition(geneType);
+        
+        // Empty gene reference for parent genes (they don't have Gene NFTs)
+        geneRef = Aminal.GeneReference({
+            geneContract: address(0),
+            tokenId: 0
+        });
+    }
+    
+    /**
+     * @dev Get default position for a gene type
+     * @param geneType The gene type
+     * @return position Default position for this gene type
+     */
+    function _getDefaultPosition(GeneType geneType) private pure returns (Aminal.GenePosition memory) {
+        if (geneType == GeneType.BACK) {
+            return Aminal.GenePosition({x: 0, y: 0, width: 200, height: 200});
+        } else if (geneType == GeneType.ARM) {
+            return Aminal.GenePosition({x: 20, y: 70, width: 160, height: 60});
+        } else if (geneType == GeneType.TAIL) {
+            return Aminal.GenePosition({x: 100, y: 100, width: 60, height: 80});
+        } else if (geneType == GeneType.EARS) {
+            return Aminal.GenePosition({x: 50, y: 0, width: 100, height: 60});
+        } else if (geneType == GeneType.BODY) {
+            return Aminal.GenePosition({x: 50, y: 50, width: 100, height: 100});
+        } else if (geneType == GeneType.FACE) {
+            return Aminal.GenePosition({x: 60, y: 60, width: 80, height: 80});
+        } else if (geneType == GeneType.MOUTH) {
+            return Aminal.GenePosition({x: 70, y: 90, width: 60, height: 40});
+        } else { // MISC
+            return Aminal.GenePosition({x: 0, y: 0, width: 200, height: 200});
+        }
     }
     
     /**
