@@ -49,7 +49,8 @@ contract AminalDynamicPositioningTest is Test {
             "Tall Bunny Dragon",
             "TBD",
             "",
-            tallTraits
+            tallTraits,
+            address(this)
         );
         
         // Initialize with genes
@@ -96,7 +97,8 @@ contract AminalDynamicPositioningTest is Test {
             "Chubby Bunny Dragon",
             "CBD",
             "",
-            chubbyTraits
+            chubbyTraits,
+            address(this)
         );
         
         // Initialize with genes
@@ -160,7 +162,8 @@ contract AminalDynamicPositioningTest is Test {
             string.concat(bodyType, " Test"),
             "TEST",
             "",
-            traits
+            traits,
+            address(this)
         );
         
         // Initialize with genes

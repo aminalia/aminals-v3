@@ -78,7 +78,7 @@ contract AminalSkillsTest is Test {
         });
         
         // Deploy contracts
-        aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits);
+        aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits, address(this));
         aminal.initialize("test-uri");
         
         validSkill = new ValidSkill();

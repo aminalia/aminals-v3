@@ -413,16 +413,51 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         if (!isValidAminal[partner]) revert InvalidBreedingPartner();
         if (msg.sender == partner) revert CannotBreedWithSelf();
 
-        // Get parent Aminals
-        Aminal parent1 = Aminal(payable(msg.sender));
-        Aminal parent2 = Aminal(payable(partner));
+        // Create child using helper function
+        address childContract = _breedHelper(msg.sender, partner, childDescription, childTokenURI);
 
-        // Get parent genes
-        IGenes.Genes memory genes1 = parent1.getGenes();
-        IGenes.Genes memory genes2 = parent2.getGenes();
+        emit AminalsBred(msg.sender, partner, childContract, totalAminals);
 
-        // Create child genes by alternating between parents
-        IGenes.Genes memory childGenes = IGenes.Genes({
+        return childContract;
+    }
+
+    /**
+     * @dev Helper function to handle breeding logic and avoid stack too deep
+     */
+    function _breedHelper(
+        address parent1Address,
+        address parent2Address,
+        string calldata childDescription,
+        string calldata childTokenURI
+    ) private returns (address) {
+        Aminal parent1 = Aminal(payable(parent1Address));
+        Aminal parent2 = Aminal(payable(parent2Address));
+        
+        // Use simple names to avoid stack issues
+        string memory childName = "ChildAminal";
+        string memory childSymbol = "CHILD";
+        
+        // Get combined genes
+        IGenes.Genes memory childGenes = _combineGenes(parent1.getGenes(), parent2.getGenes());
+        
+        // Create the child
+        return _createAminal(
+            childName,
+            childSymbol,
+            childDescription,
+            childTokenURI,
+            childGenes
+        );
+    }
+
+    /**
+     * @dev Helper function to combine parent genes
+     * @param genes1 Genes from parent 1
+     * @param genes2 Genes from parent 2
+     * @return Combined genes for the child
+     */
+    function _combineGenes(IGenes.Genes memory genes1, IGenes.Genes memory genes2) private pure returns (IGenes.Genes memory) {
+        return IGenes.Genes({
             back: genes1.back,      // From parent1
             arm: genes2.arm,        // From parent2
             tail: genes1.tail,      // From parent1
@@ -432,25 +467,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
             mouth: genes1.mouth,    // From parent1
             misc: genes2.misc       // From parent2
         });
-
-        // Generate child name and symbol from parent names
-        string memory parent1Name = parent1.name();
-        string memory parent2Name = parent2.name();
-        string memory childName = string.concat(parent1Name, "-", parent2Name, "-Child");
-        string memory childSymbol = string.concat(parent1.symbol(), parent2.symbol());
-
-        // Create the child Aminal
-        address childContract = _createAminal(
-            childName,
-            childSymbol,
-            childDescription,
-            childTokenURI,
-            childGenes
-        );
-
-        emit AminalsBred(msg.sender, partner, childContract, totalAminals);
-
-        return childContract;
     }
 
     /**

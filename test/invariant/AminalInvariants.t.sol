@@ -17,7 +17,7 @@ contract AminalInvariants is StdInvariant, Test {
     
     function setUp() public {
         // Create Aminal
-        aminal = new Aminal("InvariantAminal", "INV", "https://api.aminals.com/", TestHelpers.dragonTraits());
+        aminal = new Aminal("InvariantAminal", "INV", "https://api.aminals.com/", TestHelpers.dragonTraits(), address(this));
         aminal.initialize("invariant.json");
         
         // Create handler

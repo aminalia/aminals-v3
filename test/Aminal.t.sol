@@ -43,7 +43,7 @@ contract AminalTest is Test {
         });
         
         // Deploy self-sovereign Aminal
-        aminal = new Aminal(NAME, SYMBOL, BASE_URI, traits);
+        aminal = new Aminal(NAME, SYMBOL, BASE_URI, traits, address(this));
     }
 
     function test_Constructor() external {
@@ -68,7 +68,7 @@ contract AminalTest is Test {
         });
         
         // Self-sovereign Aminal should deploy successfully
-        Aminal selfSovereignAminal = new Aminal(NAME, SYMBOL, BASE_URI, traits);
+        Aminal selfSovereignAminal = new Aminal(NAME, SYMBOL, BASE_URI, traits, address(this));
         
         assertEq(selfSovereignAminal.name(), NAME);
         assertEq(selfSovereignAminal.symbol(), SYMBOL);
