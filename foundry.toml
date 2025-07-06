@@ -2,9 +2,39 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+test = "test"
 fs_permissions = [{ access = "read-write", path = "./" }]
 remappings = [
     "solady/=lib/solady/src/"
 ]
+
+# Compiler settings
+solc_version = "0.8.20"
+optimizer = true
+optimizer_runs = 200
+via_ir = false
+
+# Testing configuration
+fuzz = { runs = 256 }
+invariant = { runs = 256, depth = 15, fail_on_revert = false }
+
+# Gas reports
+gas_reports = ["*"]
+
+# Test organization
+[profile.unit]
+test = "test/unit"
+
+[profile.integration]
+test = "test/integration"
+
+[profile.invariant]
+test = "test/invariant"
+invariant = { runs = 500, depth = 20 }
+
+[profile.gas]
+test = "test/gas"
+gas_reports = ["*"]
+optimizer_runs = 10_000
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

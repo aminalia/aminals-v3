@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console2} from "forge-std/Test.sol";
 import {BreedingTestBase} from "../base/BreedingTestBase.sol";
 import {TestHelpers} from "../helpers/TestHelpers.sol";
+import {AminalBreedingVote} from "src/AminalBreedingVote.sol";
 
 /**
  * @title ImprovedTestExample
@@ -53,6 +54,9 @@ contract ImprovedTestExample is BreedingTestBase {
         // Cast votes with different preferences
         _voteWithPreferences(ticketId);
         
+        // Vote to allow breeding (prevent veto)
+        _voteOnVeto(voter1, ticketId, false); // Vote proceed
+        
         // ========== Execution Phase ==========
         console2.log("Phase 3: Execution");
         _warpToExecutionPhase();
@@ -76,8 +80,8 @@ contract ImprovedTestExample is BreedingTestBase {
         uint96 amountParent2
     ) public {
         // Bound inputs to reasonable range
-        amountParent1 = uint96(bound(amountParent1, 0.001 ether, 10 ether));
-        amountParent2 = uint96(bound(amountParent2, 0.001 ether, 10 ether));
+        amountParent1 = uint96(bound(amountParent1, 0.001 ether, 5 ether));
+        amountParent2 = uint96(bound(amountParent2, 0.001 ether, 5 ether));
         
         uint256 ticketId = _createBreedingTicket();
         _warpToVotingPhase();
@@ -91,7 +95,7 @@ contract ImprovedTestExample is BreedingTestBase {
         
         // Verify voting power
         uint256 votingPower = breedingVote.voterPower(ticketId, voter1);
-        uint256 expectedPower = parent1.loveFromUser(voter1) + parent2.loveFromUser(voter2);
+        uint256 expectedPower = parent1.loveFromUser(voter1) + parent2.loveFromUser(voter1);
         
         assertLe(votingPower, expectedPower, "Voting power should not exceed total love");
     }

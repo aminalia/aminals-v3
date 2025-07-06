@@ -9,6 +9,9 @@ import {IGenes} from "src/interfaces/IGenes.sol";
  * @notice Common test utilities and data fixtures
  */
 library TestHelpers {
+    // Common SVG data
+    string constant DRAGON_WINGS_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200"><path d="M-50,-30 Q-80,-50 -90,-30 L-70,-10 Q-60,-20 -50,-30" fill="#8B4513"/></svg>';
+    
     // Common trait combinations for testing
     function dragonTraits() internal pure returns (IGenes.Genes memory) {
         return IGenes.Genes({
@@ -85,7 +88,7 @@ abstract contract TestAssertions is Test {
         assertLe(actual, max, string.concat(message, ": love too high"));
     }
     
-    function assertEnergyConsumed(uint256 before, uint256 after, uint256 expected, string memory message) internal {
-        assertEq(before - after, expected, message);
+    function assertEnergyConsumed(uint256 before, uint256 afterAmount, uint256 expected, string memory message) internal {
+        assertEq(before - afterAmount, expected, message);
     }
 }
