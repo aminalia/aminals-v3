@@ -48,7 +48,6 @@ contract AminalWithGenesTest is Test {
         Aminal aminal = new Aminal(
             "Fire Dragon Bunny",
             "FDB",
-            "",
             traits,
             address(this)
         );
@@ -99,7 +98,6 @@ contract AminalWithGenesTest is Test {
         Aminal aminal = new Aminal(
             "Plain Aminal",
             "PLAIN",
-            "",
             traits,
             address(this)
         );
@@ -139,7 +137,6 @@ contract AminalWithGenesTest is Test {
         Aminal aminal = new Aminal(
             "Partial Aminal",
             "PART",
-            "",
             traits,
             address(this)
         );

@@ -135,12 +135,6 @@ contract AminalCoreTest is AminalTestBase {
         aminal.setApprovalForAll(user1, true);
     }
     
-    function test_RevertWhen_SetBaseURIByNonSelf() public {
-        // Act & Assert
-        vm.prank(user1);
-        vm.expectRevert(Aminal.NotAuthorized.selector);
-        aminal.setBaseURI("https://evil.com/");
-    }
     
     // ========== Fuzz Tests ==========
     

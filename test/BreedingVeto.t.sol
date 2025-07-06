@@ -70,7 +70,7 @@ contract BreedingVetoTest is Test {
         
         // Deploy contracts
         vm.prank(owner);
-        factory = new AminalFactory(owner, "https://api.aminals.com/", firstParentData, secondParentData);
+        factory = new AminalFactory(owner, firstParentData, secondParentData);
         
         uint256 nonce = vm.getNonce(address(this));
         address predictedBreedingSkill = vm.computeCreateAddress(address(this), nonce + 1);

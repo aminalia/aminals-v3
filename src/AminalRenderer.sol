@@ -94,8 +94,8 @@ contract AminalRenderer {
         string memory composedSvg = aminal.composeAminal();
         string memory imageDataURI = GeneRenderer.svgToBase64DataURI(composedSvg);
         
-        // Build the metadata
-        string memory metadata = GeneRenderer.generateMetadata(
+        // Build the metadata with external URL
+        string memory metadata = _generateAminalMetadata(
             aminal.name(),
             string.concat(
                 "A self-sovereign Aminal with energy: ", 
@@ -103,9 +103,7 @@ contract AminalRenderer {
                 " and total love: ", 
                 aminal.totalLove().toString()
             ),
-            imageDataURI,
-            "Aminal",
-            "Self-Sovereign"
+            imageDataURI
         );
         
         return GeneRenderer.jsonToBase64DataURI(metadata);
@@ -387,5 +385,29 @@ contract AminalRenderer {
             if (found) return true;
         }
         return false;
+    }
+    
+    /**
+     * @dev Generate Aminal-specific metadata with external URL
+     * @param name The Aminal's name
+     * @param description The Aminal's description
+     * @param imageDataURI The base64-encoded image data URI
+     * @return The JSON metadata string
+     */
+    function _generateAminalMetadata(
+        string memory name,
+        string memory description,
+        string memory imageDataURI
+    ) private pure returns (string memory) {
+        return string.concat(
+            '{"name":"',
+            name,
+            '","description":"',
+            description,
+            '","image":"',
+            imageDataURI,
+            '","external_url":"https://aminals.example",',
+            '"attributes":[{"trait_type":"Type","value":"Aminal"},{"trait_type":"Sovereignty","value":"Self-Sovereign"}]}'
+        );
     }
 }

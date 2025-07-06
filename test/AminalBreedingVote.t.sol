@@ -21,7 +21,6 @@ contract AminalBreedingVoteTest is Test {
     Aminal public parent1;
     Aminal public parent2;
     
-    string constant BASE_URI = "https://api.aminals.com/metadata/";
     uint256 constant GENE_PROPOSAL_DURATION = 3 days;
     uint256 constant VOTING_DURATION = 4 days;
     
@@ -89,7 +88,7 @@ contract AminalBreedingVoteTest is Test {
         
         // Deploy factory and breeding vote contract
         vm.prank(owner);
-        factory = new AminalFactory(owner, BASE_URI, firstParentData, secondParentData);
+        factory = new AminalFactory(owner, firstParentData, secondParentData);
         breedingVote = new AminalBreedingVote(address(factory), address(0x123)); // Placeholder
         
         // Create two parent Aminals

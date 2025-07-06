@@ -54,7 +54,6 @@ contract BreedingExample is Script {
         
         AminalFactory factory = new AminalFactory(
             deployer,
-            "https://api.aminals.com/metadata/",
             firstParentData,
             secondParentData
         );

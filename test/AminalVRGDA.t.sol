@@ -32,7 +32,7 @@ contract AminalVRGDATest is Test {
         });
         
         // Deploy Aminal
-        aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits, address(this));
+        aminal = new Aminal("TestAminal", "TAMINAL", traits, address(this));
         
         // Initialize the Aminal
         aminal.initialize("test-uri");

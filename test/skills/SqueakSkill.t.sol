@@ -33,7 +33,7 @@ contract SqueakSkillTest is Test {
         });
         
         // Deploy contracts
-        aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits, address(this));
+        aminal = new Aminal("TestAminal", "TAMINAL", traits, address(this));
         aminal.initialize("test-uri");
         
         squeakSkill = new SqueakSkill();

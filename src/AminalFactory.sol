@@ -36,9 +36,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     /// @notice This represents the total count of unique Aminal contracts deployed
     uint256 public totalAminals;
 
-    /// @dev Base URI for all Aminal metadata - passed to each new Aminal contract
-    /// @notice This URI is used by individual Aminal contracts for metadata resolution
-    string public baseTokenURI;
 
     /// @dev Mapping from Aminal ID to contract address (ID starts at 1)
     /// @notice Provides O(1) lookup of any Aminal contract by its sequential ID
@@ -138,18 +135,15 @@ contract AminalFactory is Ownable, ReentrancyGuard {
     /**
      * @dev Constructor initializes the factory and creates the first two parent Aminals
      * @param owner The address that will own the factory
-     * @param baseURI The base URI for Aminal metadata
      * @param firstParentData Data for creating the first parent
      * @param secondParentData Data for creating the second parent
      */
     constructor(
-        address owner, 
-        string memory baseURI,
+        address owner,
         ParentData memory firstParentData,
         ParentData memory secondParentData
     ) Ownable(owner) {
         if (owner == address(0)) revert InvalidParameters();
-        baseTokenURI = baseURI;
         
         // Create the first two parent Aminals during construction
         firstParent = _createAminal(
@@ -255,7 +249,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
 
         // Deploy new Aminal contract - each Aminal gets its own contract instance
         // This gives each Aminal a unique address and self-sovereign identity
-        Aminal newAminal = new Aminal(name, symbol, baseTokenURI, genes, address(this));
+        Aminal newAminal = new Aminal(name, symbol, genes, address(this));
         
         // Initialize the Aminal to mint the NFT to itself (self-sovereign)
         // Each Aminal contract can only initialize once, ensuring 1-of-1 uniqueness
@@ -331,13 +325,6 @@ contract AminalFactory is Ownable, ReentrancyGuard {
         emit FactoryPaused(_paused);
     }
 
-    /**
-     * @dev Update the base URI for future Aminal metadata
-     * @param newBaseURI The new base URI
-     */
-    function setBaseURI(string calldata newBaseURI) external onlyOwner {
-        baseTokenURI = newBaseURI;
-    }
     
     /**
      * @dev Set the authorized breeding vote contract (one-time setting)

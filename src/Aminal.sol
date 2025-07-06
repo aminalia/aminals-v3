@@ -56,8 +56,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /// @dev The fixed token ID for this Aminal (always 1)
     uint256 public constant TOKEN_ID = 1;
 
-    /// @dev Base URI for token metadata
-    string public baseTokenURI;
 
     /// @dev Flag to track if the Aminal has been minted
     bool public minted;
@@ -114,8 +112,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     /// @dev Event emitted when the Aminal is created
     event AminalCreated(uint256 indexed tokenId, address indexed owner, string tokenURI);
 
-    /// @dev Event emitted when base URI is updated
-    event BaseURIUpdated(string newBaseURI);
 
     /// @dev Event emitted when someone sends love (ETH) to the Aminal
     event LoveReceived(address indexed from, uint256 amount, uint256 totalLove);
@@ -168,18 +164,15 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      *         3. The renderer will later access this contract's public data for composition
      * @param name The name of this specific Aminal
      * @param symbol The symbol for this specific Aminal
-     * @param baseURI The base URI for token metadata
      * @param _genes The immutable genes for this Aminal
      * @param _factory The factory contract that deployed this Aminal
      */
     constructor(
         string memory name,
         string memory symbol,
-        string memory baseURI,
         IGenes.Genes memory _genes,
         address _factory
     ) ERC721(name, symbol) {
-        baseTokenURI = baseURI;
         factory = _factory;
         
         // Set the genes struct
@@ -246,16 +239,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         return TOKEN_ID;
     }
 
-    /**
-     * @dev Set the base URI for token metadata
-     * @dev Only the contract itself can call this function, maintaining self-sovereignty
-     * @param newBaseURI The new base URI
-     */
-    function setBaseURI(string calldata newBaseURI) external {
-        if (msg.sender != address(this)) revert NotAuthorized();
-        baseTokenURI = newBaseURI;
-        emit BaseURIUpdated(newBaseURI);
-    }
 
     /**
      * @dev Get the total number of tokens minted (always 0 or 1)
@@ -306,13 +289,6 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
     }
 
 
-    /**
-     * @dev Override _baseURI to return the base URI
-     * @return The base URI for tokens
-     */
-    function _baseURI() internal view override returns (string memory) {
-        return baseTokenURI;
-    }
 
     /**
      * @notice Receive function to accept ETH, track love using VRGDA, and increase energy by fixed amount

@@ -70,7 +70,7 @@ contract AminalReentrancyTest is Test {
         });
         
         // Deploy Aminal
-        aminal = new Aminal("TestAminal", "TAMINAL", "https://test.com/", traits, address(this));
+        aminal = new Aminal("TestAminal", "TAMINAL", traits, address(this));
         aminal.initialize("test-uri");
         
         // Deploy skills
