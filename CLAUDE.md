@@ -1033,6 +1033,66 @@ The `breed()` function in AminalFactory allows direct breeding but is not recomm
 - **Veto Voting**: Separate from gene voting, can be changed between veto/proceed
 - **Tie Resolution**: Parent1's genes win all ties (including veto ties)
 - **No Default Votes**: Unvoted genes default to parent1 (0-0 tie)
+
+### Test Organization & Best Practices
+
+#### Test Refactoring Learnings
+- **Base Test Contracts**: Create base contracts for common setup (AminalTestBase, SkillTestBase, etc.)
+- **Directory Structure**: Organize tests by domain: `unit/`, `integration/`, `invariant/`, `gas/`
+- **Helper Functions**: Extract common operations into test helpers with descriptive names
+- **Event Testing**: Match exact event signatures from source contracts
+- **Fuzz Test Bounds**: Carefully bound inputs to prevent overflow and ensure valid test scenarios
+- **Energy Cap Awareness**: Account for 10,000 energy cost cap in useSkill when writing tests
+
+#### Common Test Issues & Solutions
+- **Event Signature Mismatches**: Always copy event declarations directly from source contracts
+- **Reserved Keywords**: Avoid using reserved words like 'after' in function parameters
+- **Struct Definitions**: Define structs outside functions to avoid compilation errors
+- **Interface Implementation**: Ensure contracts implement expected interface functions (e.g., Gene implementing IGene)
+- **Invariant Test Precision**: Track actual values rather than calculating expected values to avoid rounding errors
+- **Gas Test Setup**: Ensure proper funding of test actors before operations
+
+#### Test Patterns
+```solidity
+// AAA Pattern (Arrange, Act, Assert)
+function test_Example() public {
+    // Arrange
+    uint256 initialValue = aminal.energy();
+    
+    // Act  
+    _feedAminal(user1, aminal, 1 ether);
+    
+    // Assert
+    assertGt(aminal.energy(), initialValue);
+}
+
+// Proper event expectation
+function test_EventEmission() public {
+    vm.expectEmit(true, true, true, true);
+    emit SkillUsed(user1, 100, address(skill), selector);
+    _useSkill(user1, aminal, address(skill), data);
+}
+
+// Fuzz test with proper bounds
+function testFuzz_Example(uint96 amount) public {
+    amount = uint96(bound(amount, 0.001 ether, 10 ether));
+    vm.assume(amount <= address(user1).balance);
+    // ... test logic
+}
+```
+
+#### Invariant Testing Best Practices
+- **Ghost Variables**: Track cumulative state changes in handler contracts
+- **Direct Tracking**: Track actual energy/love gains rather than calculating from ETH
+- **Multiple Actors**: Test with multiple actors to simulate realistic scenarios
+- **Bounded Inputs**: Use bound() to keep inputs within reasonable ranges
+- **State Assertions**: Include assertions within handler functions to catch issues early
+
+#### Gas Benchmarking
+- **Isolated Operations**: Test individual operations in isolation for accurate measurements
+- **Warm vs Cold Storage**: Be aware of storage access patterns affecting gas costs
+- **Batch Operations**: Test both single and batch operations to understand scaling
+- **Record Results**: Store gas measurements for regression testing
 </aminals_project>
 
 <user_prompt>
