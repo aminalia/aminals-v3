@@ -210,7 +210,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      */
     function initialize(string memory uri) external returns (uint256) {
         GeneReference[8] memory emptyGenes;
-        return initialize(uri, emptyGenes);
+        return this.initialize(uri, emptyGenes);
     }
 
     /**
@@ -220,7 +220,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @param geneRefs Array of gene references in order: back, arm, tail, ears, body, face, mouth, misc
      * @return tokenId The ID of the newly minted token (always 1)
      */
-    function initialize(string memory uri, GeneReference[8] memory geneRefs) public returns (uint256) {
+    function initialize(string calldata uri, GeneReference[8] calldata geneRefs) public returns (uint256) {
         if (minted) revert AlreadyMinted();
         if (initialized) revert AlreadyInitialized();
         
@@ -251,7 +251,7 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
      * @dev Only the contract itself can call this function, maintaining self-sovereignty
      * @param newBaseURI The new base URI
      */
-    function setBaseURI(string memory newBaseURI) external {
+    function setBaseURI(string calldata newBaseURI) external {
         if (msg.sender != address(this)) revert NotAuthorized();
         baseTokenURI = newBaseURI;
         emit BaseURIUpdated(newBaseURI);

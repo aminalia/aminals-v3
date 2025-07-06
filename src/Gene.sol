@@ -76,10 +76,10 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
      */
     function mint(
         address to,
-        string memory traitType,
-        string memory traitValue,
-        string memory svg,
-        string memory description
+        string calldata traitType,
+        string calldata traitValue,
+        string calldata svg,
+        string calldata description
     ) external returns (uint256) {
         if (to == address(0)) revert InvalidParameters();
         if (bytes(traitType).length == 0) revert InvalidParameters();
@@ -112,11 +112,11 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
      * @return tokenIds Array of IDs of the newly minted tokens
      */
     function batchMint(
-        address[] memory recipients,
-        string[] memory traitTypes,
-        string[] memory traitValues,
-        string[] memory svgs,
-        string[] memory descriptions
+        address[] calldata recipients,
+        string[] calldata traitTypes,
+        string[] calldata traitValues,
+        string[] calldata svgs,
+        string[] calldata descriptions
     ) external returns (uint256[] memory) {
         if (recipients.length != traitTypes.length || 
             recipients.length != traitValues.length ||
@@ -200,7 +200,7 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
      * @param traitType The trait type to search for
      * @return tokenIds Array of token IDs with the specified trait type
      */
-    function getTokensByTraitType(string memory traitType) external view returns (uint256[] memory) {
+    function getTokensByTraitType(string calldata traitType) external view returns (uint256[] memory) {
         uint256[] memory matchingTokens = new uint256[](totalSupply());
         uint256 matchCount = 0;
         
@@ -225,7 +225,7 @@ contract Gene is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable, IGene {
      * @param traitValue The trait value to search for
      * @return tokenIds Array of token IDs with the specified trait value
      */
-    function getTokensByTraitValue(string memory traitValue) external view returns (uint256[] memory) {
+    function getTokensByTraitValue(string calldata traitValue) external view returns (uint256[] memory) {
         uint256[] memory matchingTokens = new uint256[](totalSupply());
         uint256 matchCount = 0;
         

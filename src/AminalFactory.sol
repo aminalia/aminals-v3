@@ -293,11 +293,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContracts Array of addresses of the newly deployed Aminal contracts
      */
     function batchCreateAminals(
-        string[] memory names,
-        string[] memory symbols,
-        string[] memory descriptions,
-        string[] memory tokenURIs,
-        IGenes.Genes[] memory genesArray
+        string[] calldata names,
+        string[] calldata symbols,
+        string[] calldata descriptions,
+        string[] calldata tokenURIs,
+        IGenes.Genes[] calldata genesArray
     ) external whenNotPaused nonReentrant returns (address[] memory) {
         revert DirectCreationNotAllowed();
     }
@@ -313,11 +313,11 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @return aminalContract The address of the newly deployed Aminal contract
      */
     function createAminalWithGenes(
-        string memory name,
-        string memory symbol,
-        string memory description,
-        string memory tokenURI,
-        IGenes.Genes memory genes
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata tokenURI,
+        IGenes.Genes calldata genes
     ) external whenNotPaused nonReentrant returns (address) {
         return _createAminal(name, symbol, description, tokenURI, genes);
     }
@@ -335,7 +335,7 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      * @dev Update the base URI for future Aminal metadata
      * @param newBaseURI The new base URI
      */
-    function setBaseURI(string memory newBaseURI) external onlyOwner {
+    function setBaseURI(string calldata newBaseURI) external onlyOwner {
         baseTokenURI = newBaseURI;
     }
     
@@ -405,8 +405,8 @@ contract AminalFactory is Ownable, ReentrancyGuard {
      */
     function breed(
         address partner,
-        string memory childDescription,
-        string memory childTokenURI
+        string calldata childDescription,
+        string calldata childTokenURI
     ) external whenNotPaused nonReentrant returns (address) {
         // Only Aminals can breed
         if (!isValidAminal[msg.sender]) revert OnlyAminalsCanBreed();
