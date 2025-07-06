@@ -147,6 +147,13 @@ contract AminalBreedingVote is IAminalBreedingVote {
     /// @dev Minimum love required to propose a gene (100 units = 0.01 ETH)
     uint256 public constant MIN_LOVE_FOR_GENE_PROPOSAL = 100;
     
+    /// @dev SVG viewBox dimensions and position bounds
+    /// @notice Coordinate system: origin (0,0) is top-left, positive Y goes down
+    uint16 public constant VIEWBOX_SIZE = 200; // Standard 200x200 viewBox
+    int16 public constant MIN_POSITION = -200; // Allow off-canvas positioning
+    int16 public constant MAX_POSITION = 400; // Allow positioning beyond viewBox
+    uint16 public constant MAX_DIMENSION = 400; // Maximum width/height for a gene
+    
     /// @dev Mapping from ticket ID to gene type to gene proposals
     /// @notice ticketId => GeneType => proposalId => GeneProposal
     mapping(uint256 => mapping(GeneType => mapping(uint256 => GeneProposal))) public geneProposals;
@@ -500,6 +507,10 @@ contract AminalBreedingVote is IAminalBreedingVote {
         
         // Validate position parameters
         require(width > 0 && height > 0, "Invalid dimensions");
+        // Reasonable bounds for SVG rendering
+        require(width <= MAX_DIMENSION && height <= MAX_DIMENSION, "Dimensions too large");
+        require(x >= MIN_POSITION && x <= MAX_POSITION, "X coordinate out of bounds");
+        require(y >= MIN_POSITION && y <= MAX_POSITION, "Y coordinate out of bounds");
         
         // Create gene proposal
         uint256 proposalId = nextGeneProposalId[ticketId][geneType]++;
@@ -1251,5 +1262,43 @@ contract AminalBreedingVote is IAminalBreedingVote {
     function isParentInTicket(uint256 ticketId, address parent) external view returns (bool) {
         BreedingTicket memory ticket = tickets[ticketId];
         return ticket.parent1 == parent || ticket.parent2 == parent;
+    }
+    
+    /**
+     * @notice Preview how a gene would look with proposed positions
+     * @dev Returns the position data for a specific gene proposal
+     * @param ticketId The breeding ticket ID
+     * @param geneType The gene type to preview
+     * @param proposalId The proposal ID to get position from
+     * @return x X coordinate
+     * @return y Y coordinate
+     * @return width Width of the gene
+     * @return height Height of the gene
+     * @return geneContract The gene contract address
+     * @return tokenId The gene token ID
+     */
+    function previewGenePosition(
+        uint256 ticketId,
+        GeneType geneType,
+        uint256 proposalId
+    ) external view returns (
+        int16 x,
+        int16 y,
+        uint16 width,
+        uint16 height,
+        address geneContract,
+        uint256 tokenId
+    ) {
+        GeneProposal memory proposal = geneProposals[ticketId][geneType][proposalId];
+        require(proposal.proposer != address(0), "Gene proposal does not exist or was replaced");
+        
+        return (
+            proposal.x,
+            proposal.y,
+            proposal.width,
+            proposal.height,
+            proposal.geneContract,
+            proposal.tokenId
+        );
     }
 }

@@ -95,9 +95,28 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         uint16 height; // Height in SVG units
     }
 
-    /// @dev Mapping from gene type to its position data
-    /// @notice Each Aminal has unique positioning for its genes
-    mapping(uint8 => GenePosition) public genePositions;
+    /// @dev Packed position storage for gas efficiency
+    /// @notice Positions packed as: [height(16)|width(16)|y(16)|x(16)|unused(192)]
+    /// @dev Using uint256 to pack all 8 positions in a single storage slot
+    uint256[8] private packedPositions;
+
+    /// @dev Get unpacked position for a gene type
+    function genePositions(uint8 geneType) public view returns (int16 x, int16 y, uint16 width, uint16 height) {
+        require(geneType < 8, "Invalid gene type");
+        uint256 packed = packedPositions[geneType];
+        x = int16(uint16(packed));
+        y = int16(uint16(packed >> 16));
+        width = uint16(packed >> 32);
+        height = uint16(packed >> 48);
+    }
+
+    /// @dev Pack position data into uint256
+    function _packPosition(int16 x, int16 y, uint16 width, uint16 height) private pure returns (uint256) {
+        return uint256(uint16(x)) | 
+               (uint256(uint16(y)) << 16) | 
+               (uint256(width) << 32) | 
+               (uint256(height) << 48);
+    }
 
     /// @dev Gene type constants for position mapping
     uint8 public constant GENE_BACK = 0;
@@ -276,15 +295,15 @@ contract Aminal is ERC721, ERC721URIStorage, IERC721Receiver, ReentrancyGuard {
         // First do normal initialization
         uint256 tokenId = initialize(uri, geneRefs);
         
-        // Then set all positions
-        genePositions[GENE_BACK] = positions[0];
-        genePositions[GENE_ARM] = positions[1];
-        genePositions[GENE_TAIL] = positions[2];
-        genePositions[GENE_EARS] = positions[3];
-        genePositions[GENE_BODY] = positions[4];
-        genePositions[GENE_FACE] = positions[5];
-        genePositions[GENE_MOUTH] = positions[6];
-        genePositions[GENE_MISC] = positions[7];
+        // Then set all positions using packed storage
+        packedPositions[GENE_BACK] = _packPosition(positions[0].x, positions[0].y, positions[0].width, positions[0].height);
+        packedPositions[GENE_ARM] = _packPosition(positions[1].x, positions[1].y, positions[1].width, positions[1].height);
+        packedPositions[GENE_TAIL] = _packPosition(positions[2].x, positions[2].y, positions[2].width, positions[2].height);
+        packedPositions[GENE_EARS] = _packPosition(positions[3].x, positions[3].y, positions[3].width, positions[3].height);
+        packedPositions[GENE_BODY] = _packPosition(positions[4].x, positions[4].y, positions[4].width, positions[4].height);
+        packedPositions[GENE_FACE] = _packPosition(positions[5].x, positions[5].y, positions[5].width, positions[5].height);
+        packedPositions[GENE_MOUTH] = _packPosition(positions[6].x, positions[6].y, positions[6].width, positions[6].height);
+        packedPositions[GENE_MISC] = _packPosition(positions[7].x, positions[7].y, positions[7].width, positions[7].height);
         
         return tokenId;
     }

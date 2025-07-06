@@ -111,23 +111,30 @@ contract AminalRenderer {
     
     /**
      * @dev Compose the Aminal's appearance from its Genes
-     * @notice DATA FLOW - Complete rendering process:
-     *         1. INPUT: Receives Aminal contract instance containing all state
-     *         2. TRAIT ANALYSIS: Calls aminal.getTraits() to determine positioning
-     *            - Analyzes body type (Tall, Short, Wide, Chubby) to adjust layout
-     *            - Special handling for Long ears, Dragon tails, etc.
-     *         3. GENE FETCHING: Accesses gene references via public getters
-     *            - aminal.backGene() returns (address geneContract, uint256 tokenId)
-     *            - Must destructure tuples since Solidity public getters don't return structs
-     *         4. SVG RETRIEVAL: For each gene reference:
-     *            - Calls Gene(geneContract).gene(tokenId) to get raw SVG
-     *            - Wraps in image tags with calculated positions
-     *         5. COMPOSITION: Layers genes in specific order (back->body->tail->arms->ears->face->mouth->misc)
-     *         6. OUTPUT: Returns complete SVG with 200x200 viewBox
-     * @dev The Aminal contract must have public getters for all required data:
-     *      - Gene references (8 slots)
-     *      - Traits struct
-     *      - Name, energy, totalLove for metadata
+     * @notice Z-ORDER RENDERING LAYERS (back to front):
+     *         Layer 0: BACK - Background elements (wings, auras, backdrops)
+     *         Layer 1: BODY - Base body shape (foundation for other parts)
+     *         Layer 2: TAIL - Behind body parts (can extend beyond body)
+     *         Layer 3: ARM - Limbs and appendages (overlay on body)
+     *         Layer 4: EARS - Head accessories (positioned relative to body)
+     *         Layer 5: FACE - Facial features (eyes, nose, expression)
+     *         Layer 6: MOUTH - Overlays on face (speech, expressions)
+     *         Layer 7: MISC - Foreground effects (sparkles, accessories, overlays)
+     * 
+     * @notice COORDINATE SYSTEM:
+     *         - Origin (0,0) at top-left corner
+     *         - X increases rightward, Y increases downward
+     *         - ViewBox: 200x200 SVG units
+     *         - Positions can be negative (render off-canvas)
+     *         - No automatic clipping (genes can render outside viewBox)
+     * 
+     * @notice RENDERING PROCESS:
+     *         1. Read stored positions from Aminal contract
+     *         2. Fetch gene references for each slot
+     *         3. Retrieve SVG data from Gene contracts
+     *         4. Layer in z-order with stored positions
+     *         5. Return composed SVG with fixed viewBox
+     * 
      * @param aminal The Aminal contract to compose
      * @return The composed SVG as a string
      */
@@ -157,15 +164,14 @@ contract AminalRenderer {
         (miscGene.geneContract, miscGene.tokenId) = aminal.miscGene();
         
         // Layer 0: Background effects (back trait)
-        if (backGene.geneContract != address(0)) {
-            composition = string.concat(composition, _createGeneImage(
-                backGene, 
-                positions.back.x, 
-                positions.back.y, 
-                positions.back.width, 
-                positions.back.height
-            ));
-        }
+        composition = string.concat(composition, _createGeneImage(
+            backGene, 
+            positions.back.x, 
+            positions.back.y, 
+            positions.back.width, 
+            positions.back.height,
+            aminal.GENE_BACK()
+        ));
         
         // Layer 1: Body base
         if (bodyGene.geneContract != address(0)) {
@@ -174,7 +180,8 @@ contract AminalRenderer {
                 positions.body.x,
                 positions.body.y,
                 positions.body.width,
-                positions.body.height
+                positions.body.height,
+                aminal.GENE_BODY()
             ));
         } else {
             // Default body if no gene
@@ -188,89 +195,131 @@ contract AminalRenderer {
         }
         
         // Layer 2: Tail (behind body parts)
-        if (tailGene.geneContract != address(0)) {
-            composition = string.concat(composition, _createGeneImage(
-                tailGene,
-                positions.tail.x,
-                positions.tail.y,
-                positions.tail.width,
-                positions.tail.height
-            ));
-        }
+        composition = string.concat(composition, _createGeneImage(
+            tailGene,
+            positions.tail.x,
+            positions.tail.y,
+            positions.tail.width,
+            positions.tail.height,
+            aminal.GENE_TAIL()
+        ));
         
         // Layer 3: Arms
-        if (armGene.geneContract != address(0)) {
-            composition = string.concat(composition, _createGeneImage(
-                armGene,
-                positions.arm.x,
-                positions.arm.y,
-                positions.arm.width,
-                positions.arm.height
-            ));
-        }
+        composition = string.concat(composition, _createGeneImage(
+            armGene,
+            positions.arm.x,
+            positions.arm.y,
+            positions.arm.width,
+            positions.arm.height,
+            aminal.GENE_ARM()
+        ));
         
         // Layer 4: Ears (on head)
-        if (earsGene.geneContract != address(0)) {
-            composition = string.concat(composition, _createGeneImage(
-                earsGene,
-                positions.ears.x,
-                positions.ears.y,
-                positions.ears.width,
-                positions.ears.height
-            ));
-        }
+        composition = string.concat(composition, _createGeneImage(
+            earsGene,
+            positions.ears.x,
+            positions.ears.y,
+            positions.ears.width,
+            positions.ears.height,
+            aminal.GENE_EARS()
+        ));
         
         // Layer 5: Face features
-        if (faceGene.geneContract != address(0)) {
-            composition = string.concat(composition, _createGeneImage(
-                faceGene,
-                positions.face.x,
-                positions.face.y,
-                positions.face.width,
-                positions.face.height
-            ));
-        }
+        composition = string.concat(composition, _createGeneImage(
+            faceGene,
+            positions.face.x,
+            positions.face.y,
+            positions.face.width,
+            positions.face.height,
+            aminal.GENE_FACE()
+        ));
         
         // Layer 6: Mouth
-        if (mouthGene.geneContract != address(0)) {
-            composition = string.concat(composition, _createGeneImage(
-                mouthGene,
-                positions.mouth.x,
-                positions.mouth.y,
-                positions.mouth.width,
-                positions.mouth.height
-            ));
-        }
+        composition = string.concat(composition, _createGeneImage(
+            mouthGene,
+            positions.mouth.x,
+            positions.mouth.y,
+            positions.mouth.width,
+            positions.mouth.height,
+            aminal.GENE_MOUTH()
+        ));
         
         // Layer 7: Misc effects (overlays)
-        if (miscGene.geneContract != address(0)) {
-            composition = string.concat(composition, _createGeneImage(
-                miscGene,
-                positions.misc.x,
-                positions.misc.y,
-                positions.misc.width,
-                positions.misc.height
-            ));
-        }
+        composition = string.concat(composition, _createGeneImage(
+            miscGene,
+            positions.misc.x,
+            positions.misc.y,
+            positions.misc.width,
+            positions.misc.height,
+            aminal.GENE_MISC()
+        ));
         
         return GeneRenderer.svg("0 0 200 200", composition);
     }
     
     /**
-     * @dev Create an image element from a gene reference
+     * @dev Create an image element from a gene reference with error handling
+     * @notice Provides fallback rendering for missing or invalid genes
+     * @param gene The gene reference to render
+     * @param x X position
+     * @param y Y position  
+     * @param width Width of the gene
+     * @param height Height of the gene
+     * @param geneType The type of gene (for fallback rendering)
+     * @return SVG image element or placeholder
      */
     function _createGeneImage(
         Aminal.GeneReference memory gene,
         int256 x,
         int256 y,
         uint256 width,
-        uint256 height
+        uint256 height,
+        uint8 geneType
     ) private view returns (string memory) {
+        // Skip if no gene contract
+        if (gene.geneContract == address(0)) {
+            return _createPlaceholder(x, y, width, height, geneType);
+        }
+        
         try Gene(gene.geneContract).gene(gene.tokenId) returns (string memory svg) {
+            // Validate SVG is not empty
+            if (bytes(svg).length == 0) {
+                return _createPlaceholder(x, y, width, height, geneType);
+            }
             return GeneRenderer.svgImage(x, y, width, height, svg);
         } catch {
-            return ""; // Return empty if gene can't be read
+            // Return placeholder on any error
+            return _createPlaceholder(x, y, width, height, geneType);
         }
+    }
+    
+    /**
+     * @dev Create a placeholder for missing genes
+     * @notice Renders a semi-transparent shape based on gene type
+     */
+    function _createPlaceholder(
+        int256 x,
+        int256 y,
+        uint256 width,
+        uint256 height,
+        uint8 geneType
+    ) private pure returns (string memory) {
+        // Skip body placeholder as we have a default body
+        if (geneType == 4) return ""; // GENE_BODY
+        
+        string memory fill = "#808080"; // Default gray
+        string memory opacity = "0.1"; // Very subtle
+        
+        // Create simple rect placeholder
+        return string.concat(
+            '<rect x="', LibString.toString(x),
+            '" y="', LibString.toString(y),
+            '" width="', width.toString(),
+            '" height="', height.toString(),
+            '" fill="', fill,
+            '" opacity="', opacity,
+            '" rx="10" />'
+        );
     }
     
     /**
