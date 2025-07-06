@@ -844,6 +844,8 @@ The VRGDA creates a smooth, gradual curve that incentivizes community care over 
 - **Factory Pattern**: Each Aminal requires factory address in constructor for security validation
 - **Breeding Restrictions**: Direct creation disabled; new Aminals only through breeding (except createAminalWithGenes)
 - **Security Critical**: payBreedingFee is the ONLY function allowing ETH outflow, heavily protected
+- **Position Storage**: Bit-packed positions save ~75% gas vs struct mapping
+- **Breaking Changes**: proposeGene signature change (4→8 params) breaks all existing tests
 
 **Key Incentives**:
 - **Discovery Rewards**: Players actively search for hungry Aminals to maximize returns
@@ -949,17 +951,20 @@ The community can prevent breeding through veto voting:
 
 #### Gene Positioning System
 - **Immutable Positions**: Each gene has x, y, width, height stored in Aminal contract
-- **Position Structure**: `GenePosition { int16 x; int16 y; uint16 width; uint16 height; }`
-- **Position Source**: From gene proposals during breeding (includes position data)
-- **Default Positions**: Parent genes and direct creation use predefined defaults
-- **No Dynamic Positioning**: All positions stored, no trait-based calculations
+- **Packed Storage**: Positions packed into uint256 for gas efficiency `[height|width|y|x]`
+- **Position Bounds**: x,y: -200 to 400; width,height: 1 to 400 (enforced in proposals)
+- **Coordinate System**: Origin (0,0) at top-left, 200x200 viewBox, no clipping
+- **Position Source**: From gene proposals during breeding (8 params: includes x,y,w,h)
+- **Default Positions**: Parent genes use predefined positions per gene type
+- **Preview Function**: `previewGenePosition()` allows UI to show proposed layouts
 
 #### Rendering with Genes
 - **GeneRenderer Library**: Provides SVG utilities (rect, text, svg, svgImage)
-- **Position Fetching**: AminalRenderer reads stored positions via `genePositions(geneType)`
+- **Z-Order Layers**: 0:BACK→1:BODY→2:TAIL→3:ARM→4:EARS→5:FACE→6:MOUTH→7:MISC
+- **Position Fetching**: AminalRenderer unpacks positions via `genePositions(geneType)`
 - **SVG Fetching**: AminalRenderer calls `Gene(geneContract).gene(tokenId)` 
-- **Layered Composition**: Genes rendered in specific order for proper overlapping
-- **Error Handling**: Returns empty string if gene cannot be read
+- **Error Handling**: Placeholders for missing genes (subtle gray rectangles)
+- **Default Body**: Circle SVG if no body gene assigned
 - **Base64 Encoding**: SVGs embedded as data URIs in final composition
 
 #### Data Storage Model
